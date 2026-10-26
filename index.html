@@ -3,131 +3,389 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vainglory Custom Draft Pick Simulator</title>
+  <title>Vainglory Draft Simulator</title>
   <style>
-    :root {
-      --bg-dark: #090c10;
-      --panel-bg: #131924;
-      --panel-border: #232d3f;
-      --accent-gold: #f59e0b;
-      --accent-gold-glow: rgba(245, 158, 11, 0.4);
-      --team-home: #3b82f6;
-      --team-away: #ef4444;
-      --text-main: #f3f4f6;
-      --text-muted: #9ca3af;
-    }
-
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      user-select: none;
+      font-family: sans-serif;
     }
 
     body {
-      background-color: var(--bg-dark);
-      color: var(--text-main);
+      background-color: #0b0e14;
+      color: #f3f4f6;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      overflow-x: hidden;
     }
 
-    /* Header Styling */
+    /* Header */
     header {
-      background: linear-gradient(180deg, #182232 0%, #0d131d 100%);
-      border-bottom: 2px solid var(--accent-gold);
-      padding: 10px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
-      z-index: 10;
-    }
-
-    .brand-title {
-      font-size: 1.3rem;
-      font-weight: 900;
-      letter-spacing: 2px;
-      color: #fff;
-      text-shadow: 0 0 10px var(--accent-gold-glow);
-    }
-
-    .brand-subtitle {
-      font-size: 0.75rem;
-      color: var(--accent-gold);
-    }
-
-    .header-actions {
-      display: flex;
-      gap: 10px;
-    }
-
-    .btn-action {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--panel-border);
-      color: #fff;
-      padding: 6px 14px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: bold;
-      transition: all 0.2s;
-    }
-
-    .btn-action:hover {
-      border-color: var(--accent-gold);
-      color: var(--accent-gold);
-      box-shadow: 0 0 8px var(--accent-gold-glow);
-    }
-
-    .btn-leave {
-      background: linear-gradient(135deg, #7f1d1d, #450a0a);
-      border-color: #ef4444;
-    }
-
-    .btn-leave:hover {
-      border-color: #f87171;
-      color: #fff;
-      box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
-    }
-
-    /* Status Bar */
-    .status-bar {
-      background: #0d1117;
-      border-bottom: 1px solid var(--panel-border);
+      background: #161b26;
+      border-bottom: 2px solid #f59e0b;
       padding: 12px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
 
-    .team-status {
-      display: flex;
-      align-items: center;
-      gap: 10px;
+    .logo-title {
+      font-size: 1.2rem;
       font-weight: bold;
-      font-size: 0.95rem;
+      color: #f59e0b;
     }
 
-    .status-badge {
-      font-size: 0.7rem;
-      padding: 3px 8px;
-      border-radius: 12px;
+    .header-btns {
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
       background: #374151;
+      color: #fff;
+      border: 1px solid #4b5563;
+      padding: 8px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
+
+    button:hover {
+      background: #4b5563;
+      border-color: #f59e0b;
+    }
+
+    .btn-danger {
+      background: #991b1b;
+      border-color: #ef4444;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      background: #111827;
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #1f2937;
+    }
+
+    .badge {
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      background: #374151;
+    }
+
+    .badge.ready {
+      background: #059669;
+    }
+
+    /* Lobby */
+    .lobby-box {
+      max-width: 480px;
+      width: 90%;
+      margin: 40px auto;
+      padding: 24px;
+      background: #161b26;
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.85rem;
       color: #9ca3af;
     }
 
-    .status-badge.ready {
-      background: #059669;
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 10px;
+      background: #0b0e14;
+      border: 1px solid #374151;
       color: #fff;
-      box-shadow: 0 0 8px rgba(5, 150, 105, 0.5);
+      border-radius: 4px;
     }
 
-    .timer-box {
-      text-align: center;
+    .btn-main {
+      width: 100%;
+      padding: 12px;
+      background: #f59e0b;
+      color: #000;
+      font-size: 1rem;
+      border: none;
     }
 
-    .timer-val {
-      font-size: 1.8rem
+    /* 3-Column Layout */
+    .main-draft {
+      display: grid;
+      grid-template-columns: 260px 1fr 260px;
+      gap: 12px;
+      padding: 12px;
+      flex: 1;
+    }
+
+    .team-col {
+      background: #161b26;
+      border-radius: 6px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      border: 1px solid #1f2937;
+    }
+
+    .team-home-title { color: #3b82f6; font-weight: bold; }
+    .team-away-title { color: #ef4444; font-weight: bold; }
+
+    .slot-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .slot-item {
+      height: 42px;
+      background: #0b0e14;
+      border: 1px dashed #374151;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      font-size: 0.85rem;
+      gap: 8px;
+    }
+
+    .slot-item.ban { height: 34px; color: #ef4444; }
+
+    .center-col {
+      background: #161b26;
+      border-radius: 6px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+      gap: 8px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .hero-card {
+      aspect-ratio: 1;
+      background: #0b0e14;
+      border: 1px solid #374151;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.75rem;
+    }
+
+    .hero-card:hover {
+      border-color: #f59e0b;
+    }
+
+    .hero-card.selected {
+      border: 2px solid #f59e0b;
+      background: #1f2937;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="logo-title">VAINGLORY DRAFT</div>
+    <div class="header-btns">
+      <button id="btnCopyUrl">招待URLコピー</button>
+      <button id="btnLeave" class="btn-danger hidden">ロビーに戻る</button>
+    </div>
+  </header>
+
+  <!-- Status Bar -->
+  <div class="status-bar hidden" id="statusBar">
+    <div>
+      <span class="team-home-title">ホーム（チームA）</span>
+      <span class="badge" id="badgeHome">未準備</span>
+    </div>
+    <div style="text-align:center;">
+      <div id="timerText" style="font-size:1.5rem; color:#f59e0b; font-weight:bold;">30</div>
+      <div id="phaseText" style="font-size:0.8rem; color:#9ca3af;">準備中</div>
+    </div>
+    <div>
+      <span class="badge" id="badgeAway">未準備</span>
+      <span class="team-away-title">アウェイ（チームB）</span>
+    </div>
+  </div>
+
+  <!-- Lobby Screen -->
+  <div class="lobby-box" id="lobbyScreen">
+    <h2 style="color:#f59e0b; margin-bottom:16px;">ドラフトルーム作成・参加</h2>
+    <div class="form-group">
+      <label>ルームID</label>
+      <input type="text" id="roomIdInput" value="vg-room-1">
+    </div>
+    <div class="form-group">
+      <label>あなたの役割</label>
+      <select id="roleSelect">
+        <option value="HOME">ホーム（チームA）リーダー</option>
+        <option value="AWAY">アウェイ（チームB）リーダー</option>
+        <option value="SPECTATOR">観戦者</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>ゲームモード</label>
+      <select id="modeSelect">
+        <option value="5v5">5v5 モード (バン3枠 / ピック5枠)</option>
+        <option value="3v3">3v3 モード (バン2枠 / ピック3枠)</option>
+      </select>
+    </div>
+    <button class="btn-main" id="btnEnter">入室する</button>
+  </div>
+
+  <!-- Main Draft Screen -->
+  <div class="main-draft hidden" id="draftScreen">
+    
+    <!-- Home Team -->
+    <div class="team-col">
+      <div class="team-home-title">ホーム（チームA）</div>
+      <div style="font-size:0.75rem; color:#9ca3af;">BANS</div>
+      <div class="slot-list" id="homeBansList"></div>
+      <div style="font-size:0.75rem; color:#9ca3af;">PICKS</div>
+      <div class="slot-list" id="homePicksList"></div>
+      <button class="btn-main" id="btnReadyHome" style="margin-top:auto;">ホーム 準備完了</button>
+    </div>
+
+    <!-- Center Grid -->
+    <div class="center-col">
+      <input type="text" id="searchInput" placeholder="ヒーロー検索..." style="padding:8px; background:#0b0e14; border:1px solid #374151; color:#fff; border-radius:4px;">
+      <div class="hero-grid" id="heroGrid"></div>
+      <button id="btnLock" class="btn-main" style="background:#10b981;" disabled>選択確定 (LOCK IN)</button>
+    </div>
+
+    <!-- Away Team -->
+    <div class="team-col">
+      <div class="team-away-title">アウェイ（チームB）</div>
+      <div style="font-size:0.75rem; color:#9ca3af;">BANS</div>
+      <div class="slot-list" id="awayBansList"></div>
+      <div style="font-size:0.75rem; color:#9ca3af;">PICKS</div>
+      <div class="slot-list" id="awayPicksList"></div>
+      <button class="btn-main" id="btnReadyAway" style="margin-top:auto; background:#dc2626;" >アウェイ 準備完了</button>
+    </div>
+
+  </div>
+
+  <script>
+    const HEROES = [
+      'セレスト', 'ヴォックス', 'ケストレル', 'グレイブ', 'タカ',
+      'キャサリン', 'アーダン', 'ライラ', 'スカイ', 'ローナ',
+      'ソー', 'スカーフ', 'クラル', 'ペタル', 'フィン'
+    ];
+
+    let state = {
+      userRole: 'HOME',
+      mode: '5v5',
+      readyHome: false,
+      readyAway: false,
+      selectedHero: null
+    };
+
+    const lobbyScreen = document.getElementById('lobbyScreen');
+    const draftScreen = document.getElementById('draftScreen');
+    const statusBar = document.getElementById('statusBar');
+
+    document.getElementById('btnEnter').onclick = () => {
+      state.userRole = document.getElementById('roleSelect').value;
+      state.mode = document.getElementById('modeSelect').value;
+
+      lobbyScreen.classList.add('hidden');
+      draftScreen.classList.remove('hidden');
+      statusBar.classList.remove('hidden');
+      document.getElementById('btnLeave').classList.remove('hidden');
+
+      if (state.userRole !== 'HOME') document.getElementById('btnReadyHome').classList.add('hidden');
+      if (state.userRole !== 'AWAY') document.getElementById('btnReadyAway').classList.add('hidden');
+
+      buildSlots();
+      renderGrid();
+    };
+
+    document.getElementById('btnLeave').onclick = () => {
+      location.reload();
+    };
+
+    document.getElementById('btnCopyUrl').onclick = () => {
+      navigator.clipboard.writeText(window.location.href);
+      alert('URLをコピーしました');
+    };
+
+    document.getElementById('btnReadyHome').onclick = () => {
+      state.readyHome = true;
+      document.getElementById('badgeHome').innerText = '準備完了';
+      document.getElementById('badgeHome').classList.add('ready');
+    };
+
+    document.getElementById('btnReadyAway').onclick = () => {
+      state.readyAway = true;
+      document.getElementById('badgeAway').innerText = '準備完了';
+      document.getElementById('badgeAway').classList.add('ready');
+    };
+
+    function buildSlots() {
+      const banCount = state.mode === '3v3' ? 2 : 3;
+      const pickCount = state.mode === '3v3' ? 3 : 5;
+
+      const homeBans = document.getElementById('homeBansList');
+      const awayBans = document.getElementById('awayBansList');
+      const homePicks = document.getElementById('homePicksList');
+      const awayPicks = document.getElementById('awayPicksList');
+
+      homeBans.innerHTML = ''; awayBans.innerHTML = '';
+      homePicks.innerHTML = ''; awayPicks.innerHTML = '';
+
+      for (let i = 0; i < banCount; i++) {
+        homeBans.innerHTML += `<div class="slot-item ban">BAN ${i+1}</div>`;
+        awayBans.innerHTML += `<div class="slot-item ban">BAN ${i+1}</div>`;
+      }
+
+      for (let i = 0; i < pickCount; i++) {
+        homePicks.innerHTML += `<div class="slot-item">PICK ${i+1}</div>`;
+        awayPicks.innerHTML += `<div class="slot-item">PICK ${i+1}</div>`;
+      }
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('heroGrid');
+      grid.innerHTML = '';
+      HEROES.forEach(name => {
+        const card = document.createElement('div');
+        card.className = 'hero-card';
+        if (state.selectedHero === name) card.classList.add('selected');
+        card.innerText = name;
+        card.onclick = () => {
+          state.selectedHero = name;
+          document.getElementById('btnLock').disabled = false;
+          renderGrid();
+        };
+        grid.appendChild(card);
+      });
+    }
+  </script>
+</body>
+</html>
