@@ -102,4 +102,908 @@ details.fx[open] summary{margin-bottom:10px}
 .tile .nm{font-size:11px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tile:hover:not(:disabled){border-color:var(--muted)}
 .tile:disabled{cursor:default}
-.mono{display:grid;place-items:center;width:46px;height:46px;border-radius:8px;
+.mono{display:grid;place-items:center;width:46px;height:46px;border-radius:8px;font-family:var(--f-disp);font-weight:700;font-size:15px;letter-spacing:.04em;color:#fff;
+  background:linear-gradient(145deg,hsl(var(--h) 52% 40%),hsl(calc(var(--h) + 32) 55% 22%))}
+.tile.ban .mono,.tile.fixed .mono{filter:grayscale(1) brightness(.5)}
+.tile.ban::after,.tile.fixed::after{content:"";position:absolute;top:6px;left:50%;width:46px;height:46px;margin-left:-23px;pointer-events:none;
+  background:linear-gradient(to top right,transparent calc(50% - 1.5px),var(--away) calc(50% - 1.5px),var(--away) calc(50% + 1.5px),transparent calc(50% + 1.5px))}
+.tile.fixed{border-style:dashed}
+.tile.pick-home{border-color:var(--home);opacity:.55}
+.tile.pick-away{border-color:var(--away);opacity:.55}
+.tile.sel{outline:2px dashed var(--gold);outline-offset:1px}
+.tile.team-sel{outline:2px dashed var(--home);outline-offset:1px}
+.tile.mine{outline:2px dashed var(--muted);outline-offset:1px}
+
+/* room */
+.meta{display:flex;gap:8px 14px;flex-wrap:wrap;align-items:center;margin-bottom:14px;color:var(--muted);font-size:13px}
+.badge{padding:2px 10px;border-radius:999px;border:1px solid var(--line);font-family:var(--f-disp);font-size:12px;letter-spacing:.1em}
+.badge.home{border-color:var(--home);color:var(--home)}
+.badge.away{border-color:var(--away);color:var(--away)}
+.badge.spec{color:var(--muted)}
+.badge.gold{border-color:var(--gold);color:var(--gold)}
+
+.teams{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.team{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
+.team.home{border-top:3px solid var(--home)}
+.team.away{border-top:3px solid var(--away)}
+.team h3{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 10px;font-family:var(--f-disp);letter-spacing:.14em;font-size:15px}
+.team.home h3{color:var(--home)}
+.team.away h3{color:var(--away)}
+.tr{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);letter-spacing:.08em}
+.tr.ok{border-color:var(--ok);color:var(--ok);background:rgba(95,214,160,.1)}
+.seat{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--panel2);min-height:44px}
+.seat.empty{border-style:dashed;background:transparent;color:var(--muted)}
+.seat.me{border-color:var(--gold)}
+.seat .sn{font-family:var(--f-disp);color:var(--muted);font-size:12px}
+.seat .who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seat .who small{color:var(--muted);margin-left:6px}
+.rd{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.rd i{width:9px;height:9px;border-radius:50%;background:var(--line);display:inline-block}
+.rd.on{color:var(--ok)}
+.rd.on i{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.kick{border:0;background:transparent;color:var(--muted);padding:0 4px;font-size:16px;line-height:1}
+.kick:hover{color:var(--away)}
+.team .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.readybar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0}
+
+/* draft - タイマー上部固定 */
+.turnbar{position:sticky;top:max(0px,env(safe-area-inset-top,0px));z-index:20;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 18px;align-items:center;padding:12px 16px;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+.turnbar.home{border-color:var(--home)}
+.turnbar.away{border-color:var(--away)}
+.turnbar.mine{box-shadow:0 0 0 1px var(--gold),0 0 24px -6px var(--gold)}
+.tb-l .k{font-family:var(--f-disp);font-size:12px;letter-spacing:.16em;color:var(--muted)}
+.tb-l .v{font-size:18px;font-weight:700;margin-top:2px}
+.tb-l .v em{font-style:normal;color:var(--gold)}
+.tb-act{margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.tb-r{font-family:var(--f-disp);font-weight:700;font-size:44px;line-height:1;text-align:right;font-variant-numeric:tabular-nums}
+.tb-r.low{color:var(--away)}
+.tbar{grid-column:1/-1;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.tbar i{display:block;height:100%;background:var(--gold);width:100%}
+.turnbar.home .tbar i{background:var(--home)}
+.turnbar.away .tbar i{background:var(--away)}
+.fixed-wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.stage{display:grid;gap:12px;grid-template-columns:minmax(220px,1fr) minmax(0,2.2fr) minmax(220px,1fr);grid-template-areas:"home pool away"}
+#colHome{grid-area:home}
+#colAway{grid-area:away}
+#colPool{grid-area:pool;min-width:0}
+.colh{font-family:var(--f-disp);letter-spacing:.16em;font-size:13px;margin:0 0 8px;display:flex;justify-content:space-between}
+#colHome .colh{color:var(--home)}
+#colAway .colh{color:var(--away)}
+.cell{display:grid;grid-template-columns:20px 44px minmax(0,1fr);align-items:center;gap:8px;min-height:62px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);margin-bottom:6px}
+.cell.B{min-height:46px;background:rgba(255,112,98,.07)}
+.cell .rn{font-family:var(--f-disp);font-size:12px;color:var(--muted)}
+.cell .mono{width:40px;height:40px;font-size:13px}
+.cell.B .mono{width:30px;height:30px;font-size:11px;border-radius:6px;filter:grayscale(1) brightness(.55)}
+.cell .ph{width:40px;height:40px;border-radius:8px;border:1px dashed var(--line);display:grid;place-items:center;font-family:var(--f-disp);font-size:10px;letter-spacing:.1em;color:var(--muted)}
+.cell.B .ph{width:30px;height:30px;font-size:9px}
+.cell .tx{min-width:0}
+.cell .hn{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cell.B .hn{text-decoration:line-through;text-decoration-color:var(--away);font-weight:500}
+.cell .ow{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cell.cur.home{border-color:var(--home);box-shadow:0 0 18px -4px var(--home)}
+.cell.cur.away{border-color:var(--away);box-shadow:0 0 18px -4px var(--away)}
+.cell.cur .ph,.cell.cur .mono{outline:2px dashed var(--gold);outline-offset:1px}
+.cell.cur{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{background:var(--panel2)}}
+.cell.me{border-color:var(--gold)}
+.searchrow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.searchrow .field{flex:1}
+
+/* 確定ボタン等のアクションバー（右下固定） */
+.actbar{position:fixed;bottom:max(16px,env(safe-area-inset-bottom,0px));right:max(16px,env(safe-area-inset-right,0px));left:auto;max-width:calc(100vw - 32px);width:380px;padding:12px 16px;border:1px solid var(--gold);border-radius:14px;background:rgba(19,23,48,.95);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:nowrap;z-index:30;box-shadow:0 8px 24px rgba(0,0,0,.6)}
+.actbar .t{min-width:0;flex:1 1 auto}
+.actbar .t b{color:var(--gold);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.actbar .t small{display:block;color:var(--muted);font-size:11px;line-height:1.2}
+.actbar button{flex-shrink:0}
+.pool-scroll{max-height:56vh;overflow-y:auto;padding:2px}
+
+/* countdown */
+.cd{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(7,8,18,.86);text-align:center}
+.cd p{margin:0;font-family:var(--f-disp);letter-spacing:.3em;color:var(--muted);font-size:14px}
+.cd .big{font-family:var(--f-disp);font-weight:700;font-size:clamp(110px,28vw,240px);line-height:1;color:var(--gold);font-variant-numeric:tabular-nums}
+.toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--panel2);border:1px solid var(--gold);padding:8px 16px;border-radius:999px;z-index:60;font-size:13px;max-width:90vw}
+
+@media (max-width:900px){
+  .stage{grid-template-columns:1fr 1fr;grid-template-areas:"home away" "pool pool"}
+  .cols{grid-template-columns:1fr}
+}
+@media (max-width:560px){
+  .cell{grid-template-columns:16px 34px minmax(0,1fr);gap:6px;padding:5px 6px}
+  .cell .mono,.cell .ph{width:34px;height:34px}
+  .tb-r{font-size:36px}
+  .logo b{font-size:18px}
+  .actbar{width:calc(100vw - 32px);left:16px;right:16px}
+}
+@media (max-width:420px){.teams{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.cell.cur{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo"><b>VAINGLORY</b><span>Custom Draft</span></div>
+    <div class="topr" id="topr" hidden>
+      <div class="chip-id"><small>ROOM</small><code id="roomCode"></code><button class="btn sm" id="copyId" type="button">IDコピー</button></div>
+      <button class="btn sm" id="copyInvite" type="button">招待リンク</button>
+      <button class="btn sm" id="copyWatch" type="button">観戦リンク</button>
+      <button class="btn sm ghost" id="leaveBtn" type="button">退出</button>
+    </div>
+  </header>
+
+  <div class="banner" id="netBanner" hidden></div>
+
+  <!-- ENTRY -->
+  <section id="vEntry">
+    <div class="hero-h">
+      <h1>3v3 / 5v5 のBAN&amp;ピックを、ルームIDで共有する</h1>
+      <p>ホーム(左)とアウェイ(右)に分かれ、全員が準備完了になると5秒後に開始します。参加者と観戦者は、ルームIDか招待リンクで入室します。</p>
+    </div>
+    <div class="namebar">
+      <label for="myName">表示名</label>
+      <input class="field" id="myName" maxlength="14" placeholder="あなたの名前" autocomplete="off">
+    </div>
+    <div class="cols">
+      <div class="card">
+        <h2>ルームを作成</h2>
+        <div class="row"><span class="lab">形式</span><div class="seg" id="segSize" role="group" aria-label="形式"><button type="button" data-v="3">3v3</button><button type="button" data-v="5">5v5</button></div></div>
+        <div class="row"><span class="lab">1手番の制限時間</span><div class="seg" id="segTimer" role="group" aria-label="制限時間"><button type="button" data-v="15">15秒</button><button type="button" data-v="30">30秒</button><button type="button" data-v="45">45秒</button><button type="button" data-v="60">60秒</button></div></div>
+        <div class="row"><span class="lab">BANの人数(各チーム)</span><div class="seg" id="segBans" role="group" aria-label="BANの人数"><button type="button" data-v="1">1人</button><button type="button" data-v="2">2人</button><button type="button" data-v="3">3人</button><button type="button" data-v="4">4人</button><button type="button" data-v="5">5人</button></div></div>
+        <div class="lab" style="margin-bottom:6px">進行順(1行ごとにホーム→アウェイの順に手番)</div>
+        <div class="rlist" id="cStrip"></div>
+        <p class="hint" id="stripHint"></p>
+        <details class="fx" id="fixedDet">
+          <summary>固定BAN(最初からBANするヒーロー) <span id="fixedCount"></span></summary>
+          <div class="fixed-list" id="fixedList"></div>
+          <div class="searchrow"><input class="field" id="fq" placeholder="ヒーロー名で絞り込み" autocomplete="off"></div>
+          <div class="pool-scroll" style="max-height:260px"><div class="pool" id="fPool"></div></div>
+        </details>
+        <div class="sum" id="cSum"></div>
+        <button class="btn pri" id="createBtn" type="button" disabled>ルームを作成して入室</button>
+        <p class="hint">作った人がホストです。ホストのブラウザがドラフトの進行役になるので、終わるまでタブを開いたままにしてください(再読み込みなら復元されます)。</p>
+        <p class="msg" id="createMsg" role="status"></p>
+      </div>
+      <div class="card">
+        <h2>ルームに入室</h2>
+        <div class="row" style="margin-bottom:8px"><label for="joinId" class="lab">ルームID</label></div>
+        <input class="field num" id="joinId" maxlength="10" placeholder="例: K7M2QX" autocomplete="off" style="width:100%;font-size:22px;letter-spacing:.2em;text-transform:uppercase">
+        <p class="hint">参加者は入室後にロビーで席に座ります。観戦で入ると閲覧だけで、座ること・選ぶことはできません。</p>
+        <div class="btns" style="margin-top:14px">
+          <button class="btn pri" id="joinBtn" type="button" disabled>参加者として入室</button>
+          <button class="btn" id="watchBtn" type="button" disabled>観戦で入室</button>
+        </div>
+        <p class="msg" id="joinMsg" role="status"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROOM -->
+  <section id="vRoom" hidden>
+    <div class="meta" id="roomMeta"></div>
+    <div id="fixedWrap" class="fixed-wrap" hidden></div>
+
+    <div id="lobby" hidden>
+      <div class="teams" id="teams"></div>
+      <div class="readybar" id="readybar"></div>
+      <div class="lab" style="margin-bottom:6px">進行順(1行ごとにホーム→アウェイ)</div>
+      <div class="strip" id="rStrip"></div>
+    </div>
+
+    <div id="draft" hidden>
+      <div class="turnbar" id="turnbar"></div>
+      <div class="stage">
+        <div id="colHome"></div>
+        <div id="colPool">
+          <div class="searchrow"><input class="field" id="q" placeholder="ヒーロー名で絞り込み" autocomplete="off"></div>
+          <div class="pool-scroll"><div class="pool" id="poolGrid"></div></div>
+          <div class="actbar" id="actbar"></div>
+        </div>
+        <div id="colAway"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="cd" id="cd" hidden role="status"><div><p>ドラフト開始まで</p><div class="big" id="cdNum">5</div><button class="btn" id="cdCancel" type="button" hidden>準備を解除して中止</button></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------------------------------------------------------
+   仕組み: ホストのブラウザが進行役(権威)になり、参加者・観戦者は
+   PeerJS(WebRTC)でホストに接続します。サーバーは不要です。
+   ホストが全ての操作を検証し、状態を全員に配信します。
+   --------------------------------------------------------------- */
+
+/* ヒーロー一覧。追加・削除はここを編集します。 */
+var HEROES=["Adagio","Alpha","Amael","Anka","Ardan","Baptiste","Baron","Blackfeather","Bryce","Caine","Catherine","Celeste","Churnwalker","Cyrus","Flicker","Fortress","Glaive","Grace","Grumpjaw","Gwen","Idris","Inara","Ishtar","Joule","Karas","Kensei","Kestrel","Kinetic","Koshka","Krul","Lance","Leo","Lorelai","Lyra","Magnus","Malene","Miho","Ozo","Petal","Phinn","Reim","Reza","Ringo","Rona","Samuel","San Feng","SAW","Silvernail","Skaarf","Skye","Taka","Tony","Varya","Viola","Vox","Warhawk","Yates","Ylva"];
+var PEER_SRC=["https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js","https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js","https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"];
+
+var $=function(s){return document.querySelector(s)};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function lsDel(k){try{localStorage.removeItem(k)}catch(e){}}
+function rnd(n){var s="";while(s.length<n)s+=Math.random().toString(36).slice(2);return s.slice(0,n)}
+function hash(s){var h=0;for(var i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))>>>0}return h}
+function mono(n){var w=n.split(" ");return (w.length>1?w[0][0]+w[1][0]:n.slice(0,2)).toUpperCase()}
+function monoHTML(n){return '<span class="mono" style="--h:'+(hash(n)%360)+'">'+esc(mono(n))+'</span>'}
+function teamJa(t){return t==="home"?"ホーム":"アウェイ"}
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
+
+/* ---------- identity (この端末だけの識別子) ---------- */
+var myUid=lsGet("vgd_uid");
+if(!myUid){myUid="u"+rnd(12);lsSet("vgd_uid",myUid)}
+var myTok=lsGet("vgd_tok");
+if(!myTok){myTok=rnd(24);lsSet("vgd_tok",myTok)}
+var myName=lsGet("vgd_name")||"";
+
+/* ---------- state ---------- */
+var S=null,D=null;                    /* S: ルームの状態(ホストが正)  D: Sから導いた値 */
+var roomId=null,isHost=false,inRoom=false,joining=false,joinSpec=false;
+var peer=null,hostConn=null,conns={},toks={},netGen=0;
+var off=0,hbAt=0,lastHb=0,connected=false,retryTimer=null;
+var localSel="",q="";
+/* ChurnwalkerとViolaを初期固定BANに設定 */
+var cs={size:5,timer:45,bans:1,rows:[],fixed:["Churnwalker","Viola"]};
+
+function nowS(){return Date.now()+off}
+function toast(t){var el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true},2600)}
+function getName(){var n=($("#myName").value||"").trim().slice(0,14);if(!n){n="Player"+(10+Math.floor(Math.random()*90))}$("#myName").value=n;myName=n;lsSet("vgd_name",n);return n}
+
+/* ---------- draft model ---------- */
+function buildTurns(cfg){
+  var N=cfg.size,turns=[],p=0,b=0;
+  for(var r=0;r<cfg.rows.length;r++){
+    var type=cfg.rows[r],slot=type==="P"?p++:(b++%N);
+    turns.push({r:r,team:"home",type:type,slot:slot});
+    turns.push({r:r,team:"away",type:type,slot:slot});
+  }
+  return turns;
+}
+function defaultRows(size,k){
+  var R=size+k,pos=[],i;
+  for(i=0;pos.length<k&&i<=R-2;i+=2)pos.push(i);
+  for(i=1;pos.length<k&&i<=R-2;i++)if(pos.indexOf(i)<0)pos.push(i);
+  var rows=[];
+  for(i=0;i<R;i++)rows.push(pos.indexOf(i)>=0?"B":"P");
+  return rows.join("");
+}
+function rankOf(team){
+  var mem=S.members||{};
+  return Object.keys(mem).filter(function(k){return mem[k].team===team}).sort(function(a,b){return (mem[a].t-mem[b].t)||(a<b?-1:1)});
+}
+function derive(){
+  var cfg=S.cfg,N=cfg.size,mem=S.members||{},seats;
+  if(S.phase==="lobby"){seats={home:rankOf("home").slice(0,N),away:rankOf("away").slice(0,N)}}
+  else seats={home:(S.seats&&S.seats.home)||[],away:(S.seats&&S.seats.away)||[]};
+  var tr={};
+  ["home","away"].forEach(function(t){tr[t]=seats[t].length===N&&seats[t].every(function(u){return mem[u]&&mem[u].ready===true})});
+  var turns=buildTurns(cfg);
+  var cur=S.phase==="draft"?turns[S.turn]||null:null;
+  var actor=cur?seats[cur.team][cur.slot]:null;
+  var myTeam=seats.home.indexOf(myUid)>=0?"home":(seats.away.indexOf(myUid)>=0?"away":"");
+  return {cfg:cfg,N:N,turns:turns,seats:seats,teamReady:tr,cur:cur,actor:actor,myTeam:myTeam,host:isHost,all:seats.home.concat(seats.away)};
+}
+function nameOf(u){var m=S.members&&S.members[u];return m&&m.name?m.name:"(不在)"}
+function isActor(){return !!(D&&D.cur&&D.actor===myUid)}
+function taken(h){
+  if(S.cfg.fixedBans.indexOf(h)>=0)return true;
+  var lg=S.log||{};
+  for(var k in lg){if(lg[k].hero===h)return true}
+  return false;
+}
+function statusOf(h){
+  if(S.cfg.fixedBans.indexOf(h)>=0)return {k:"fixed"};
+  var lg=S.log||{};
+  for(var k in lg){
+    if(lg[k].hero===h){var t=D.turns[+k];return t.type==="B"?{k:"ban",team:t.team}:{k:"pick",team:t.team}}
+  }
+  return null;
+}
+
+/* =========================================================
+   ホスト側ロジック(進行・検証は全てここ)
+   ========================================================= */
+function newState(cfg){
+  return {cfg:cfg,host:myUid,created:Date.now(),phase:"lobby",turn:0,deadline:0,startsAt:0,
+    pendingHero:"",pendingTurn:-1,pendingTeam:"",resetT:-1,log:{},seats:{home:[],away:[]},members:{}};
+}
+function cleanName(n){return String(n==null?"":n).replace(/[\u0000-\u001f<>]/g,"").trim().slice(0,14)}
+function autoHero(){
+  var free=HEROES.filter(function(h){return !taken(h)});
+  return free.length?free[Math.floor(Math.random()*free.length)]:"";
+}
+function advance(hero,auto,by){
+  S.log[S.turn]={hero:hero,by:by||"",auto:!!auto};
+  S.pendingHero="";S.pendingTurn=-1;S.pendingTeam="";S.turn++;
+  if(S.turn>=D.turns.length){S.phase="done";S.deadline=0}
+  else S.deadline=Date.now()+S.cfg.timer*1000;
+}
+/* uid: 送信者  local: ホスト自身の画面からの操作か */
+function hostHandle(uid,m,local){
+  if(!S||!m||typeof m.a!=="string")return;
+  D=derive();
+  var now=Date.now(),mem=S.members,me=mem[uid],ph=S.phase,seated=D.all.indexOf(uid)>=0;
+  if(m.a==="hello"){
+    if(typeof m.tok!=="string"||m.tok.length<8)return "denied";
+    if(toks[uid]&&toks[uid]!==m.tok)return "denied";
+    toks[uid]=m.tok;
+    if(!me)me=mem[uid]={name:"",team:"",t:now,ready:false,left:false,spec:false,on:true};
+    var nm=cleanName(m.name);
+    if(nm)me.name=nm;else if(!me.name)me.name="Player";
+    me.left=false;me.on=true;me.spec=seated?false:!!m.spec;
+    return;
+  }
+  if(!me)return;
+  switch(m.a){
+    case "sit":
+      if(ph!=="lobby"||me.spec||(m.team!=="home"&&m.team!=="away"))return;
+      if(me.team===m.team)return;
+      if(D.seats[m.team].length>=D.N)return "満席です";
+      me.team=m.team;me.t=now;me.ready=false;break;
+    case "stand":
+      if(ph!=="lobby")return;
+      me.team="";me.ready=false;break;
+    case "ready":
+      if((ph!=="lobby"&&ph!=="countdown")||!seated)return;
+      me.ready=!me.ready;break;
+    case "leave":
+      me.left=true;me.on=false;
+      if(ph==="lobby"||ph==="countdown")me.ready=false;
+      if(ph==="lobby")me.team="";
+      break;
+    case "kick":
+      if(!local||ph!=="lobby"||!mem[m.u]||m.u===uid)return;
+      mem[m.u].team="";mem[m.u].ready=false;break;
+    case "reset":
+      if(!local||ph!=="done")return;
+      S.phase="lobby";S.turn=0;S.deadline=0;S.startsAt=0;S.pendingHero="";S.pendingTurn=-1;S.pendingTeam="";S.resetT=-1;S.log={};S.seats={home:[],away:[]};
+      Object.keys(mem).forEach(function(k){mem[k].ready=false});
+      break;
+    case "pick":
+      if(ph!=="draft"||HEROES.indexOf(m.h)<0||taken(m.h))return;
+      var myT=D.seats.home.indexOf(uid)>=0?"home":(D.seats.away.indexOf(uid)>=0?"away":"");
+      if(!myT)return;
+      S.pendingTurn=S.turn;
+      S.pendingHero=m.h;
+      S.pendingTeam=myT;
+      break;
+    case "confirm":
+      if(ph!=="draft"||D.actor!==uid)return;
+      if(S.pendingTurn!==S.turn||!S.pendingHero||taken(S.pendingHero))return;
+      advance(S.pendingHero,false,uid);break;
+    case "extend":
+      if(ph!=="draft"||D.actor!==uid||S.resetT===S.turn||now>=S.deadline)return;
+      S.deadline=now+S.cfg.timer*1000;S.resetT=S.turn;break;
+  }
+}
+function step(){
+  if(!S)return false;
+  D=derive();
+  var now=Date.now(),ch=false,both=D.teamReady.home&&D.teamReady.away;
+  if(S.phase==="lobby"){
+    if(both){S.phase="countdown";S.startsAt=now+5000;S.seats={home:D.seats.home.slice(),away:D.seats.away.slice()};ch=true}
+  }else if(S.phase==="countdown"){
+    if(!both){S.phase="lobby";S.startsAt=0;ch=true}
+    else if(now>=S.startsAt){S.phase="draft";S.turn=0;S.deadline=now+S.cfg.timer*1000;S.pendingHero="";S.pendingTurn=-1;S.pendingTeam="";S.resetT=-1;ch=true}
+  }else if(S.phase==="draft"&&D.cur&&now>S.deadline){
+    advance(autoHero(),true,"");ch=true;
+  }
+  if(ch)D=derive();
+  return ch;
+}
+function saveHost(){lsSet("vgd_host",JSON.stringify({id:roomId,state:S,toks:toks}))}
+function sendAll(msg){Object.keys(conns).forEach(function(k){var c=conns[k];if(c&&c.open){try{c.send(msg)}catch(e){}}})}
+function broadcast(){sendAll({t:"snap",s:S,now:Date.now()})}
+function commit(){
+  if(!isHost||!S)return;
+  step();D=derive();
+  saveHost();broadcast();onState();
+}
+function onHostConn(conn,gen){
+  conn.on("data",function(m){
+    if(gen!==netGen||!isHost||!m||typeof m!=="object")return;
+    if(m.a==="hello"){
+      if(typeof m.uid!=="string"||!/^[A-Za-z0-9]{3,40}$/.test(m.uid))return;
+      var r=hostHandle(m.uid,m,false);
+      if(r==="denied"){try{conn.send({t:"denied",msg:"この名前の参加者はすでに別の端末で入室しています。"})}catch(e){}setTimeout(function(){try{conn.close()}catch(e){}},300);return}
+      conn.__uid=m.uid;conns[conn.peer]=conn;
+      commit();return;
+    }
+    if(!conn.__uid)return;
+    var res=hostHandle(conn.__uid,m,false);
+    if(typeof res==="string"&&res!=="denied"){try{conn.send({t:"err",msg:res})}catch(e){}}
+    commit();
+  });
+  var drop=function(){
+    if(gen!==netGen||!isHost)return;
+    if(conns[conn.peer]===conn)delete conns[conn.peer];
+    var u=conn.__uid;if(!u||!S)return;
+    var still=Object.keys(conns).some(function(k){return conns[k].__uid===u&&conns[k].open});
+    if(still)return;
+    var me=S.members[u];
+    if(me){me.on=false;if(S.phase==="lobby"||S.phase==="countdown")me.ready=false}
+    commit();
+  };
+  conn.on("close",drop);conn.on("error",drop);
+}
+
+/* ---------- 通信 ---------- */
+function loadPeer(){
+  return new Promise(function(resolve){
+    if(window.Peer){resolve(true);return}
+    var i=0;
+    (function next(){
+      if(i>=PEER_SRC.length){resolve(false);return}
+      var s=document.createElement("script");s.src=PEER_SRC[i++];
+      s.onload=function(){window.Peer?resolve(true):next()};
+      s.onerror=function(){next()};
+      document.head.appendChild(s);
+    })();
+  });
+}
+function killNet(){
+  netGen++;
+  clearTimeout(retryTimer);
+  var c=hostConn,p=peer;hostConn=null;peer=null;conns={};
+  if(c){try{c.close()}catch(e){}}
+  if(p){try{p.destroy()}catch(e){}}
+}
+function startHost(id,cb){
+  killNet();
+  var gen=netGen,opened=false,fin=false;
+  var finish=function(r){if(fin)return;fin=true;clearTimeout(to);cb(r)};
+  var p;
+  try{p=new window.Peer("vgd-"+id,{debug:0})}catch(e){cb({ok:false,err:"init"});return}
+  peer=p;
+  var to=setTimeout(function(){finish({ok:false,err:"timeout"})},12000);
+  p.on("open",function(){if(gen!==netGen)return;opened=true;finish({ok:true})});
+  p.on("connection",function(conn){if(gen!==netGen)return;onHostConn(conn,gen)});
+  p.on("disconnected",function(){if(gen!==netGen||!opened)return;try{p.reconnect()}catch(e){}});
+  p.on("error",function(e){
+    if(gen!==netGen)return;
+    var t=e&&e.type;
+    if(!opened){finish({ok:false,err:t==="unavailable-id"?"taken":(t||"error")});return}
+    if(t==="network"||t==="socket-closed"||t==="socket-error"||t==="server-error"){try{p.reconnect()}catch(x){}}
+  });
+}
+function enterAsHost(id,state){
+  S=state;isHost=true;roomId=id;inRoom=true;joining=false;connected=true;off=0;
+  lsDel("vgd_room");
+  showView("room");
+}
+async function createRoom(){
+  var msg=$("#createMsg"),btn=$("#createBtn");
+  if(!window.Peer){msg.textContent="通信ライブラリを読み込めていません。再読み込みしてください。";return}
+  getName();btn.disabled=true;msg.textContent="ルームを作成中…";
+  var cfg={size:cs.size,timer:cs.timer,rows:cs.rows.join(""),fixedBans:cs.fixed.slice()};
+  var last="";
+  for(var k=0;k<6;k++){
+    var id=genId();
+    var r=await new Promise(function(res){startHost(id,res)});
+    if(r.ok){
+      toks={};
+      enterAsHost(id,newState(cfg));
+      hostHandle(myUid,{a:"hello",tok:myTok,name:myName,spec:false},true);
+      msg.textContent="";btn.disabled=false;
+      commit();return;
+    }
+    last=r.err;
+    if(r.err!=="taken")break;
+  }
+  killNet();
+  msg.textContent=last==="taken"?"IDを確保できませんでした。もう一度お試しください。":"接続サーバーに接続できませんでした。ネットワークを確認してもう一度お試しください。";
+  btn.disabled=false;renderCreate();
+}
+async function resumeHost(sv){
+  $("#joinMsg").textContent="ルームを復元中…";
+  for(var k=0;k<10;k++){
+    var r=await new Promise(function(res){startHost(sv.id,res)});
+    if(r.ok){
+      toks=sv.toks||{};
+      var st=sv.state;
+      Object.keys(st.members).forEach(function(u){st.members[u].on=false;if(st.phase==="lobby"||st.phase==="countdown")st.members[u].ready=false});
+      if(st.members[myUid])st.members[myUid].on=true;
+      if(st.phase==="countdown"){st.phase="lobby";st.startsAt=0}
+      if(st.phase==="draft")st.deadline=Date.now()+st.cfg.timer*1000;
+      enterAsHost(sv.id,st);
+      $("#joinMsg").textContent="";
+      commit();toast("ルームを復元しました");return true;
+    }
+    if(r.err!=="taken")break;
+    await sleep(2500);
+  }
+  lsDel("vgd_host");killNet();
+  $("#joinMsg").textContent="ルームを復元できませんでした。";
+  return false;
+}
+
+function failJoin(text,retry){
+  if(retry&&inRoom){
+    connected=false;setBanner();
+    clearTimeout(retryTimer);
+    retryTimer=setTimeout(function(){if(inRoom&&!isHost)connectClient(roomId,joinSpec,true)},3000);
+    return;
+  }
+  joining=false;killNet();roomId=null;
+  $("#joinMsg").textContent=text;
+  setBusy(false);
+}
+function connectClient(id,spec,retry){
+  killNet();
+  var gen=netGen,done=false,p;
+  roomId=id;joinSpec=!!spec;
+  try{p=new window.Peer(undefined,{debug:0})}catch(e){failJoin("通信を開始できませんでした。",retry);return}
+  peer=p;
+  var fail=function(text){if(done)return;done=true;clearTimeout(to);failJoin(text,retry)};
+  var to=setTimeout(function(){fail("接続がタイムアウトしました。ホストがページを開いているか確認してください。")},12000);
+  p.on("error",function(e){
+    if(gen!==netGen)return;
+    var t=e&&e.type;
+    if(t==="peer-unavailable")fail("そのIDのルームは見つかりません。IDを確認してください(ホストが閉じた可能性もあります)。");
+    else fail("通信エラーが発生しました"+(t?" ("+t+")":"")+"。");
+  });
+  p.on("open",function(){
+    if(gen!==netGen)return;
+    var c=p.connect("vgd-"+id,{reliable:true,serialization:"json"});
+    hostConn=c;
+    c.on("open",function(){if(gen===netGen)c.send({a:"hello",uid:myUid,tok:myTok,name:myName,spec:!!spec})});
+    c.on("data",function(m){
+      if(gen!==netGen||!m)return;
+      if(!done&&(m.t==="snap")){done=true;clearTimeout(to)}
+      onClientMsg(m);
+    });
+    var lost=function(){
+      if(gen!==netGen||hostConn!==c)return;
+      if(!done){fail("ホストに接続できませんでした。");return}
+      onLost();
+    };
+    c.on("close",lost);c.on("error",lost);
+  });
+}
+function onClientMsg(m){
+  if(m.t==="snap"){
+    if(!inRoom){
+      if(!joining)return;
+      joining=false;inRoom=true;isHost=false;
+      lsSet("vgd_room",JSON.stringify({id:roomId,spec:joinSpec}));
+      showView("room");setBusy(false);$("#joinMsg").textContent="";
+    }
+    off=m.now-Date.now();hbAt=Date.now();connected=true;
+    S=m.s;D=derive();setBanner();onState();
+  }else if(m.t==="hb"){off=m.now-Date.now();hbAt=Date.now()}
+  else if(m.t==="err"){toast(m.msg)}
+  else if(m.t==="denied"){leaveRoom(true,m.msg)}
+  else if(m.t==="closed"){leaveRoom(true,"ホストがルームを終了しました")}
+}
+function onLost(){
+  if(!inRoom||isHost)return;
+  connected=false;setBanner();
+  clearTimeout(retryTimer);
+  retryTimer=setTimeout(function(){if(inRoom&&!isHost)connectClient(roomId,joinSpec,true)},2500);
+}
+function joinRoom(raw,spec){
+  var id=String(raw||"").trim().toUpperCase(),jm=$("#joinMsg");
+  if(!window.Peer){jm.textContent="通信ライブラリを読み込めていません。再読み込みしてください。";return}
+  if(!/^[A-Z0-9]{4,10}$/.test(id)){jm.textContent="ルームIDは英数字で入力してください。";return}
+  getName();
+  joining=true;setBusy(true);jm.textContent="接続中…";
+  connectClient(id,spec,false);
+}
+function setBusy(b){
+  var ok=!!window.Peer&&!b;
+  $("#joinBtn").disabled=!ok;$("#watchBtn").disabled=!ok;
+  renderCreateBtn();
+}
+function leaveRoom(silent,msg){
+  if(!inRoom&&!joining)return;
+  var wasHost=isHost,c=hostConn;
+  if(wasHost){sendAll({t:"closed"});lsDel("vgd_host")}
+  else if(c&&c.open){try{c.send({a:"leave"})}catch(e){}}
+  inRoom=false;joining=false;isHost=false;connected=false;S=null;D=null;roomId=null;
+  lsDel("vgd_room");
+  clearTimeout(retryTimer);
+  setTimeout(killNet,300);
+  $("#cd").hidden=true;
+  showView("entry");setBanner();setBusy(false);
+  toast(msg||"退出しました");
+}
+
+/* ---------- アクション ---------- */
+function act(m){
+  if(!S)return;
+  if(isHost){var r=hostHandle(myUid,m,true);if(typeof r==="string"&&r!=="denied")toast(r);commit();return}
+  if(hostConn&&hostConn.open&&connected)hostConn.send(m);
+  else toast("ホストに接続されていません");
+}
+function chooseHero(h){
+  if(!D||S.phase!=="draft"||taken(h)||!D.myTeam)return;
+  act({a:"pick",h:h});
+}
+function confirmTurn(){if(isActor())act({a:"confirm"})}
+function extendTime(){if(isActor()&&S.resetT!==S.turn&&nowS()<S.deadline)act({a:"extend"})}
+
+/* ---------- 作成フォーム ---------- */
+function genId(){var a="ABCDEFGHJKMNPQRSTUVWXYZ23456789",s="";for(var i=0;i<6;i++)s+=a[Math.floor(Math.random()*a.length)];return s}
+function setRows(){cs.rows=defaultRows(cs.size,cs.bans).split("")}
+function renderCreateBtn(){
+  var cnt=cs.rows.filter(function(x){return x==="B"}).length;
+  $("#createBtn").disabled=!(window.Peer&&cnt===cs.bans&&!joining);
+}
+function renderCreate(){
+  $$("#segSize button").forEach(function(b){b.classList.toggle("on",+b.dataset.v===cs.size)});
+  $$("#segTimer button").forEach(function(b){b.classList.toggle("on",+b.dataset.v===cs.timer)});
+  $$("#segBans button").forEach(function(b){b.classList.toggle("on",+b.dataset.v===cs.bans)});
+  var target=cs.bans;
+  $("#cStrip").innerHTML=cs.rows.map(function(t,i){
+    var dis=i===0||i===cs.rows.length-1;
+    return '<button type="button" class="ritem '+t+'" data-r="'+i+'"'+(dis?" disabled":"")+'><span class="rn num">'+(i+1)+'</span><span class="rt">'+(t==="B"?"BAN":"PICK")+'</span>'+(i===0?'<small>固定</small>':'')+'</button>';
+  }).join("");
+  $("#stripHint").textContent="各チーム"+target+"人BAN、"+cs.size+"人ピックで全"+cs.rows.length+"行です。1行目はBAN固定です。"+(target>1?"BANにしたい行をタップすると、いちばん近いBANがその行に移動します。":"BANは1行目だけです。");
+  $("#fixedCount").textContent=cs.fixed.length?"("+cs.fixed.length+"人)":"";
+  $("#fixedList").innerHTML=cs.fixed.map(function(h){return '<span class="fchip">'+monoHTML(h)+esc(h)+'</span>'}).join("");
+  renderFixedPool();
+  $("#cSum").textContent=cs.size+"v"+cs.size+" / 各手番 "+cs.timer+"秒 / BAN 各チーム"+cs.bans+"人(計"+cs.bans*2+"人) + 固定BAN "+cs.fixed.length+"人 / 全 "+cs.rows.length+" 行";
+  renderCreateBtn();
+}
+function renderFixedPool(){
+  var f=($("#fq").value||"").trim().toLowerCase();
+  $("#fPool").innerHTML=HEROES.filter(function(h){return !f||h.toLowerCase().indexOf(f)>=0}).map(function(h){
+    var on=cs.fixed.indexOf(h)>=0;
+    return '<button type="button" class="tile'+(on?" fixed":"")+'" data-h="'+esc(h)+'">'+monoHTML(h)+'<span class="nm">'+esc(h)+'</span></button>';
+  }).join("");
+}
+function wireCreate(){
+  $("#segSize").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.size=+b.dataset.v;setRows();renderCreate()});
+  $("#segTimer").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.timer=+b.dataset.v;renderCreate()});
+  $("#segBans").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.bans=+b.dataset.v;setRows();renderCreate()});
+  $("#cStrip").addEventListener("click",function(e){
+    var b=e.target.closest("button");if(!b||b.disabled)return;
+    var i=+b.dataset.r;
+    if(cs.rows[i]==="B")return;
+    var best=-1;
+    for(var j=1;j<cs.rows.length;j++){
+      if(cs.rows[j]==="B"&&(best<0||Math.abs(j-i)<Math.abs(best-i)))best=j;
+    }
+    if(best<0){$("#createMsg").textContent="BANが1人のときは1行目のみがBANです。";return}
+    cs.rows[best]="P";cs.rows[i]="B";
+    $("#createMsg").textContent="";renderCreate();
+  });
+  $("#fPool").addEventListener("click",function(e){
+    var b=e.target.closest("button");if(!b)return;
+    var h=b.dataset.h,i=cs.fixed.indexOf(h);
+    if(i>=0)cs.fixed.splice(i,1);else cs.fixed.push(h);
+    renderCreate();
+  });
+  $("#fq").addEventListener("input",renderFixedPool);
+  $("#createBtn").addEventListener("click",createRoom);
+  $("#joinBtn").addEventListener("click",function(){joinRoom($("#joinId").value,false)});
+  $("#watchBtn").addEventListener("click",function(){joinRoom($("#joinId").value,true)});
+  $("#joinId").addEventListener("keydown",function(e){if(e.key==="Enter")joinRoom($("#joinId").value,false)});
+  $("#myName").addEventListener("change",getName);
+}
+
+/* ---------- render ---------- */
+function showView(v){
+  $("#vEntry").hidden=v!=="entry";
+  $("#vRoom").hidden=v!=="room";
+  $("#topr").hidden=v!=="room";
+  if(v==="room")$("#roomCode").textContent=roomId;
+}
+function setBanner(){
+  var b=$("#netBanner"),msg="";
+  if(!window.Peer)msg="通信ライブラリを読み込めませんでした。ネットワークを確認して再読み込みしてください。";
+  else if(inRoom&&!isHost&&!connected)msg="ホストとの接続が切れました。再接続しています…";
+  b.hidden=!msg;b.textContent=msg;
+}
+function onState(){
+  if(!S)return;
+  D=derive();
+  renderAll();
+}
+function renderAll(){
+  if(!S||!D)return;
+  renderMeta();renderFixed();
+  var ph=S.phase;
+  $("#lobby").hidden=!(ph==="lobby"||ph==="countdown");
+  $("#draft").hidden=!(ph==="draft"||ph==="done");
+  $("#cd").hidden=ph!=="countdown";
+  $("#cdCancel").hidden=!D.myTeam;
+  if(ph==="lobby"||ph==="countdown")renderLobby();
+  else{renderTurn();renderBoard();renderPool();renderAct()}
+  tick();
+}
+function stripHTML(rows){
+  return rows.split("").map(function(t,i){return '<span class="rchip '+t+'"><small>'+(t==="B"?"BAN":"PICK")+'</small><b class="num">'+(i+1)+'</b></span>'}).join("");
+}
+function renderMeta(){
+  var cfg=S.cfg,mem=S.members||{},me=mem[myUid],spec=0;
+  Object.keys(mem).forEach(function(k){var m=mem[k];if(!m.left&&m.on!==false&&D.all.indexOf(k)<0)spec++});
+  var role=D.myTeam?'<span class="badge '+D.myTeam+'">'+teamJa(D.myTeam)+'で参加中</span>':(me&&me.spec?'<span class="badge spec">観戦</span>':'<span class="badge spec">未着席</span>');
+  var bans=cfg.rows.split("").filter(function(x){return x==="B"}).length;
+  var phase={lobby:"ロビー",countdown:"開始カウントダウン",draft:"ドラフト中",done:"ドラフト完了"}[S.phase];
+  $("#roomMeta").innerHTML=role+(isHost?'<span class="badge gold">ホスト</span>':'')+'<span class="badge gold">'+esc(phase)+'</span><span class="num">'+cfg.size+'v'+cfg.size+' / '+cfg.timer+'秒 / BAN 各チーム'+bans+'人 / '+cfg.rows.length+'行</span><span>観戦 '+spec+'人</span>';
+}
+function renderFixed(){
+  var el=$("#fixedWrap"),f=S.cfg.fixedBans;
+  el.hidden=!f.length;
+  if(f.length)el.innerHTML='<span class="lab">固定BAN</span>'+f.map(function(h){return '<span class="fchip">'+monoHTML(h)+esc(h)+'</span>'}).join("");
+}
+function renderLobby(){
+  var N=D.N,mem=S.members||{},me=mem[myUid]||{};
+  var canSit=S.phase==="lobby"&&!me.spec;
+  var html="";
+  ["home","away"].forEach(function(t){
+    var seats=D.seats[t],rc=seats.filter(function(u){return mem[u]&&mem[u].ready}).length;
+    var rows="";
+    for(var i=0;i<N;i++){
+      var u=seats[i];
+      if(!u){rows+='<div class="seat empty"><span class="sn num">'+(i+1)+'</span><span class="who">空席</span><span></span></div>';continue}
+      var m=mem[u]||{},mine=u===myUid;
+      rows+='<div class="seat'+(mine?" me":"")+'"><span class="sn num">'+(i+1)+'</span><span class="who">'+esc(m.name||"")+(mine?'<small>あなた</small>':'')+(u===S.host?'<small>ホスト</small>':'')+(m.on===false?'<small>切断中</small>':'')+'</span>'+
+        '<span style="display:flex;align-items:center;gap:6px"><span class="rd'+(m.ready?" on":"")+'"><i></i>'+(m.ready?"準備完了":"未準備")+'</span>'+
+        (isHost&&!mine&&S.phase==="lobby"?'<button class="kick" type="button" data-kick="'+esc(u)+'" aria-label="席から外す">×</button>':'')+'</span></div>';
+    }
+    var acts="";
+    if(canSit){
+      if(D.myTeam===t)acts='<button class="btn sm" type="button" data-stand="1">席を離れる</button>';
+      else acts='<button class="btn sm '+t+'" type="button" data-sit="'+t+'"'+(seats.length>=N?" disabled":"")+'>'+teamJa(t)+'に参加</button>';
+    }
+    html+='<div class="team '+t+'"><h3><span>'+(t==="home"?"HOME":"AWAY")+'</span><span class="tr'+(D.teamReady[t]?" ok":"")+'">'+(D.teamReady[t]?"チーム準備完了":"準備 "+rc+"/"+N)+'</span></h3>'+rows+'<div class="acts">'+acts+'</div></div>';
+  });
+  $("#teams").innerHTML=html;
+  var rb="";
+  if(D.myTeam){
+    var rdy=!!(mem[myUid]&&mem[myUid].ready);
+    rb='<button class="btn pri" type="button" data-ready="1">'+(rdy?"準備を解除":"準備完了にする")+'</button><span class="lab">全員が準備完了になると5秒後に開始します。</span>';
+  }else if(me.spec)rb='<span class="lab">観戦で入室しています。閲覧のみで、操作はできません。</span>';
+  else rb='<span class="lab">まだ席に座っていません。参加するには、ホームかアウェイの「参加」を押してください。</span>';
+  $("#readybar").innerHTML=rb;
+  $("#rStrip").innerHTML=stripHTML(S.cfg.rows);
+}
+function tick(){
+  if(!S||!D)return;
+  var now=nowS();
+  if(S.phase==="countdown"){
+    var n=Math.ceil((S.startsAt-now)/1000);
+    $("#cdNum").textContent=n>0?n:"GO";
+  }
+  if(S.phase==="draft"){
+    var left=Math.max(0,S.deadline-now),el=$("#tbNum"),bar=$("#tbBar");
+    if(el){el.textContent=Math.ceil(left/1000);el.classList.toggle("low",left<=5000)}
+    if(bar)bar.style.width=Math.min(100,left/(S.cfg.timer*10))+"%";
+  }
+}
+function renderTurn(){
+  var tb=$("#turnbar");
+  if(S.phase==="done"){
+    tb.className="turnbar";
+    tb.innerHTML='<div class="tb-l"><div class="k">DRAFT</div><div class="v">ドラフト完了</div></div>'+(isHost?'<div><button class="btn" type="button" data-reset="1">ロビーに戻す</button></div>':'');
+    return;
+  }
+  var c=D.cur,mine=isActor(),verb=c.type==="B"?"BAN":"PICK",used=S.resetT===S.turn;
+  tb.className="turnbar "+c.team+(mine?" mine":"");
+  tb.innerHTML='<div class="tb-l"><div class="k num">ROW '+(c.r+1)+' / '+S.cfg.rows.length+' · '+verb+'</div>'+
+    '<div class="v">'+(mine?'<em>あなたの番です</em>':esc(teamJa(c.team))+' '+esc(nameOf(D.actor))+' の'+verb)+'</div>'+
+    '<div class="tb-act">'+(mine?'<button class="btn sm" type="button" data-extend="1"'+(used?" disabled":"")+'>'+(used?"リセット済み":"時間をリセット(1回)")+'</button>':(used?'<span>この手番はリセット済み</span>':''))+'<span>時間切れはランダムで確定</span></div></div>'+
+    '<div class="tb-r num" id="tbNum">0</div><div class="tbar"><i id="tbBar"></i></div>';
+}
+function cellHTML(t,r){
+  var type=S.cfg.rows[r],ti=2*r+(t==="home"?0:1),turn=D.turns[ti],en=(S.log||{})[ti];
+  var cur=S.phase==="draft"&&S.turn===ti,au=D.seats[t][turn.slot];
+  var inner,hn="",ow=(type==="B"?"BAN担当 ":"")+(au?nameOf(au):"");
+  if(en){
+    if(en.hero){inner=monoHTML(en.hero);hn=en.hero}
+    else{inner='<span class="ph">SKIP</span>';hn="スキップ"}
+    if(en.auto&&en.hero)ow+=" (時間切れ・ランダム)";
+  }else if(cur){
+    var isTeamVisible=S.pendingHero && S.pendingTeam===t && (D.myTeam===t || D.myTeam==="");
+    var ph=isTeamVisible ? S.pendingHero : "";
+    if(ph){inner=monoHTML(ph);hn=ph}else{inner='<span class="ph">…</span>';hn="選択中"}
+  }else{inner='<span class="ph">'+(type==="B"?"BAN":"PICK")+'</span>'}
+  return '<div class="cell '+type+(cur?" cur "+t:"")+(au===myUid?" me":"")+'"><span class="rn num">'+(r+1)+'</span>'+inner+'<span class="tx"><div class="hn">'+esc(hn)+'</div><div class="ow">'+esc(ow)+'</div></span></div>';
+}
+function renderBoard(){
+  ["home","away"].forEach(function(t){
+    var h='<div class="colh"><span>'+(t==="home"?"HOME":"AWAY")+'</span></div>';
+    for(var r=0;r<S.cfg.rows.length;r++)h+=cellHTML(t,r);
+    $(t==="home"?"#colHome":"#colAway").innerHTML=h;
+  });
+}
+function renderPool(){
+  var f=q.trim().toLowerCase(),can=S.phase==="draft"&&!!D.myTeam;
+  var selHero = S.pendingHero || "";
+  var showSel = selHero && S.pendingTeam === D.myTeam;
+
+  $("#poolGrid").innerHTML=HEROES.filter(function(h){return !f||h.toLowerCase().indexOf(f)>=0}).map(function(h){
+    var st=statusOf(h),cls="tile";
+    if(st)cls+=st.k==="pick"?" pick-"+st.team:" "+st.k;
+    else if(h===selHero && showSel){
+      cls+= isActor() ? " sel" : " team-sel";
+    }
+    return '<button type="button" class="'+cls+'" data-h="'+esc(h)+'"'+(st||!can?" disabled":"")+'>'+monoHTML(h)+'<span class="nm">'+esc(h)+'</span></button>';
+  }).join("");
+}
+function renderAct(){
+  var el=$("#actbar");
+  if(S.phase==="done"){el.innerHTML='<div class="t"><b>ドラフト完了</b><small>お疲れさまでした。</small></div>';return}
+  if(!D.myTeam){el.innerHTML='<div class="t"><b>観戦中</b><small>観戦者は閲覧のみで、選択や確定はできません。</small></div>';return}
+  var c=D.cur;
+  var myTeamPending = (S.pendingTeam === D.myTeam) ? S.pendingHero : "";
+
+  if(isActor()){
+    var p=S.pendingHero,verb=c.type==="B"?"BAN":"ピック";
+    el.innerHTML='<div class="t">'+(p?'選択中: <b>'+esc(p)+'</b>':'<b>ヒーローを選んでください</b>')+'<small>チーム内に選択中が表示されています</small></div><button class="btn pri" type="button" data-confirm="1"'+(p?"":" disabled")+'>'+verb+'を確定</button>';
+  }else{
+    el.innerHTML='<div class="t">'+(myTeamPending?'チーム仮選択: <b>'+esc(myTeamPending)+'</b>':'<b>ヒーローを仮選択できます</b>')+'<small>選択内容はチーム内だけに共有されます</small></div>';
+  }
+}
+
+/* ---------- wiring ---------- */
+function baseUrl(){return location.origin+location.pathname}
+function copyText(txt,okMsg){
+  var fail=function(){toast("コピーできませんでした。手動で選択してください")};
+  try{navigator.clipboard.writeText(txt).then(function(){toast(okMsg)},fail)}catch(e){fail()}
+}
+function wireRoom(){
+  $("#teams").addEventListener("click",function(e){
+    var b=e.target.closest("button");if(!b||b.disabled)return;
+    if(b.dataset.sit)act({a:"sit",team:b.dataset.sit});
+    else if(b.dataset.stand)act({a:"stand"});
+    else if(b.dataset.kick)act({a:"kick",u:b.dataset.kick});
+  });
+  $("#readybar").addEventListener("click",function(e){if(e.target.closest("[data-ready]"))act({a:"ready"})});
+  $("#cdCancel").addEventListener("click",function(){act({a:"ready"})});
+  $("#poolGrid").addEventListener("click",function(e){var b=e.target.closest("button");if(b&&!b.disabled)chooseHero(b.dataset.h)});
+  $("#actbar").addEventListener("click",function(e){if(e.target.closest("[data-confirm]"))confirmTurn()});
+  $("#turnbar").addEventListener("click",function(e){
+    if(e.target.closest("[data-reset]"))act({a:"reset"});
+    else{var b=e.target.closest("[data-extend]");if(b&&!b.disabled)extendTime()}
+  });
+  $("#q").addEventListener("input",function(){q=$("#q").value;if(S&&D&&S.phase!=="lobby")renderPool()});
+  $("#leaveBtn").addEventListener("click",function(){
+    if(isHost&&!window.confirm("ホストが退出すると、ルームは終了します。退出しますか?"))return;
+    leaveRoom(false);
+  });
+  $("#copyId").addEventListener("click",function(){copyText(roomId,"ルームIDをコピーしました")});
+  $("#copyInvite").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId,"招待リンクをコピーしました")});
+  $("#copyWatch").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId+"&watch=1","観戦リンクをコピーしました")});
+}
+
+async function init(){
+  $("#myName").value=myName;
+  setRows();wireCreate();wireRoom();renderCreate();
+  setInterval(function(){
+    if(isHost&&S){
+      if(step()){saveHost();broadcast();onState()}
+      if(Date.now()-lastHb>4000){lastHb=Date.now();sendAll({t:"hb",now:Date.now()})}
+    }else if(inRoom&&!isHost&&connected&&Date.now()-hbAt>15000){
+      var c=hostConn;if(c){try{c.close()}catch(e){}}
+      onLost();
+    }
+    tick();
+  },250);
+  var params=new URLSearchParams(location.search);
+  var qRoom=(params.get("room")||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,10);
+  var qWatch=params.get("watch")==="1";
+  if(qRoom)$("#joinId").value=qRoom;
+  setBusy(true);
+  var ok=await loadPeer();
+  setBanner();setBusy(false);
+  if(!ok)return;
+  var sv=null;
+  try{sv=JSON.parse(lsGet("vgd_host")||"null")}catch(e){sv=null}
+  if(sv&&sv.id&&sv.state&&sv.state.host===myUid){await resumeHost(sv);return}
+  var sr=null;
+  try{sr=JSON.parse(lsGet("vgd_room")||"null")}catch(e){sr=null}
+  if(sr&&sr.id&&!qRoom){$("#joinId").value=sr.id;joinRoom(sr.id,!!sr.spec);return}
+  if(qRoom&&qWatch)joinRoom(qRoom,true);
+}
+init();
+})();
+</script>
+</body>
+</html>
