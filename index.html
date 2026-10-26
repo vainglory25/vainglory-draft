@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Cinzel:wght@600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
 <style>
-/* Layout: 中央にヒーロープール、左右にホーム(青)/アウェイ(赤)の行ボード。狭い画面ではボードを2列、プールを下に回す。
-   ドラフト画面らしい夜の配色の単一テーマ。全ての色をトークンで定義する。 */
+/* Layout: 中央にヒーロープール、左右にホーム(青)/アウェイ(赤)の行ボード。
+   ドラフト画面らしい夜の配色の単一テーマ。 */
 :root{
   --bg:#0b0d1a; --panel:#131730; --panel2:#1a1f3d; --line:#2b335f;
   --fg:#e9ecf9; --muted:#8f96bd;
@@ -96,7 +96,9 @@ details.fx{border:1px solid var(--line);border-radius:8px;padding:10px 12px;marg
 details.fx summary{cursor:pointer;color:var(--muted);font-size:12px;letter-spacing:.08em}
 details.fx[open] summary{margin-bottom:10px}
 
-/* hero tiles */
+/* hero pool & categories */
+.role-sec{margin-bottom:16px}
+.role-title{font-family:var(--f-disp);font-size:12px;letter-spacing:.14em;color:var(--gold);text-transform:uppercase;margin:0 0 8px;padding-bottom:4px;border-bottom:1px solid var(--line)}
 .pool{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:6px}
 .tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 3px 5px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);min-width:0}
 .tile .nm{font-size:11px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -112,7 +114,6 @@ details.fx[open] summary{margin-bottom:10px}
 .tile.pick-away{border-color:var(--away);opacity:.55}
 .tile.sel{outline:2px dashed var(--gold);outline-offset:1px}
 .tile.team-sel{outline:2px dashed var(--home);outline-offset:1px}
-.tile.mine{outline:2px dashed var(--muted);outline-offset:1px}
 
 /* room */
 .meta{display:flex;gap:8px 14px;flex-wrap:wrap;align-items:center;margin-bottom:14px;color:var(--muted);font-size:13px}
@@ -146,7 +147,7 @@ details.fx[open] summary{margin-bottom:10px}
 .team .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .readybar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0}
 
-/* draft - タイマー上部固定 */
+/* draft - 上部固定タイマーバー */
 .turnbar{position:sticky;top:max(0px,env(safe-area-inset-top,0px));z-index:20;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 18px;align-items:center;padding:12px 16px;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.4)}
 .turnbar.home{border-color:var(--home)}
 .turnbar.away{border-color:var(--away)}
@@ -189,7 +190,7 @@ details.fx[open] summary{margin-bottom:10px}
 .searchrow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
 .searchrow .field{flex:1}
 
-/* 確定ボタン等のアクションバー（右下固定） */
+/* 右下固定確定アクションバー */
 .actbar{position:fixed;bottom:max(16px,env(safe-area-inset-bottom,0px));right:max(16px,env(safe-area-inset-right,0px));left:auto;max-width:calc(100vw - 32px);width:380px;padding:12px 16px;border:1px solid var(--gold);border-radius:14px;background:rgba(19,23,48,.95);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:nowrap;z-index:30;box-shadow:0 8px 24px rgba(0,0,0,.6)}
 .actbar .t{min-width:0;flex:1 1 auto}
 .actbar .t b{color:var(--gold);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -235,8 +236,8 @@ details.fx[open] summary{margin-bottom:10px}
   <!-- ENTRY -->
   <section id="vEntry">
     <div class="hero-h">
-      <h1>3v3 / 5v5 のBAN&amp;ピックを、ルームIDで共有する</h1>
-      <p>ホーム(左)とアウェイ(右)に分かれ、全員が準備完了になると5秒後に開始します。参加者と観戦者は、ルームIDか招待リンクで入室します。</p>
+      <h1>3v3 / 5v5 BAN&amp;ピック カスタムドラフト</h1>
+      <p>ホーム(左)とアウェイ(右)に分かれ、全員が準備完了になると開始します。</p>
     </div>
     <div class="namebar">
       <label for="myName">表示名</label>
@@ -245,9 +246,9 @@ details.fx[open] summary{margin-bottom:10px}
     <div class="cols">
       <div class="card">
         <h2>ルームを作成</h2>
-        <div class="row"><span class="lab">形式</span><div class="seg" id="segSize" role="group" aria-label="形式"><button type="button" data-v="3">3v3</button><button type="button" data-v="5">5v5</button></div></div>
-        <div class="row"><span class="lab">1手番の制限時間</span><div class="seg" id="segTimer" role="group" aria-label="制限時間"><button type="button" data-v="15">15秒</button><button type="button" data-v="30">30秒</button><button type="button" data-v="45">45秒</button><button type="button" data-v="60">60秒</button></div></div>
-        <div class="row"><span class="lab">BANの人数(各チーム)</span><div class="seg" id="segBans" role="group" aria-label="BANの人数"><button type="button" data-v="1">1人</button><button type="button" data-v="2">2人</button><button type="button" data-v="3">3人</button><button type="button" data-v="4">4人</button><button type="button" data-v="5">5人</button></div></div>
+        <div class="row"><span class="lab">形式</span><div class="seg" id="segSize" role="group"><button type="button" data-v="3">3v3</button><button type="button" data-v="5">5v5</button></div></div>
+        <div class="row"><span class="lab">1手番の制限時間</span><div class="seg" id="segTimer" role="group"><button type="button" data-v="15">15秒</button><button type="button" data-v="30">30秒</button><button type="button" data-v="45">45秒</button><button type="button" data-v="60">60秒</button></div></div>
+        <div class="row"><span class="lab">BANの人数(各チーム)</span><div class="seg" id="segBans" role="group"><button type="button" data-v="1">1人</button><button type="button" data-v="2">2人</button><button type="button" data-v="3">3人</button><button type="button" data-v="4">4人</button><button type="button" data-v="5">5人</button></div></div>
         <div class="lab" style="margin-bottom:6px">進行順(1行ごとにホーム→アウェイの順に手番)</div>
         <div class="rlist" id="cStrip"></div>
         <p class="hint" id="stripHint"></p>
@@ -255,18 +256,17 @@ details.fx[open] summary{margin-bottom:10px}
           <summary>固定BAN(最初からBANするヒーロー) <span id="fixedCount"></span></summary>
           <div class="fixed-list" id="fixedList"></div>
           <div class="searchrow"><input class="field" id="fq" placeholder="ヒーロー名で絞り込み" autocomplete="off"></div>
-          <div class="pool-scroll" style="max-height:260px"><div class="pool" id="fPool"></div></div>
+          <div class="pool-scroll" style="max-height:260px"><div id="fPool"></div></div>
         </details>
         <div class="sum" id="cSum"></div>
         <button class="btn pri" id="createBtn" type="button" disabled>ルームを作成して入室</button>
-        <p class="hint">作った人がホストです。ホストのブラウザがドラフトの進行役になるので、終わるまでタブを開いたままにしてください(再読み込みなら復元されます)。</p>
         <p class="msg" id="createMsg" role="status"></p>
       </div>
       <div class="card">
         <h2>ルームに入室</h2>
         <div class="row" style="margin-bottom:8px"><label for="joinId" class="lab">ルームID</label></div>
         <input class="field num" id="joinId" maxlength="10" placeholder="例: K7M2QX" autocomplete="off" style="width:100%;font-size:22px;letter-spacing:.2em;text-transform:uppercase">
-        <p class="hint">参加者は入室後にロビーで席に座ります。観戦で入ると閲覧だけで、座ること・選ぶことはできません。</p>
+        <p class="hint">参加者は入室後にロビーで席に座ります。</p>
         <div class="btns" style="margin-top:14px">
           <button class="btn pri" id="joinBtn" type="button" disabled>参加者として入室</button>
           <button class="btn" id="watchBtn" type="button" disabled>観戦で入室</button>
@@ -294,7 +294,7 @@ details.fx[open] summary{margin-bottom:10px}
         <div id="colHome"></div>
         <div id="colPool">
           <div class="searchrow"><input class="field" id="q" placeholder="ヒーロー名で絞り込み" autocomplete="off"></div>
-          <div class="pool-scroll"><div class="pool" id="poolGrid"></div></div>
+          <div class="pool-scroll"><div id="poolGrid"></div></div>
           <div class="actbar" id="actbar"></div>
         </div>
         <div id="colAway"></div>
@@ -310,14 +310,14 @@ details.fx[open] summary{margin-bottom:10px}
 (function(){
 "use strict";
 
-/* ---------------------------------------------------------------
-   仕組み: ホストのブラウザが進行役(権威)になり、参加者・観戦者は
-   PeerJS(WebRTC)でホストに接続します。サーバーは不要です。
-   ホストが全ての操作を検証し、状態を全員に配信します。
-   --------------------------------------------------------------- */
+/* ヒーローのロール別定義（本家VainGlory分類） */
+var HERO_ROLES = {
+  Captain: ["Adagio","Ardan","Catherine","Churnwalker","Flicker","Fortress","Grace","Lance","Lorelai","Lyra","Phinn","San Feng","Viola","Yates"],
+  Jungler: ["Alpha","Baptiste","Glaive","Grumpjaw","Inara","Joule","Karas","Koshka","Krul","Ozo","Reim","Reza","Rona","Taka","Tony","Ylva"],
+  Laner:   ["Amael","Anka","Baron","Blackfeather","Bryce","Caine","Celeste","Cyrus","Gwen","Idris","Ishtar","Kensei","Kestrel","Kinetic","Leo","Magnus","Malene","Miho","Petal","Ringo","Samuel","SAW","Silvernail","Skaarf","Skye","Varya","Vox","Warhawk"]
+};
+var HEROES = [].concat(HERO_ROLES.Captain, HERO_ROLES.Jungler, HERO_ROLES.Laner).sort();
 
-/* ヒーロー一覧。追加・削除はここを編集します。 */
-var HEROES=["Adagio","Alpha","Amael","Anka","Ardan","Baptiste","Baron","Blackfeather","Bryce","Caine","Catherine","Celeste","Churnwalker","Cyrus","Flicker","Fortress","Glaive","Grace","Grumpjaw","Gwen","Idris","Inara","Ishtar","Joule","Karas","Kensei","Kestrel","Kinetic","Koshka","Krul","Lance","Leo","Lorelai","Lyra","Magnus","Malene","Miho","Ozo","Petal","Phinn","Reim","Reza","Ringo","Rona","Samuel","San Feng","SAW","Silvernail","Skaarf","Skye","Taka","Tony","Varya","Viola","Vox","Warhawk","Yates","Ylva"];
 var PEER_SRC=["https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js","https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js","https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"];
 
 var $=function(s){return document.querySelector(s)};
@@ -333,19 +333,19 @@ function monoHTML(n){return '<span class="mono" style="--h:'+(hash(n)%360)+'">'+
 function teamJa(t){return t==="home"?"ホーム":"アウェイ"}
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
 
-/* ---------- identity (この端末だけの識別子) ---------- */
+/* identity */
 var myUid=lsGet("vgd_uid");
 if(!myUid){myUid="u"+rnd(12);lsSet("vgd_uid",myUid)}
 var myTok=lsGet("vgd_tok");
 if(!myTok){myTok=rnd(24);lsSet("vgd_tok",myTok)}
 var myName=lsGet("vgd_name")||"";
 
-/* ---------- state ---------- */
-var S=null,D=null;                    /* S: ルームの状態(ホストが正)  D: Sから導いた値 */
+/* state */
+var S=null,D=null;
 var roomId=null,isHost=false,inRoom=false,joining=false,joinSpec=false;
 var peer=null,hostConn=null,conns={},toks={},netGen=0;
 var off=0,hbAt=0,lastHb=0,connected=false,retryTimer=null;
-var localSel="",q="";
+var q="";
 /* ChurnwalkerとViolaを初期固定BANに設定 */
 var cs={size:5,timer:45,bans:1,rows:[],fixed:["Churnwalker","Viola"]};
 
@@ -353,7 +353,7 @@ function nowS(){return Date.now()+off}
 function toast(t){var el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true},2600)}
 function getName(){var n=($("#myName").value||"").trim().slice(0,14);if(!n){n="Player"+(10+Math.floor(Math.random()*90))}$("#myName").value=n;myName=n;lsSet("vgd_name",n);return n}
 
-/* ---------- draft model ---------- */
+/* draft model */
 function buildTurns(cfg){
   var N=cfg.size,turns=[],p=0,b=0;
   for(var r=0;r<cfg.rows.length;r++){
@@ -404,9 +404,7 @@ function statusOf(h){
   return null;
 }
 
-/* =========================================================
-   ホスト側ロジック(進行・検証は全てここ)
-   ========================================================= */
+/* ホスト処理 */
 function newState(cfg){
   return {cfg:cfg,host:myUid,created:Date.now(),phase:"lobby",turn:0,deadline:0,startsAt:0,
     pendingHero:"",pendingTurn:-1,pendingTeam:"",resetT:-1,log:{},seats:{home:[],away:[]},members:{}};
@@ -422,7 +420,6 @@ function advance(hero,auto,by){
   if(S.turn>=D.turns.length){S.phase="done";S.deadline=0}
   else S.deadline=Date.now()+S.cfg.timer*1000;
 }
-/* uid: 送信者  local: ホスト自身の画面からの操作か */
 function hostHandle(uid,m,local){
   if(!S||!m||typeof m.a!=="string")return;
   D=derive();
@@ -497,7 +494,10 @@ function step(){
 }
 function saveHost(){lsSet("vgd_host",JSON.stringify({id:roomId,state:S,toks:toks}))}
 function sendAll(msg){Object.keys(conns).forEach(function(k){var c=conns[k];if(c&&c.open){try{c.send(msg)}catch(e){}}})}
-function broadcast(){sendAll({t:"snap",s:S,now:Date.now()})}
+function broadcast(){
+  // 全員への配信。クライアント側での相手チーム仮選択隠蔽は render 時に D.myTeam と照合して制御
+  sendAll({t:"snap",s:S,now:Date.now()});
+}
 function commit(){
   if(!isHost||!S)return;
   step();D=derive();
@@ -531,7 +531,7 @@ function onHostConn(conn,gen){
   conn.on("close",drop);conn.on("error",drop);
 }
 
-/* ---------- 通信 ---------- */
+/* 通信 */
 function loadPeer(){
   return new Promise(function(resolve){
     if(window.Peer){resolve(true);return}
@@ -643,7 +643,7 @@ function connectClient(id,spec,retry){
   p.on("error",function(e){
     if(gen!==netGen)return;
     var t=e&&e.type;
-    if(t==="peer-unavailable")fail("そのIDのルームは見つかりません。IDを確認してください(ホストが閉じた可能性もあります)。");
+    if(t==="peer-unavailable")fail("そのIDのルームは見つかりません。IDを確認してください。");
     else fail("通信エラーが発生しました"+(t?" ("+t+")":"")+"。");
   });
   p.on("open",function(){
@@ -712,7 +712,7 @@ function leaveRoom(silent,msg){
   toast(msg||"退出しました");
 }
 
-/* ---------- アクション ---------- */
+/* アクション */
 function act(m){
   if(!S)return;
   if(isHost){var r=hostHandle(myUid,m,true);if(typeof r==="string"&&r!=="denied")toast(r);commit();return}
@@ -726,7 +726,7 @@ function chooseHero(h){
 function confirmTurn(){if(isActor())act({a:"confirm"})}
 function extendTime(){if(isActor()&&S.resetT!==S.turn&&nowS()<S.deadline)act({a:"extend"})}
 
-/* ---------- 作成フォーム ---------- */
+/* 作成フォーム */
 function genId(){var a="ABCDEFGHJKMNPQRSTUVWXYZ23456789",s="";for(var i=0;i<6;i++)s+=a[Math.floor(Math.random()*a.length)];return s}
 function setRows(){cs.rows=defaultRows(cs.size,cs.bans).split("")}
 function renderCreateBtn(){
@@ -742,7 +742,7 @@ function renderCreate(){
     var dis=i===0||i===cs.rows.length-1;
     return '<button type="button" class="ritem '+t+'" data-r="'+i+'"'+(dis?" disabled":"")+'><span class="rn num">'+(i+1)+'</span><span class="rt">'+(t==="B"?"BAN":"PICK")+'</span>'+(i===0?'<small>固定</small>':'')+'</button>';
   }).join("");
-  $("#stripHint").textContent="各チーム"+target+"人BAN、"+cs.size+"人ピックで全"+cs.rows.length+"行です。1行目はBAN固定です。"+(target>1?"BANにしたい行をタップすると、いちばん近いBANがその行に移動します。":"BANは1行目だけです。");
+  $("#stripHint").textContent="各チーム"+target+"人BAN、"+cs.size+"人ピックで全"+cs.rows.length+"行です。";
   $("#fixedCount").textContent=cs.fixed.length?"("+cs.fixed.length+"人)":"";
   $("#fixedList").innerHTML=cs.fixed.map(function(h){return '<span class="fchip">'+monoHTML(h)+esc(h)+'</span>'}).join("");
   renderFixedPool();
@@ -751,10 +751,18 @@ function renderCreate(){
 }
 function renderFixedPool(){
   var f=($("#fq").value||"").trim().toLowerCase();
-  $("#fPool").innerHTML=HEROES.filter(function(h){return !f||h.toLowerCase().indexOf(f)>=0}).map(function(h){
-    var on=cs.fixed.indexOf(h)>=0;
-    return '<button type="button" class="tile'+(on?" fixed":"")+'" data-h="'+esc(h)+'">'+monoHTML(h)+'<span class="nm">'+esc(h)+'</span></button>';
-  }).join("");
+  var html="";
+  ["Captain","Jungler","Laner"].forEach(function(role){
+    var list = HERO_ROLES[role].filter(function(h){return !f||h.toLowerCase().indexOf(f)>=0});
+    if(!list.length)return;
+    html += '<div class="role-sec"><div class="role-title">'+role+'</div><div class="pool">';
+    html += list.map(function(h){
+      var on=cs.fixed.indexOf(h)>=0;
+      return '<button type="button" class="tile'+(on?" fixed":"")+'" data-h="'+esc(h)+'">'+monoHTML(h)+'<span class="nm">'+esc(h)+'</span></button>';
+    }).join("");
+    html += '</div></div>';
+  });
+  $("#fPool").innerHTML=html;
 }
 function wireCreate(){
   $("#segSize").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.size=+b.dataset.v;setRows();renderCreate()});
@@ -768,7 +776,7 @@ function wireCreate(){
     for(var j=1;j<cs.rows.length;j++){
       if(cs.rows[j]==="B"&&(best<0||Math.abs(j-i)<Math.abs(best-i)))best=j;
     }
-    if(best<0){$("#createMsg").textContent="BANが1人のときは1行目のみがBANです。";return}
+    if(best<0)return;
     cs.rows[best]="P";cs.rows[i]="B";
     $("#createMsg").textContent="";renderCreate();
   });
@@ -786,7 +794,7 @@ function wireCreate(){
   $("#myName").addEventListener("change",getName);
 }
 
-/* ---------- render ---------- */
+/* render */
 function showView(v){
   $("#vEntry").hidden=v!=="entry";
   $("#vRoom").hidden=v!=="room";
@@ -858,9 +866,9 @@ function renderLobby(){
   var rb="";
   if(D.myTeam){
     var rdy=!!(mem[myUid]&&mem[myUid].ready);
-    rb='<button class="btn pri" type="button" data-ready="1">'+(rdy?"準備を解除":"準備完了にする")+'</button><span class="lab">全員が準備完了になると5秒後に開始します。</span>';
-  }else if(me.spec)rb='<span class="lab">観戦で入室しています。閲覧のみで、操作はできません。</span>';
-  else rb='<span class="lab">まだ席に座っていません。参加するには、ホームかアウェイの「参加」を押してください。</span>';
+    rb='<button class="btn pri" type="button" data-ready="1">'+(rdy?"準備を解除":"準備完了にする")+'</button><span class="lab">全員が準備完了になると開始します。</span>';
+  }else if(me.spec)rb='<span class="lab">観戦で入室しています。閲覧のみ可能です。</span>';
+  else rb='<span class="lab">席についてください。</span>';
   $("#readybar").innerHTML=rb;
   $("#rStrip").innerHTML=stripHTML(S.cfg.rows);
 }
@@ -888,20 +896,23 @@ function renderTurn(){
   tb.className="turnbar "+c.team+(mine?" mine":"");
   tb.innerHTML='<div class="tb-l"><div class="k num">ROW '+(c.r+1)+' / '+S.cfg.rows.length+' · '+verb+'</div>'+
     '<div class="v">'+(mine?'<em>あなたの番です</em>':esc(teamJa(c.team))+' '+esc(nameOf(D.actor))+' の'+verb)+'</div>'+
-    '<div class="tb-act">'+(mine?'<button class="btn sm" type="button" data-extend="1"'+(used?" disabled":"")+'>'+(used?"リセット済み":"時間をリセット(1回)")+'</button>':(used?'<span>この手番はリセット済み</span>':''))+'<span>時間切れはランダムで確定</span></div></div>'+
+    '<div class="tb-act">'+(mine?'<button class="btn sm" type="button" data-extend="1"'+(used?" disabled":"")+'>'+(used?"リセット済み":"時間をリセット(1回)")+'</button>':(used?'<span>この手番はリセット済み</span>':''))+'<span>時間切れはランダム確定</span></div></div>'+
     '<div class="tb-r num" id="tbNum">0</div><div class="tbar"><i id="tbBar"></i></div>';
 }
 function cellHTML(t,r){
   var type=S.cfg.rows[r],ti=2*r+(t==="home"?0:1),turn=D.turns[ti],en=(S.log||{})[ti];
   var cur=S.phase==="draft"&&S.turn===ti,au=D.seats[t][turn.slot];
   var inner,hn="",ow=(type==="B"?"BAN担当 ":"")+(au?nameOf(au):"");
+  
+  /* 相手チームの仮選択は隠蔽。自チーム（または観戦時）のみ仮選択を表示 */
+  var isTeamVisible = S.pendingHero && S.pendingTeam === t && (D.myTeam === t || D.myTeam === "");
+
   if(en){
     if(en.hero){inner=monoHTML(en.hero);hn=en.hero}
     else{inner='<span class="ph">SKIP</span>';hn="スキップ"}
-    if(en.auto&&en.hero)ow+=" (時間切れ・ランダム)";
+    if(en.auto&&en.hero)ow+=" (自動確定)";
   }else if(cur){
-    var isTeamVisible=S.pendingHero && S.pendingTeam===t && (D.myTeam===t || D.myTeam==="");
-    var ph=isTeamVisible ? S.pendingHero : "";
+    var ph = isTeamVisible ? S.pendingHero : "";
     if(ph){inner=monoHTML(ph);hn=ph}else{inner='<span class="ph">…</span>';hn="選択中"}
   }else{inner='<span class="ph">'+(type==="B"?"BAN":"PICK")+'</span>'}
   return '<div class="cell '+type+(cur?" cur "+t:"")+(au===myUid?" me":"")+'"><span class="rn num">'+(r+1)+'</span>'+inner+'<span class="tx"><div class="hn">'+esc(hn)+'</div><div class="ow">'+esc(ow)+'</div></span></div>';
@@ -915,37 +926,46 @@ function renderBoard(){
 }
 function renderPool(){
   var f=q.trim().toLowerCase(),can=S.phase==="draft"&&!!D.myTeam;
-  var selHero = S.pendingHero || "";
-  var showSel = selHero && S.pendingTeam === D.myTeam;
+  /* 自チームの仮選択ヒーロー（相手チームからの仮選択は自プールには表示しない） */
+  var myTeamPending = (S.pendingTeam === D.myTeam) ? S.pendingHero : "";
 
-  $("#poolGrid").innerHTML=HEROES.filter(function(h){return !f||h.toLowerCase().indexOf(f)>=0}).map(function(h){
-    var st=statusOf(h),cls="tile";
-    if(st)cls+=st.k==="pick"?" pick-"+st.team:" "+st.k;
-    else if(h===selHero && showSel){
-      cls+= isActor() ? " sel" : " team-sel";
-    }
-    return '<button type="button" class="'+cls+'" data-h="'+esc(h)+'"'+(st||!can?" disabled":"")+'>'+monoHTML(h)+'<span class="nm">'+esc(h)+'</span></button>';
-  }).join("");
+  var html="";
+  ["Captain","Jungler","Laner"].forEach(function(role){
+    var list = HERO_ROLES[role].filter(function(h){return !f||h.toLowerCase().indexOf(f)>=0});
+    if(!list.length)return;
+    html += '<div class="role-sec"><div class="role-title">'+role+'</div><div class="pool">';
+    html += list.map(function(h){
+      var st=statusOf(h),cls="tile";
+      if(st)cls+=st.k==="pick"?" pick-"+st.team:" "+st.k;
+      else if(h===myTeamPending){
+        cls+= isActor() ? " sel" : " team-sel";
+      }
+      return '<button type="button" class="'+cls+'" data-h="'+esc(h)+'"'+(st||!can?" disabled":"")+'>'+monoHTML(h)+'<span class="nm">'+esc(h)+'</span></button>';
+    }).join("");
+    html += '</div></div>';
+  });
+
+  $("#poolGrid").innerHTML=html;
 }
 function renderAct(){
   var el=$("#actbar");
   if(S.phase==="done"){el.innerHTML='<div class="t"><b>ドラフト完了</b><small>お疲れさまでした。</small></div>';return}
-  if(!D.myTeam){el.innerHTML='<div class="t"><b>観戦中</b><small>観戦者は閲覧のみで、選択や確定はできません。</small></div>';return}
+  if(!D.myTeam){el.innerHTML='<div class="t"><b>観戦中</b><small>閲覧のみ可能です。</small></div>';return}
   var c=D.cur;
   var myTeamPending = (S.pendingTeam === D.myTeam) ? S.pendingHero : "";
 
   if(isActor()){
     var p=S.pendingHero,verb=c.type==="B"?"BAN":"ピック";
-    el.innerHTML='<div class="t">'+(p?'選択中: <b>'+esc(p)+'</b>':'<b>ヒーローを選んでください</b>')+'<small>チーム内に選択中が表示されています</small></div><button class="btn pri" type="button" data-confirm="1"'+(p?"":" disabled")+'>'+verb+'を確定</button>';
+    el.innerHTML='<div class="t">'+(p?'選択中: <b>'+esc(p)+'</b>':'<b>ヒーローを選んでください</b>')+'<small>チーム内に選択状態が共有されています</small></div><button class="btn pri" type="button" data-confirm="1"'+(p?"":" disabled")+'>'+verb+'を確定</button>';
   }else{
-    el.innerHTML='<div class="t">'+(myTeamPending?'チーム仮選択: <b>'+esc(myTeamPending)+'</b>':'<b>ヒーローを仮選択できます</b>')+'<small>選択内容はチーム内だけに共有されます</small></div>';
+    el.innerHTML='<div class="t">'+(myTeamPending?'チーム仮選択: <b>'+esc(myTeamPending)+'</b>':'<b>ヒーローを仮選択できます</b>')+'<small>チーム内でのみ共有されます</small></div>';
   }
 }
 
-/* ---------- wiring ---------- */
+/* wiring */
 function baseUrl(){return location.origin+location.pathname}
 function copyText(txt,okMsg){
-  var fail=function(){toast("コピーできませんでした。手動で選択してください")};
+  var fail=function(){toast("コピーできませんでした")};
   try{navigator.clipboard.writeText(txt).then(function(){toast(okMsg)},fail)}catch(e){fail()}
 }
 function wireRoom(){
