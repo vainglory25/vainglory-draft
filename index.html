@@ -334,9 +334,9 @@ body.has-fab .wrap{padding-bottom:110px}
 
 /* ヒーロー一覧とグループ(キャプテン/ジャングラー/レーナー)。追加・削除・移動はここを編集します。分類は目安です。 */
 var ROLES=[
-  {k:"captain",ja:"キャプテン",en:"CAPTAIN",list:["Adagio","Ardan","Catherine","Churnwalker","Flicker","Fortress","Grace","Lance","Lorelai","Lyra","Phinn","Yates"]},
-  {k:"jungler",ja:"ジャングラー",en:"JUNGLER",list:["Alpha","Baptiste","Inara","Kensei","Koshka","Krul","Ozo","Petal","Reim","Rona","Taka","Tony"]},
-  {k:"laner",ja:"レーナー",en:"LANER",list:["Amael","Anka","Baron","Blackfeather","Caine","Celeste","Glaive","Grumpjaw","Gwen","Idris","Ishtar","Joule","Karas","Kestrel","Kinetic","Leo","Magnus","Malene","Miho","Reza","Ringo","Samuel","San Feng","SAW","Shin","Silvernail","Skaarf","Skye","Varya","Viola","Vox","Warhawk","Ylva"]}
+  {k:"captain",ja:"キャプテン",en:"CAPTAIN",list:["アダージオ","アーダン","キャサリン","チャーンウォーカー","フリッカー","フォートレス","グレース","ランス","ローレライ","ライラ","フィン","ヴィオラ","イェーツ"]},
+  {k:"jungler",ja:"ジャングラー",en:"JUNGLER",list:["アルファ","グレイヴ","グランプジョー","イナラ","ジュール","コシュカ","クラル","オゾ","ペタル","ライム","ロナ",,"シン","タカ","トニー","イルバ"]},
+  {k:"laner",ja:"レーナー",en:"LANER",list:["アマエル","アンカ","バティスト","バロン","ブラックフェザー","ケイン","セレス","グウェン","イドリス","イシュター","カラス","イシュター","ケストレル","キネティック","レオ","マグナス","マレン","ミホ","レザ","リンゴ","サムエル","サンポー","ソー","シルバーネイル","スカーフ","スカイ","ヴァーリア","ヴォックス","ウォーホーク"]}
 ];
 var HEROES=[];ROLES.forEach(function(g){g.list.forEach(function(h){HEROES.push(h)})});
 var PEER_SRC=["https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js","https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js","https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"];
@@ -367,7 +367,7 @@ var roomId=null,isHost=false,inRoom=false,joining=false,joinSpec=false;
 var peer=null,hostConn=null,conns={},toks={},netGen=0;
 var off=0,hbAt=0,lastHb=0,connected=false,retryTimer=null;
 var localSel="",q="";
-var cs={size:5,timer:45,bans:1,rows:[],fixed:["Churnwalker","Viola"]};   /* 既定の固定BAN(作成画面で変更できます) */
+var cs={size:5,timer:45,bans:1,rows:[],fixed:["チャーンウォーカー","ヴィオラ"]};   /* 既定の固定BAN(作成画面で変更できます) */
 
 function nowS(){return Date.now()+off}
 function toast(t){var el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true},2600)}
