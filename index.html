@@ -8,6 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Cinzel:wght@600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
 <style>
+/* Layout: 中央にヒーロープール、左右にホーム(青)/アウェイ(赤)の行ボード。狭い画面ではボードを2列、プールを下に回す。
+   ドラフト画面らしい夜の配色の単一テーマ。全ての色をトークンで定義する。 */
 :root{
   --bg:#0b0d1a; --panel:#131730; --panel2:#1a1f3d; --line:#2b335f;
   --fg:#e9ecf9; --muted:#8f96bd;
@@ -28,6 +30,7 @@ button{cursor:pointer}
 button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .num{font-family:var(--f-disp);font-variant-numeric:tabular-nums}
 
+/* top bar */
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:16px}
 .logo{display:flex;align-items:baseline;gap:10px;min-width:0}
 .logo b{font-family:var(--f-mark);font-weight:600;font-size:22px;letter-spacing:.18em;color:var(--gold)}
@@ -49,6 +52,7 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid
 
 .banner{padding:10px 14px;border:1px solid var(--warn);border-radius:8px;background:rgba(255,159,90,.08);color:#ffd9bb;margin-bottom:14px}
 
+/* entry */
 .hero-h{margin:4px 0 16px}
 .hero-h h1{font-family:var(--f-disp);font-size:clamp(26px,4.5vw,40px);line-height:1.15;margin:0 0 4px;letter-spacing:.02em;text-wrap:balance}
 .hero-h p{margin:0;color:var(--muted);max-width:60ch}
@@ -92,11 +96,7 @@ details.fx{border:1px solid var(--line);border-radius:8px;padding:10px 12px;marg
 details.fx summary{cursor:pointer;color:var(--muted);font-size:12px;letter-spacing:.08em}
 details.fx[open] summary{margin-bottom:10px}
 
-/* hero tabs & pool */
-.role-tabs{display:flex;gap:8px;margin-bottom:12px;border-bottom:1px solid var(--line);padding-bottom:8px}
-.role-btn{padding:6px 14px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);font-family:var(--f-disp);font-size:12px;letter-spacing:.08em;color:var(--muted)}
-.role-btn.active{background:var(--gold);color:#241b05;border-color:var(--gold);font-weight:700}
-
+/* hero tiles */
 .pool{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:6px}
 .tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 3px 5px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);min-width:0}
 .tile .nm{font-size:11px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -111,9 +111,7 @@ details.fx[open] summary{margin-bottom:10px}
 .tile.pick-home{border-color:var(--home);opacity:.55}
 .tile.pick-away{border-color:var(--away);opacity:.55}
 .tile.sel{outline:2px dashed var(--gold);outline-offset:1px}
-.tile.team-sel{outline:2px dashed var(--home);outline-offset:1px}
-.tile.other-team-sel{outline:2px dashed var(--warn);outline-offset:1px}
-.tile .who-badge{position:absolute;bottom:-2px;right:-2px;background:var(--gold);color:#000;font-size:9px;padding:1px 4px;border-radius:4px;font-weight:700;max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile.mine{outline:2px dashed var(--muted);outline-offset:1px}
 
 /* room */
 .meta{display:flex;gap:8px 14px;flex-wrap:wrap;align-items:center;margin-bottom:14px;color:var(--muted);font-size:13px}
@@ -147,11 +145,11 @@ details.fx[open] summary{margin-bottom:10px}
 .team .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .readybar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0}
 
-/* draft - タイマー上部固定 */
-.turnbar{position:sticky;top:max(0px,env(safe-area-inset-top,0px));z-index:20;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 18px;align-items:center;padding:12px 16px;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+/* draft */
+.turnbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 18px;align-items:center;padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top,0px));background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;position:sticky;top:0;z-index:20;overflow:hidden;box-shadow:0 8px 18px -10px #000}
 .turnbar.home{border-color:var(--home)}
 .turnbar.away{border-color:var(--away)}
-.turnbar.mine{box-shadow:0 0 0 1px var(--gold),0 0 24px -6px var(--gold)}
+.turnbar.mine{box-shadow:0 0 0 1px var(--gold),0 0 24px -6px var(--gold),0 8px 18px -10px #000}
 .tb-l .k{font-family:var(--f-disp);font-size:12px;letter-spacing:.16em;color:var(--muted)}
 .tb-l .v{font-size:18px;font-weight:700;margin-top:2px}
 .tb-l .v em{font-style:normal;color:var(--gold)}
@@ -189,15 +187,28 @@ details.fx[open] summary{margin-bottom:10px}
 .cell.me{border-color:var(--gold)}
 .searchrow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
 .searchrow .field{flex:1}
-
-/* 確定ボタン等のアクションバー（右下固定） */
-.actbar{position:fixed;bottom:max(16px,env(safe-area-inset-bottom,0px));right:max(16px,env(safe-area-inset-right,0px));left:auto;max-width:calc(100vw - 32px);width:380px;padding:12px 16px;border:1px solid var(--gold);border-radius:14px;background:rgba(19,23,48,.95);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:nowrap;z-index:30;box-shadow:0 8px 24px rgba(0,0,0,.6)}
-.actbar .t{min-width:0;flex:1 1 auto}
-.actbar .t b{color:var(--gold);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.actbar .t small{display:block;color:var(--muted);font-size:11px;line-height:1.2}
-.actbar button{flex-shrink:0}
+.actbar{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;z-index:2;padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
+.actbar .t{min-width:0;flex:1 1 220px}
+.actbar .t b{color:var(--gold)}
+.actbar .t small{display:block;color:var(--muted);font-size:12px}
 .pool-scroll{max-height:56vh;overflow-y:auto;padding:2px}
 
+/* 確定ボタン(右下に固定) */
+.fab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:30;min-width:156px;padding:12px 22px;border-radius:14px;border:0;background:var(--gold);color:#241b05;font-weight:700;font-size:16px;line-height:1.3;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.6)}
+.fab small{display:block;font-weight:500;font-size:11px;opacity:.8;max-width:140px;margin:0 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fab:disabled{background:var(--panel2);color:var(--muted);border:1px solid var(--line);box-shadow:none;cursor:not-allowed}
+body.has-fab .wrap{padding-bottom:110px}
+/* チーム内で共有される候補 */
+.tile .cb{position:absolute;top:2px;right:2px;max-width:90%;overflow:hidden;font-style:normal;font-family:var(--f-disp);font-weight:700;font-size:9px;line-height:1.3;padding:0 5px;border-radius:999px;background:var(--gold);color:#241b05;white-space:nowrap}
+.tile.cand-home{outline:2px dotted var(--home);outline-offset:1px}
+.tile.cand-away{outline:2px dotted var(--away);outline-offset:1px}
+
+/* ---- ロール別グループ ---- */
+.grp{margin-bottom:12px}
+.gh{display:flex;align-items:baseline;gap:10px;margin:10px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--line);font-family:var(--f-disp);font-size:13px;font-weight:700;letter-spacing:.14em;color:var(--gold)}
+.gh small{color:var(--muted);letter-spacing:.2em;font-size:10px;font-weight:500}
+#colPool .pool-scroll{max-height:none;overflow:visible}
+@media (min-width:901px){#colPool .pool-scroll{max-height:64vh;overflow-y:auto}}
 /* countdown */
 .cd{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(7,8,18,.86);text-align:center}
 .cd p{margin:0;font-family:var(--f-disp);letter-spacing:.3em;color:var(--muted);font-size:14px}
@@ -211,9 +222,11 @@ details.fx[open] summary{margin-bottom:10px}
 @media (max-width:560px){
   .cell{grid-template-columns:16px 34px minmax(0,1fr);gap:6px;padding:5px 6px}
   .cell .mono,.cell .ph{width:34px;height:34px}
-  .tb-r{font-size:36px}
+  .tb-r{font-size:32px}
   .logo b{font-size:18px}
-  .actbar{width:calc(100vw - 32px);left:16px;right:16px}
+  .turnbar{padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top,0px));gap:4px 12px;border-radius:0 0 12px 12px}
+  .tb-l .v{font-size:15px}
+  .tb-act .note{display:none}
 }
 @media (max-width:420px){.teams{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.cell.cur{animation:none}}
@@ -224,7 +237,7 @@ details.fx[open] summary{margin-bottom:10px}
   <header class="top">
     <div class="logo"><b>VAINGLORY</b><span>Custom Draft</span></div>
     <div class="topr" id="topr" hidden>
-      <div class="chip-id"><small>ROOM</small><code id="roomCode"></code><button class="btn sm" id="copyId" type="button">IDコピー</button></div>
+      <div class="chip-id"><small>ROOM</small><code id="roomCode"></code><button class="btn sm" id="maskBtn" type="button" aria-pressed="true">表示</button><button class="btn sm" id="copyId" type="button">IDコピー</button></div>
       <button class="btn sm" id="copyInvite" type="button">招待リンク</button>
       <button class="btn sm" id="copyWatch" type="button">観戦リンク</button>
       <button class="btn sm ghost" id="leaveBtn" type="button">退出</button>
@@ -252,11 +265,12 @@ details.fx[open] summary{margin-bottom:10px}
         <div class="lab" style="margin-bottom:6px">進行順(1行ごとにホーム→アウェイの順に手番)</div>
         <div class="rlist" id="cStrip"></div>
         <p class="hint" id="stripHint"></p>
+        <div class="lab" style="margin-top:14px">固定BAN(最初からBANするヒーロー) <span id="fixedCount"></span></div>
+        <div class="fixed-list" id="fixedList"></div>
         <details class="fx" id="fixedDet">
-          <summary>固定BAN(最初からBANするヒーロー) <span id="fixedCount"></span></summary>
-          <div class="fixed-list" id="fixedList"></div>
+          <summary>固定BANを変更する(タップで追加・解除)</summary>
           <div class="searchrow"><input class="field" id="fq" placeholder="ヒーロー名で絞り込み" autocomplete="off"></div>
-          <div class="pool-scroll" style="max-height:260px"><div class="pool" id="fPool"></div></div>
+          <div class="pool-scroll" style="max-height:320px"><div id="fPool"></div></div>
         </details>
         <div class="sum" id="cSum"></div>
         <button class="btn pri" id="createBtn" type="button" disabled>ルームを作成して入室</button>
@@ -294,14 +308,8 @@ details.fx[open] summary{margin-bottom:10px}
       <div class="stage">
         <div id="colHome"></div>
         <div id="colPool">
-          <div class="role-tabs" id="roleTabs">
-            <button type="button" class="role-btn active" data-role="ALL">すべて</button>
-            <button type="button" class="role-btn" data-role="LANE">レーナー</button>
-            <button type="button" class="role-btn" data-role="JUNGLE">ジャングラー</button>
-            <button type="button" class="role-btn" data-role="CAPTAIN">キャプテン</button>
-          </div>
           <div class="searchrow"><input class="field" id="q" placeholder="ヒーロー名で絞り込み" autocomplete="off"></div>
-          <div class="pool-scroll"><div class="pool" id="poolGrid"></div></div>
+          <div class="pool-scroll"><div id="poolGrid"></div></div>
           <div class="actbar" id="actbar"></div>
         </div>
         <div id="colAway"></div>
@@ -311,20 +319,26 @@ details.fx[open] summary{margin-bottom:10px}
 </div>
 
 <div class="cd" id="cd" hidden role="status"><div><p>ドラフト開始まで</p><div class="big" id="cdNum">5</div><button class="btn" id="cdCancel" type="button" hidden>準備を解除して中止</button></div></div>
+<button class="fab" id="fab" type="button" hidden></button>
 <div class="toast" id="toast" hidden></div>
 
 <script>
 (function(){
 "use strict";
 
-/* ロール別ヒーロー分類（Vainglory本家準拠） */
-var HERO_ROLES={
-  LANE: ["Baron","Caine","Celeste","Gwen","Idris","Ishtar","Kinetic","Magnus","Malene","Miho","Ringo","SAW","Silvernail","Skaarf","Skye","Varya","Vox","Warhawk"],
-  JUNGLE: ["Alpha","Anka","Baptiste","Blackfeather","Bryce","Glaive","Grumpjaw","Inara","Joule","Karas","Kensei","Kestrel","Koshka","Krul","Ozo","Petal","Reim","Reza","Rona","San Feng","Taka","Ylva"],
-  CAPTAIN: ["Adagio","Amael","Ardan","Catherine","Churnwalker","Cyrus","Flicker","Fortress","Grace","Lance","Leo","Lorelai","Lyra","Phinn","Tony","Viola","Yates"]
-};
+/* ---------------------------------------------------------------
+   仕組み: ホストのブラウザが進行役(権威)になり、参加者・観戦者は
+   PeerJS(WebRTC)でホストに接続します。サーバーは不要です。
+   ホストが全ての操作を検証し、状態を全員に配信します。
+   --------------------------------------------------------------- */
 
-var HEROES=["Adagio","Alpha","Amael","Anka","Ardan","Baptiste","Baron","Blackfeather","Bryce","Caine","Catherine","Celeste","Churnwalker","Cyrus","Flicker","Fortress","Glaive","Grace","Grumpjaw","Gwen","Idris","Inara","Ishtar","Joule","Karas","Kensei","Kestrel","Kinetic","Koshka","Krul","Lance","Leo","Lorelai","Lyra","Magnus","Malene","Miho","Ozo","Petal","Phinn","Reim","Reza","Ringo","Rona","Samuel","San Feng","SAW","Silvernail","Skaarf","Skye","Taka","Tony","Varya","Viola","Vox","Warhawk","Yates","Ylva"];
+/* ヒーロー一覧とグループ(キャプテン/ジャングラー/レーナー)。追加・削除・移動はここを編集します。分類は目安です。 */
+var ROLES=[
+  {k:"captain",ja:"キャプテン",en:"CAPTAIN",list:["Adagio","Ardan","Catherine","Churnwalker","Flicker","Fortress","Grace","Lance","Lorelai","Lyra","Phinn","Yates"]},
+  {k:"jungler",ja:"ジャングラー",en:"JUNGLER",list:["Alpha","Baptiste","Inara","Kensei","Koshka","Krul","Ozo","Petal","Reim","Rona","Taka","Tony"]},
+  {k:"laner",ja:"レーナー",en:"LANER",list:["Amael","Anka","Baron","Blackfeather","Caine","Celeste","Glaive","Grumpjaw","Gwen","Idris","Ishtar","Joule","Karas","Kestrel","Kinetic","Leo","Magnus","Malene","Miho","Reza","Ringo","Samuel","San Feng","SAW","Shin","Silvernail","Skaarf","Skye","Varya","Viola","Vox","Warhawk","Ylva"]}
+];
+var HEROES=[];ROLES.forEach(function(g){g.list.forEach(function(h){HEROES.push(h)})});
 var PEER_SRC=["https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js","https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js","https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"];
 
 var $=function(s){return document.querySelector(s)};
@@ -340,23 +354,26 @@ function monoHTML(n){return '<span class="mono" style="--h:'+(hash(n)%360)+'">'+
 function teamJa(t){return t==="home"?"ホーム":"アウェイ"}
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
 
+/* ---------- identity (この端末だけの識別子) ---------- */
 var myUid=lsGet("vgd_uid");
 if(!myUid){myUid="u"+rnd(12);lsSet("vgd_uid",myUid)}
 var myTok=lsGet("vgd_tok");
 if(!myTok){myTok=rnd(24);lsSet("vgd_tok",myTok)}
 var myName=lsGet("vgd_name")||"";
 
-var S=null,D=null;
+/* ---------- state ---------- */
+var S=null,D=null;                    /* S: ルームの状態(ホストが正)  D: Sから導いた値 */
 var roomId=null,isHost=false,inRoom=false,joining=false,joinSpec=false;
 var peer=null,hostConn=null,conns={},toks={},netGen=0;
 var off=0,hbAt=0,lastHb=0,connected=false,retryTimer=null;
-var q="",activeRole="ALL";
-var cs={size:5,timer:45,bans:1,rows:[],fixed:["Churnwalker","Viola"]};
+var localSel="",q="";
+var cs={size:5,timer:45,bans:1,rows:[],fixed:["Churnwalker","Viola"]};   /* 既定の固定BAN(作成画面で変更できます) */
 
 function nowS(){return Date.now()+off}
 function toast(t){var el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true},2600)}
 function getName(){var n=($("#myName").value||"").trim().slice(0,14);if(!n){n="Player"+(10+Math.floor(Math.random()*90))}$("#myName").value=n;myName=n;lsSet("vgd_name",n);return n}
 
+/* ---------- draft model ---------- */
 function buildTurns(cfg){
   var N=cfg.size,turns=[],p=0,b=0;
   for(var r=0;r<cfg.rows.length;r++){
@@ -367,6 +384,7 @@ function buildTurns(cfg){
   return turns;
 }
 function defaultRows(size,k){
+  /* 1行目から1行おきにBAN(例: 3v3でBAN2人 → BAN,PICK,BAN,PICK,PICK) */
   var R=size+k,pos=[],i;
   for(i=0;pos.length<k&&i<=R-2;i+=2)pos.push(i);
   for(i=1;pos.length<k&&i<=R-2;i++)if(pos.indexOf(i)<0)pos.push(i);
@@ -392,6 +410,22 @@ function derive(){
 }
 function nameOf(u){var m=S.members&&S.members[u];return m&&m.name?m.name:"(不在)"}
 function isActor(){return !!(D&&D.cur&&D.actor===myUid)}
+/* 自分のチームの候補 {ヒーロー: [名前…]}(自分の分は含めない)。ホストの画面でも相手チームの分は使わない */
+var idMasked=lsGet("vgd_mask")!=="0";      /* 既定は隠す(配信・画面共有での荒らし対策) */
+function renderRoomCode(){
+  $("#roomCode").textContent=idMasked?"\u2022\u2022\u2022\u2022\u2022\u2022":(roomId||"");
+  var b=$("#maskBtn");b.textContent=idMasked?"表示":"隠す";b.setAttribute("aria-pressed",idMasked?"true":"false");
+}
+function mateCands(){
+  var out={};
+  if(!D.myTeam)return out;
+  var c=S.cands||{};
+  Object.keys(c).forEach(function(u){
+    if(u===myUid||D.seats[D.myTeam].indexOf(u)<0)return;
+    (out[c[u]]=out[c[u]]||[]).push(nameOf(u));
+  });
+  return out;
+}
 function taken(h){
   if(S.cfg.fixedBans.indexOf(h)>=0)return true;
   var lg=S.log||{};
@@ -407,23 +441,30 @@ function statusOf(h){
   return null;
 }
 
+/* =========================================================
+   ホスト側ロジック(進行・検証は全てここ)
+   ========================================================= */
 function newState(cfg){
   return {cfg:cfg,host:myUid,created:Date.now(),phase:"lobby",turn:0,deadline:0,startsAt:0,
-    teamPicks:{home:{},away:{}},resetT:-1,log:{},seats:{home:[],away:[]},members:{}};
+    pendingHero:"",pendingTurn:-1,resetT:-1,cands:{},log:{},seats:{home:[],away:[]},members:{}};
 }
-function cleanName(n){return String(n==null?"":n).replace(/[ -<>]/g,"").trim().slice(0,14)}
+function cleanName(n){return String(n==null?"":n).replace(/[\u0000-\u001f<>]/g,"").trim().slice(0,14)}
 function autoHero(){
   var free=HEROES.filter(function(h){return !taken(h)});
   return free.length?free[Math.floor(Math.random()*free.length)]:"";
 }
 function advance(hero,auto,by){
   S.log[S.turn]={hero:hero,by:by||"",auto:!!auto};
-  S.teamPicks={home:{},away:{}};
-  S.turn++;
-  if(S.turn>=D.turns.length){S.phase="done";S.deadline=0}
-  else S.deadline=Date.now()+S.cfg.timer*1000;
+  S.pendingHero="";S.pendingTurn=-1;S.turn++;
+  S.cands=S.cands||{};
+  Object.keys(S.cands).forEach(function(k){if(hero&&S.cands[k]===hero)delete S.cands[k]});   /* 選ばれたヒーローの候補は消す */
+  if(S.turn>=D.turns.length){S.phase="done";S.deadline=0;S.cands={}}
+  else{
+    S.deadline=Date.now()+S.cfg.timer*1000;
+    var nt=D.turns[S.turn];delete S.cands[D.seats[nt.team][nt.slot]];    /* 手番になった人の候補は「選択中」に切り替わる */
+  }
 }
-
+/* uid: 送信者  local: ホスト自身の画面からの操作か */
 function hostHandle(uid,m,local){
   if(!S||!m||typeof m.a!=="string")return;
   D=derive();
@@ -439,6 +480,7 @@ function hostHandle(uid,m,local){
     return;
   }
   if(!me)return;
+  var t;
   switch(m.a){
     case "sit":
       if(ph!=="lobby"||me.spec||(m.team!=="home"&&m.team!=="away"))return;
@@ -461,30 +503,28 @@ function hostHandle(uid,m,local){
       mem[m.u].team="";mem[m.u].ready=false;break;
     case "reset":
       if(!local||ph!=="done")return;
-      S.phase="lobby";S.turn=0;S.deadline=0;S.startsAt=0;S.teamPicks={home:{},away:{}};S.resetT=-1;S.log={};S.seats={home:[],away:[]};
+      S.phase="lobby";S.turn=0;S.deadline=0;S.startsAt=0;S.pendingHero="";S.pendingTurn=-1;S.resetT=-1;S.cands={};S.log={};S.seats={home:[],away:[]};
       Object.keys(mem).forEach(function(k){mem[k].ready=false});
       break;
+    case "cand":      /* 手番でない人の候補。同じチームの人にだけ配信される */
+      if(ph!=="draft"||!seated||D.actor===uid)return;
+      S.cands=S.cands||{};
+      if(m.h===""){delete S.cands[uid];break}
+      if(HEROES.indexOf(m.h)<0||taken(m.h))return;
+      S.cands[uid]=m.h;break;
     case "pick":
-      if(ph!=="draft"||HEROES.indexOf(m.h)<0||taken(m.h))return;
-      var myT=D.seats.home.indexOf(uid)>=0?"home":(D.seats.away.indexOf(uid)>=0?"away":"");
-      if(!myT)return;
-      if(!S.teamPicks)S.teamPicks={home:{},away:{}};
-      if(!S.teamPicks[myT])S.teamPicks[myT]={};
-      if(S.teamPicks[myT][uid]===m.h) delete S.teamPicks[myT][uid];
-      else S.teamPicks[myT][uid]=m.h;
-      break;
+      if(ph!=="draft"||D.actor!==uid||HEROES.indexOf(m.h)<0||taken(m.h))return;
+      S.pendingTurn=S.turn;S.pendingHero=m.h;break;
     case "confirm":
       if(ph!=="draft"||D.actor!==uid)return;
-      var actorTeam=D.cur.team;
-      var heroToConfirm=S.teamPicks&&S.teamPicks[actorTeam]?S.teamPicks[actorTeam][uid]:"";
-      if(!heroToConfirm||taken(heroToConfirm))return;
-      advance(heroToConfirm,false,uid);break;
+      if(S.pendingTurn!==S.turn||!S.pendingHero||taken(S.pendingHero))return;
+      advance(S.pendingHero,false,uid);break;
     case "extend":
       if(ph!=="draft"||D.actor!==uid||S.resetT===S.turn||now>=S.deadline)return;
       S.deadline=now+S.cfg.timer*1000;S.resetT=S.turn;break;
   }
 }
-
+/* 時間経過で進む状態遷移。変化したら true */
 function step(){
   if(!S)return false;
   D=derive();
@@ -493,39 +533,35 @@ function step(){
     if(both){S.phase="countdown";S.startsAt=now+5000;S.seats={home:D.seats.home.slice(),away:D.seats.away.slice()};ch=true}
   }else if(S.phase==="countdown"){
     if(!both){S.phase="lobby";S.startsAt=0;ch=true}
-    else if(now>=S.startsAt){S.phase="draft";S.turn=0;S.deadline=now+S.cfg.timer*1000;S.teamPicks={home:{},away:{}};S.resetT=-1;ch=true}
+    else if(now>=S.startsAt){S.phase="draft";S.turn=0;S.deadline=now+S.cfg.timer*1000;S.pendingHero="";S.pendingTurn=-1;S.resetT=-1;S.cands={};ch=true}
   }else if(S.phase==="draft"&&D.cur&&now>S.deadline){
-    advance(autoHero(),true,"");ch=true;
+    advance(autoHero(),true,"");ch=true;       /* 時間切れはランダム */
   }
   if(ch)D=derive();
   return ch;
 }
 function saveHost(){lsSet("vgd_host",JSON.stringify({id:roomId,state:S,toks:toks}))}
-
+function sendAll(msg){Object.keys(conns).forEach(function(k){var c=conns[k];if(c&&c.open){try{c.send(msg)}catch(e){}}})}
+/* 受信者ごとに状態を絞る: 候補(cands)は同じチームの人にしか送らない */
+function teamOf(u){return D.seats.home.indexOf(u)>=0?"home":(D.seats.away.indexOf(u)>=0?"away":"")}
+function viewFor(u){
+  var t=teamOf(u),c={},src=S.cands||{},v={};
+  Object.keys(src).forEach(function(k){if(k===u||(t&&teamOf(k)===t))c[k]=src[k]});
+  for(var k in S)v[k]=S[k];
+  v.cands=c;return v;
+}
 function broadcast(){
+  var now=Date.now();
   Object.keys(conns).forEach(function(k){
     var c=conns[k];
-    if(c&&c.open){
-      try{
-        var clientUid=c.__uid;
-        var clientTeam=(S.seats.home.indexOf(clientUid)>=0)?"home":((S.seats.away.indexOf(clientUid)>=0)?"away":"");
-        var sanitizedS=JSON.parse(JSON.stringify(S));
-        if(!sanitizedS.teamPicks)sanitizedS.teamPicks={home:{},away:{}};
-        if(clientTeam==="home"){sanitizedS.teamPicks.away={};}
-        else if(clientTeam==="away"){sanitizedS.teamPicks.home={};}
-        else {sanitizedS.teamPicks={home:{},away:{}};}
-        c.send({t:"snap",s:sanitizedS,now:Date.now()});
-      }catch(e){}
-    }
+    if(c&&c.open&&c.__uid){try{c.send({t:"snap",s:viewFor(c.__uid),now:now})}catch(e){}}
   });
 }
-
 function commit(){
   if(!isHost||!S)return;
   step();D=derive();
   saveHost();broadcast();onState();
 }
-
 function onHostConn(conn,gen){
   conn.on("data",function(m){
     if(gen!==netGen||!isHost||!m||typeof m!=="object")return;
@@ -554,6 +590,7 @@ function onHostConn(conn,gen){
   conn.on("close",drop);conn.on("error",drop);
 }
 
+/* ---------- 通信(ホスト起動 / クライアント接続) ---------- */
 function loadPeer(){
   return new Promise(function(resolve){
     if(window.Peer){resolve(true);return}
@@ -626,7 +663,7 @@ async function resumeHost(sv){
     var r=await new Promise(function(res){startHost(sv.id,res)});
     if(r.ok){
       toks=sv.toks||{};
-      var st=sv.state;
+      var st=sv.state;st.cands=st.cands||{};
       Object.keys(st.members).forEach(function(u){st.members[u].on=false;if(st.phase==="lobby"||st.phase==="countdown")st.members[u].ready=false});
       if(st.members[myUid])st.members[myUid].on=true;
       if(st.phase==="countdown"){st.phase="lobby";st.startsAt=0}
@@ -729,32 +766,31 @@ function leaveRoom(silent,msg){
   lsDel("vgd_room");
   clearTimeout(retryTimer);
   setTimeout(killNet,300);
-  $("#cd").hidden=true;
+  $("#cd").hidden=true;$("#fab").hidden=true;document.body.classList.remove("has-fab");
   showView("entry");setBanner();setBusy(false);
   toast(msg||"退出しました");
 }
 
+/* ---------- アクション(送信) ---------- */
 function act(m){
   if(!S)return;
-  if(isHost){
-    var sanitizedM = m;
-    if(isHost && m.a==="snap") return;
-    var r=hostHandle(myUid,m,true);
-    if(typeof r==="string"&&r!=="denied")toast(r);
-    commit();
-    return;
-  }
+  if(isHost){var r=hostHandle(myUid,m,true);if(typeof r==="string"&&r!=="denied")toast(r);commit();return}
   if(hostConn&&hostConn.open&&connected)hostConn.send(m);
   else toast("ホストに接続されていません");
 }
-
 function chooseHero(h){
-  if(!D||S.phase!=="draft"||taken(h)||!D.myTeam)return;
-  act({a:"pick",h:h});
+  if(!D||S.phase!=="draft"||taken(h)||!D.myTeam)return;       /* 観戦者・未着席は操作不可 */
+  if(isActor()){act({a:"pick",h:h})}
+  else{                                                        /* 手番でない人の候補: 自分の画面と、同じチームの人にだけ見える */
+    localSel=localSel===h?"":h;
+    act({a:"cand",h:localSel});
+    renderPool();renderAct();
+  }
 }
 function confirmTurn(){if(isActor())act({a:"confirm"})}
 function extendTime(){if(isActor()&&S.resetT!==S.turn&&nowS()<S.deadline)act({a:"extend"})}
 
+/* ---------- 作成フォーム ---------- */
 function genId(){var a="ABCDEFGHJKMNPQRSTUVWXYZ23456789",s="";for(var i=0;i<6;i++)s+=a[Math.floor(Math.random()*a.length)];return s}
 function setRows(){cs.rows=defaultRows(cs.size,cs.bans).split("")}
 function renderCreateBtn(){
@@ -777,12 +813,19 @@ function renderCreate(){
   $("#cSum").textContent=cs.size+"v"+cs.size+" / 各手番 "+cs.timer+"秒 / BAN 各チーム"+cs.bans+"人(計"+cs.bans*2+"人) + 固定BAN "+cs.fixed.length+"人 / 全 "+cs.rows.length+" 行";
   renderCreateBtn();
 }
+function groupsHTML(filter,tileFn){
+  var f=String(filter||"").trim().toLowerCase(),out="";
+  ROLES.forEach(function(g){
+    var tiles=g.list.filter(function(h){return !f||h.toLowerCase().indexOf(f)>=0}).map(tileFn).join("");
+    if(tiles)out+='<section class="grp"><h4 class="gh"><span>'+g.ja+'</span><small>'+g.en+'</small></h4><div class="pool">'+tiles+'</div></section>';
+  });
+  return out||'<p class="hint">該当するヒーローがいません。</p>';
+}
 function renderFixedPool(){
-  var f=($("#fq").value||"").trim().toLowerCase();
-  $("#fPool").innerHTML=HEROES.filter(function(h){return !f||h.toLowerCase().indexOf(f)>=0}).map(function(h){
+  $("#fPool").innerHTML=groupsHTML($("#fq").value,function(h){
     var on=cs.fixed.indexOf(h)>=0;
     return '<button type="button" class="tile'+(on?" fixed":"")+'" data-h="'+esc(h)+'">'+monoHTML(h)+'<span class="nm">'+esc(h)+'</span></button>';
-  }).join("");
+  });
 }
 function wireCreate(){
   $("#segSize").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.size=+b.dataset.v;setRows();renderCreate()});
@@ -814,11 +857,12 @@ function wireCreate(){
   $("#myName").addEventListener("change",getName);
 }
 
+/* ---------- render ---------- */
 function showView(v){
   $("#vEntry").hidden=v!=="entry";
   $("#vRoom").hidden=v!=="room";
   $("#topr").hidden=v!=="room";
-  if(v==="room")$("#roomCode").textContent=roomId;
+  if(v==="room"){renderRoomCode();try{history.replaceState(null,"",location.pathname)}catch(e){}}   /* 招待リンクのIDをアドレスバーに残さない */
 }
 function setBanner(){
   var b=$("#netBanner"),msg="";
@@ -829,6 +873,7 @@ function setBanner(){
 function onState(){
   if(!S)return;
   D=derive();
+  if(localSel&&(taken(localSel)||isActor()))localSel="";
   renderAll();
 }
 function renderAll(){
@@ -839,6 +884,7 @@ function renderAll(){
   $("#draft").hidden=!(ph==="draft"||ph==="done");
   $("#cd").hidden=ph!=="countdown";
   $("#cdCancel").hidden=!D.myTeam;
+  if(ph!=="draft"){$("#fab").hidden=true;document.body.classList.remove("has-fab")}
   if(ph==="lobby"||ph==="countdown")renderLobby();
   else{renderTurn();renderBoard();renderPool();renderAct()}
   tick();
@@ -915,10 +961,9 @@ function renderTurn(){
   tb.className="turnbar "+c.team+(mine?" mine":"");
   tb.innerHTML='<div class="tb-l"><div class="k num">ROW '+(c.r+1)+' / '+S.cfg.rows.length+' · '+verb+'</div>'+
     '<div class="v">'+(mine?'<em>あなたの番です</em>':esc(teamJa(c.team))+' '+esc(nameOf(D.actor))+' の'+verb)+'</div>'+
-    '<div class="tb-act">'+(mine?'<button class="btn sm" type="button" data-extend="1"'+(used?" disabled":"")+'>'+(used?"リセット済み":"時間をリセット(1回)")+'</button>':(used?'<span>この手番はリセット済み</span>':''))+'<span>時間切れはランダムで確定</span></div></div>'+
+    '<div class="tb-act">'+(mine?'<button class="btn sm" type="button" data-extend="1"'+(used?" disabled":"")+'>'+(used?"リセット済み":"時間をリセット(1回)")+'</button>':(used?'<span>この手番はリセット済み</span>':''))+'<span class="note">時間切れはランダムで確定</span></div></div>'+
     '<div class="tb-r num" id="tbNum">0</div><div class="tbar"><i id="tbBar"></i></div>';
 }
-
 function cellHTML(t,r){
   var type=S.cfg.rows[r],ti=2*r+(t==="home"?0:1),turn=D.turns[ti],en=(S.log||{})[ti];
   var cur=S.phase==="draft"&&S.turn===ti,au=D.seats[t][turn.slot];
@@ -928,14 +973,11 @@ function cellHTML(t,r){
     else{inner='<span class="ph">SKIP</span>';hn="スキップ"}
     if(en.auto&&en.hero)ow+=" (時間切れ・ランダム)";
   }else if(cur){
-    var actorUser = au;
-    var actorPick = (S.teamPicks&&S.teamPicks[t])?S.teamPicks[t][actorUser]:"";
-    var ph = actorPick;
+    var ph=S.pendingTurn===ti&&S.pendingHero;
     if(ph){inner=monoHTML(ph);hn=ph}else{inner='<span class="ph">…</span>';hn="選択中"}
   }else{inner='<span class="ph">'+(type==="B"?"BAN":"PICK")+'</span>'}
   return '<div class="cell '+type+(cur?" cur "+t:"")+(au===myUid?" me":"")+'"><span class="rn num">'+(r+1)+'</span>'+inner+'<span class="tx"><div class="hn">'+esc(hn)+'</div><div class="ow">'+esc(ow)+'</div></span></div>';
 }
-
 function renderBoard(){
   ["home","away"].forEach(function(t){
     var h='<div class="colh"><span>'+(t==="home"?"HOME":"AWAY")+'</span></div>';
@@ -943,51 +985,48 @@ function renderBoard(){
     $(t==="home"?"#colHome":"#colAway").innerHTML=h;
   });
 }
-
 function renderPool(){
-  var f=q.trim().toLowerCase(),can=S.phase==="draft"&&!!D.myTeam;
-  var myTeamPicks = (S.teamPicks && D.myTeam) ? (S.teamPicks[D.myTeam] || {}) : {};
-
-  var heroToUser = {};
-  Object.keys(myTeamPicks).forEach(function(u){
-    var h = myTeamPicks[u];
-    if(h) heroToUser[h] = nameOf(u);
-  });
-
-  var heroList = HEROES;
-  if(activeRole !== "ALL" && HERO_ROLES[activeRole]){
-    heroList = HERO_ROLES[activeRole];
-  }
-
-  $("#poolGrid").innerHTML=heroList.filter(function(h){return !f||h.toLowerCase().indexOf(f)>=0}).map(function(h){
-    var st=statusOf(h),cls="tile";
-    var badgeHTML = "";
-    if(st) cls+=st.k==="pick"?" pick-"+st.team:" "+st.k;
-    else if(heroToUser[h]){
-      cls += " team-sel";
-      badgeHTML = '<span class="who-badge">'+esc(heroToUser[h])+'</span>';
+  var can=S.phase==="draft"&&!!D.myTeam;
+  var shared=S.pendingTurn===S.turn&&S.pendingHero?S.pendingHero:"";
+  var mates=mateCands();
+  $("#poolGrid").innerHTML=groupsHTML(q,function(h){
+    var st=statusOf(h),cls="tile",badge="";
+    if(st)cls+=st.k==="pick"?" pick-"+st.team:" "+st.k;
+    else if(h===shared&&S.phase==="draft")cls+=" sel";
+    else if(h===localSel)cls+=" mine";
+    else if(mates[h]){
+      cls+=" cand-"+D.myTeam;
+      var nm=mates[h];
+      badge='<i class="cb">'+esc(nm.length>2?nm[0].slice(0,3)+" +"+(nm.length-1):nm.map(function(n){return n.slice(0,3)}).join(" "))+'</i>';
     }
-    return '<button type="button" class="'+cls+'" data-h="'+esc(h)+'"'+(st||!can?" disabled":"")+'>'+monoHTML(h)+'<span class="nm">'+esc(h)+'</span>'+badgeHTML+'</button>';
-  }).join("");
+    return '<button type="button" class="'+cls+'" data-h="'+esc(h)+'"'+(st||!can?" disabled":"")+'>'+badge+monoHTML(h)+'<span class="nm">'+esc(h)+'</span></button>';
+  });
 }
-
+function setFab(show,label,sub,disabled){
+  var fab=$("#fab");
+  fab.hidden=!show;
+  if(show){fab.disabled=!!disabled;fab.innerHTML=esc(label)+'<small>'+esc(sub)+'</small>'}
+  document.body.classList.toggle("has-fab",show);
+}
 function renderAct(){
   var el=$("#actbar");
+  setFab(false);
   if(S.phase==="done"){el.innerHTML='<div class="t"><b>ドラフト完了</b><small>お疲れさまでした。</small></div>';return}
   if(!D.myTeam){el.innerHTML='<div class="t"><b>観戦中</b><small>観戦者は閲覧のみで、選択や確定はできません。</small></div>';return}
   var c=D.cur;
-  var myTeamPicks = (S.teamPicks && D.myTeam) ? (S.teamPicks[D.myTeam] || {}) : {};
-  var mySelectedHero = myTeamPicks[myUid] || "";
-
   if(isActor()){
-    var verb=c.type==="B"?"BAN":"ピック";
-    var canConfirm = !!mySelectedHero;
-    el.innerHTML='<div class="t">'+(mySelectedHero?'選択中: <b>'+esc(mySelectedHero)+'</b>':'<b>ヒーローを選んでください</b>')+'<small>決定を押すとチームのピックとして確定します</small></div><button class="btn pri" type="button" data-confirm="1"'+(canConfirm?"":" disabled")+'>'+verb+'を確定</button>';
+    var p=S.pendingTurn===S.turn?S.pendingHero:"",verb=c.type==="B"?"BAN":"ピック";
+    el.innerHTML='<div class="t">'+(p?'選択中: <b>'+esc(p)+'</b>':'<b>ヒーローをタップして選んでください</b>')+'<small>手番の間、選択中のヒーローは相手チームにも表示されます。右下のボタンで確定します。</small></div>';
+    setFab(true,verb+"を確定",p||"ヒーローを選択",!p);
   }else{
-    el.innerHTML='<div class="t">'+(mySelectedHero?'仮ピック中: <b>'+esc(mySelectedHero)+'</b>':'<b>ヒーローをタップして仮ピック</b>')+'<small>仮ピック内容は味方だけに表示されます</small></div>';
+    var mates=mateCands(),mt=Object.keys(mates).map(function(h){return h+"("+mates[h].join("・")+")"}).join(" / ");
+    el.innerHTML='<div class="t">'+(localSel?'あなたの候補: <b>'+esc(localSel)+'</b>':'<b>'+esc(teamJa(c.team))+' '+esc(nameOf(D.actor))+' が選択中です</b>')+
+      (mt?'<small>チームの候補: '+esc(mt)+'</small>':'')+
+      '<small>手番ではないので、タップした候補は自分のチームの人にだけ見えます(相手チームと観戦者には見えません)。</small></div>';
   }
 }
 
+/* ---------- wiring ---------- */
 function baseUrl(){return location.origin+location.pathname}
 function copyText(txt,okMsg){
   var fail=function(){toast("コピーできませんでした。手動で選択してください")};
@@ -1003,17 +1042,10 @@ function wireRoom(){
   $("#readybar").addEventListener("click",function(e){if(e.target.closest("[data-ready]"))act({a:"ready"})});
   $("#cdCancel").addEventListener("click",function(){act({a:"ready"})});
   $("#poolGrid").addEventListener("click",function(e){var b=e.target.closest("button");if(b&&!b.disabled)chooseHero(b.dataset.h)});
-  $("#actbar").addEventListener("click",function(e){if(e.target.closest("[data-confirm]"))confirmTurn()});
+  $("#fab").addEventListener("click",function(){if(!$("#fab").disabled)confirmTurn()});
   $("#turnbar").addEventListener("click",function(e){
     if(e.target.closest("[data-reset]"))act({a:"reset"});
     else{var b=e.target.closest("[data-extend]");if(b&&!b.disabled)extendTime()}
-  });
-  $("#roleTabs").addEventListener("click",function(e){
-    var b=e.target.closest(".role-btn");if(!b)return;
-    $$(".role-btn").forEach(function(el){el.classList.remove("active")});
-    b.classList.add("active");
-    activeRole = b.dataset.role;
-    renderPool();
   });
   $("#q").addEventListener("input",function(){q=$("#q").value;if(S&&D&&S.phase!=="lobby")renderPool()});
   $("#leaveBtn").addEventListener("click",function(){
@@ -1021,6 +1053,7 @@ function wireRoom(){
     leaveRoom(false);
   });
   $("#copyId").addEventListener("click",function(){copyText(roomId,"ルームIDをコピーしました")});
+  $("#maskBtn").addEventListener("click",function(){idMasked=!idMasked;lsSet("vgd_mask",idMasked?"1":"0");renderRoomCode()});
   $("#copyInvite").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId,"招待リンクをコピーしました")});
   $("#copyWatch").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId+"&watch=1","観戦リンクをコピーしました")});
 }
