@@ -268,6 +268,17 @@ body.has-fab .wrap{padding-bottom:110px}
     </div>
     <div class="cols">
       <div class="card">
+        <h2>ルームに入室</h2>
+        <div class="row" style="margin-bottom:8px"><label for="joinId" class="lab">ルームID</label></div>
+        <input class="field num" id="joinId" maxlength="10" placeholder="例: K7M2QX" autocomplete="off" style="width:100%;font-size:22px;letter-spacing:.2em;text-transform:uppercase">
+        <p class="hint">参加者は入室後にロビーで席に座ります。観戦で入ると閲覧だけで、座ること・選ぶことはできません。</p>
+        <div class="btns" style="margin-top:14px">
+          <button class="btn pri" id="joinBtn" type="button" disabled>参加者として入室</button>
+          <button class="btn" id="watchBtn" type="button" disabled>観戦で入室</button>
+        </div>
+        <p class="msg" id="joinMsg" role="status"></p>
+      </div>
+      <div class="card">
         <h2>ルームを作成</h2>
         <div class="row"><span class="lab">形式</span><div class="seg" id="segSize" role="group" aria-label="形式"><button type="button" data-v="3">3v3</button><button type="button" data-v="5">5v5</button></div></div>
         <div class="row"><span class="lab">1手番の制限時間</span><div class="seg" id="segTimer" role="group" aria-label="制限時間"><button type="button" data-v="15">15秒</button><button type="button" data-v="30">30秒</button><button type="button" data-v="45">45秒</button><button type="button" data-v="60">60秒</button></div></div>
@@ -286,17 +297,6 @@ body.has-fab .wrap{padding-bottom:110px}
         <button class="btn pri" id="createBtn" type="button" disabled>ルームを作成して入室</button>
         <p class="hint">作った人がホストです。ホストのブラウザがドラフトの進行役になるので、終わるまでタブを開いたままにしてください(再読み込みなら復元されます)。</p>
         <p class="msg" id="createMsg" role="status"></p>
-      </div>
-      <div class="card">
-        <h2>ルームに入室</h2>
-        <div class="row" style="margin-bottom:8px"><label for="joinId" class="lab">ルームID</label></div>
-        <input class="field num" id="joinId" maxlength="10" placeholder="例: K7M2QX" autocomplete="off" style="width:100%;font-size:22px;letter-spacing:.2em;text-transform:uppercase">
-        <p class="hint">参加者は入室後にロビーで席に座ります。観戦で入ると閲覧だけで、座ること・選ぶことはできません。</p>
-        <div class="btns" style="margin-top:14px">
-          <button class="btn pri" id="joinBtn" type="button" disabled>参加者として入室</button>
-          <button class="btn" id="watchBtn" type="button" disabled>観戦で入室</button>
-        </div>
-        <p class="msg" id="joinMsg" role="status"></p>
       </div>
     </div>
   </section>
