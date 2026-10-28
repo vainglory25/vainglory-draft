@@ -97,7 +97,7 @@ details.fx summary{cursor:pointer;color:var(--muted);font-size:12px;letter-spaci
 details.fx[open] summary{margin-bottom:10px}
 
 /* hero tiles */
-.pool{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:6px}
+.pool{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(74px,calc((100% - 24px) / 5)),1fr));gap:6px}
 .tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 3px 5px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);min-width:0}
 .tile .nm{font-size:11px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tile:hover:not(:disabled){border-color:var(--muted)}
