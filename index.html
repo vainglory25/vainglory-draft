@@ -633,6 +633,17 @@ function onHostConn(conn,gen){
   conn.on("close",drop);conn.on("error",drop);
 }
 
+/* ---------- ICE(STUN/TURN)設定 ----------
+   別ネットワーク同士(携帯回線・厳しいルーター等)では、STUNだけだと直接つながらず TURN(中継)が必要です。
+   確実に使うには、無料の TURN(Metered / Cloudflare Calls など)の認証情報を取得して TURN_SERVERS に追記してください。
+   例: {urls:["turn:xxx.metered.live:80","turn:xxx.metered.live:443","turns:xxx.metered.live:443?transport=tcp"],username:"...",credential:"..."} */
+var TURN_SERVERS=[];
+var ICE_SERVERS=[
+  {urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"},
+  {urls:"stun:stun.cloudflare.com:3478"},{urls:"stun:global.stun.twilio.com:3478"},
+  {urls:["turn:openrelay.metered.ca:80","turn:openrelay.metered.ca:443","turn:openrelay.metered.ca:443?transport=tcp"],username:"openrelayproject",credential:"openrelayproject"}
+].concat(TURN_SERVERS);
+var PEER_OPTS={debug:0,config:{iceServers:ICE_SERVERS,iceCandidatePoolSize:4}};
 /* ---------- 通信(ホスト起動 / クライアント接続) ---------- */
 function loadPeer(){
   return new Promise(function(resolve){
@@ -659,7 +670,7 @@ function startHost(id,cb){
   var gen=netGen,opened=false,fin=false;
   var finish=function(r){if(fin)return;fin=true;clearTimeout(to);cb(r)};
   var p;
-  try{p=new window.Peer("vgd-"+id,{debug:0})}catch(e){cb({ok:false,err:"init"});return}
+  try{p=new window.Peer("vgd-"+id,PEER_OPTS)}catch(e){cb({ok:false,err:"init"});return}
   peer=p;
   var to=setTimeout(function(){finish({ok:false,err:"timeout"})},12000);
   p.on("open",function(){if(gen!==netGen)return;opened=true;finish({ok:true})});
@@ -738,10 +749,10 @@ function connectClient(id,spec,retry){
   killNet();
   var gen=netGen,done=false,p;
   roomId=id;joinSpec=!!spec;
-  try{p=new window.Peer(undefined,{debug:0})}catch(e){failJoin("通信を開始できませんでした。",retry);return}
+  try{p=new window.Peer(undefined,PEER_OPTS)}catch(e){failJoin("通信を開始できませんでした。",retry);return}
   peer=p;
   var fail=function(text){if(done)return;done=true;clearTimeout(to);failJoin(text,retry)};
-  var to=setTimeout(function(){fail("接続がタイムアウトしました。ホストがページを開いているか確認してください。")},12000);
+  var to=setTimeout(function(){fail("接続がタイムアウトしました。ホストがページを開いているか確認してください。(別ネットワーク同士の場合は通信の中継サーバー(TURN)が必要なことがあります)")},25000);
   p.on("error",function(e){
     if(gen!==netGen)return;
     var t=e&&e.type;
