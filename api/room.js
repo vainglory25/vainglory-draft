@@ -1,928 +1,337 @@
-<!doctype html>
-<html lang="ja">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>VainGlory カスタムドラフト</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Cinzel:wght@600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
-<style>
-/* Layout: 中央にヒーロープール、左右にホーム(青)/アウェイ(赤)の行ボード。狭い画面ではボードを2列、プールを下に回す。
-   ドラフト画面らしい夜の配色の単一テーマ。全ての色をトークンで定義する。 */
-:root{
-  --bg:#0b0d1a; --panel:#131730; --panel2:#1a1f3d; --line:#2b335f;
-  --fg:#e9ecf9; --muted:#8f96bd;
-  --home:#5aaaff; --home-d:#14315a; --away:#ff7062; --away-d:#5a1e1a;
-  --gold:#e8c46c; --ok:#5fd6a0; --warn:#ff9f5a;
-  --f-disp:'Chakra Petch','Noto Sans JP',system-ui,sans-serif;
-  --f-body:'Noto Sans JP',system-ui,-apple-system,'Hiragino Kaku Gothic ProN',Meiryo,sans-serif;
-  --f-mark:'Cinzel',Georgia,serif;
-  color-scheme:dark;
-}
-*{box-sizing:border-box}
-[hidden]{display:none!important}
-html,body{margin:0}
-body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.55}
-.wrap{max-width:1280px;margin:0 auto;padding-block:16px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-button,input,select{font:inherit;color:inherit}
-button{cursor:pointer}
-button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
-.num{font-family:var(--f-disp);font-variant-numeric:tabular-nums}
+/* VainGlory ドラフト: ルームの進行役(サーバー側)。
+   Vercel の API 関数 + Upstash Redis(REST)だけで動きます。追加パッケージは不要です。
+   環境変数(Vercel の Upstash Redis 連携が自動で入れます):
+     UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN  または  KV_REST_API_URL / KV_REST_API_TOKEN
+   クライアントは 1秒ちょっと毎に POST /api/room {op:"sync"} を呼び、操作(a)も同じ呼び出しで送ります。 */
 
-/* top bar */
-.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:16px}
-.logo{display:flex;align-items:baseline;gap:10px;min-width:0}
-.logo b{font-family:var(--f-mark);font-weight:600;font-size:22px;letter-spacing:.18em;color:var(--gold)}
-.logo span{font-family:var(--f-disp);font-size:12px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
-.topr{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.chip-id{display:flex;align-items:center;gap:8px;padding:4px 6px 4px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel)}
-.chip-id small{color:var(--muted);font-size:11px;letter-spacing:.12em}
-.chip-id code{font-family:var(--f-disp);font-weight:700;font-size:18px;letter-spacing:.18em;user-select:all}
+var DB_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+var DB_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 
-.btn{border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:8px 14px;font-weight:500}
-.btn:hover:not(:disabled){border-color:var(--muted)}
-.btn:disabled{opacity:.45;cursor:not-allowed}
-.btn.pri{background:var(--gold);border-color:var(--gold);color:#241b05;font-weight:700}
-.btn.pri:hover:not(:disabled){filter:brightness(1.08)}
-.btn.home{background:var(--home-d);border-color:var(--home);color:#dcecff}
-.btn.away{background:var(--away-d);border-color:var(--away);color:#ffe0dc}
-.btn.sm{padding:4px 10px;font-size:12px;border-radius:999px}
-.btn.ghost{background:transparent}
+var HOST_USER = process.env.HOST_USER || "";
+var HOST_PASSWORD = process.env.HOST_PASSWORD || "";
+var TTL = 6 * 3600;          /* ルームは最後の更新から6時間で消えます */
+var PRESENCE_MS = 10000;     /* これ以上応答がない人は「切断中」 */
+var MAX_MEMBERS = 80;
 
-.banner{padding:10px 14px;border:1px solid var(--warn);border-radius:8px;background:rgba(255,159,90,.08);color:#ffd9bb;margin-bottom:14px}
-
-/* entry */
-.hero-h{margin:4px 0 16px}
-.hero-h h1{font-family:var(--f-disp);font-size:clamp(26px,4.5vw,40px);line-height:1.15;margin:0 0 4px;letter-spacing:.02em;text-wrap:balance}
-.hero-h p{margin:0;color:var(--muted);max-width:60ch}
-.namebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
-.namebar label{color:var(--muted);font-size:12px;letter-spacing:.1em}
-.field{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 12px;min-width:0}
-.cols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:start}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;min-width:0}
-.card h2{font-family:var(--f-disp);font-size:16px;letter-spacing:.12em;margin:0 0 14px;text-transform:uppercase;color:var(--gold)}
-.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-.row>label,.lab{color:var(--muted);font-size:12px;letter-spacing:.08em}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
-.seg button{border:0;background:transparent;padding:7px 14px;border-right:1px solid var(--line);font-family:var(--f-disp);font-weight:500}
-.seg button:last-child{border-right:0}
-.seg button.on{background:var(--gold);color:#241b05;font-weight:700}
-.hint{color:var(--muted);font-size:12px;margin:6px 0 0}
-.msg{color:var(--warn);min-height:1.5em;margin:10px 0 0;font-size:13px}
-.sum{font-family:var(--f-disp);color:var(--muted);font-size:13px;margin:12px 0}
-.btns{display:flex;gap:8px;flex-wrap:wrap}
-
-.strip{display:flex;gap:6px;flex-wrap:wrap}
-.rchip{min-width:48px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);text-align:center;font-family:var(--f-disp);line-height:1.2}
-.rchip small{display:block;font-size:10px;letter-spacing:.14em;opacity:.8}
-.rchip b{font-size:15px}
-.rchip.B{border-color:var(--away);background:var(--away-d);color:#ffe0dc}
-.rchip.P{color:var(--muted)}
-.rlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
-.ritem{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);text-align:left}
-.ritem .rn{font-family:var(--f-disp);font-weight:700;font-size:18px;min-width:1.2em}
-.ritem .rt{font-family:var(--f-disp);font-weight:700;letter-spacing:.14em;font-size:14px}
-.ritem small{margin-left:auto;font-size:11px;opacity:.75}
-.ritem.B{border-color:var(--away);background:var(--away-d);color:#ffe0dc}
-.ritem.P{color:var(--fg)}
-button.ritem:disabled{cursor:default;opacity:1}
-button.ritem:not(:disabled):hover{border-color:var(--gold)}
-
-.fixed-list{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
-.fchip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 4px;border-radius:999px;border:1px solid var(--away);background:var(--away-d);font-size:12px}
-.fchip .mono{width:22px;height:22px;font-size:9px;border-radius:50%}
-details.fx{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:6px}
-details.fx summary{cursor:pointer;color:var(--muted);font-size:12px;letter-spacing:.08em}
-details.fx[open] summary{margin-bottom:10px}
-
-/* hero tiles */
-.pool{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(74px,calc((100% - 24px) / 5)),1fr));gap:6px}
-.tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 3px 5px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);min-width:0}
-.tile .nm{font-size:11px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tile:hover:not(:disabled){border-color:var(--muted)}
-.tile:disabled{cursor:default}
-.mono{display:grid;place-items:center;width:46px;height:46px;border-radius:8px;font-family:var(--f-disp);font-weight:700;font-size:15px;letter-spacing:.04em;color:#fff;
-  background:linear-gradient(145deg,hsl(var(--h) 52% 40%),hsl(calc(var(--h) + 32) 55% 22%))}
-.tile.ban .mono,.tile.fixed .mono{filter:grayscale(1) brightness(.5)}
-.tile.ban::after,.tile.fixed::after{content:"";position:absolute;top:6px;left:50%;width:46px;height:46px;margin-left:-23px;pointer-events:none;
-  background:linear-gradient(to top right,transparent calc(50% - 1.5px),var(--away) calc(50% - 1.5px),var(--away) calc(50% + 1.5px),transparent calc(50% + 1.5px))}
-.tile.fixed{border-style:dashed}
-.tile.pick-home{border-color:var(--home);opacity:.55}
-.tile.pick-away{border-color:var(--away);opacity:.55}
-.tile.sel{outline:2px dashed var(--gold);outline-offset:1px}
-.tile.mine{outline:2px dashed var(--muted);outline-offset:1px}
-
-/* room */
-.meta{display:flex;gap:8px 14px;flex-wrap:wrap;align-items:center;margin-bottom:14px;color:var(--muted);font-size:13px}
-.badge{padding:2px 10px;border-radius:999px;border:1px solid var(--line);font-family:var(--f-disp);font-size:12px;letter-spacing:.1em}
-.badge.home{border-color:var(--home);color:var(--home)}
-.badge.away{border-color:var(--away);color:var(--away)}
-.badge.spec{color:var(--muted)}
-.badge.gold{border-color:var(--gold);color:var(--gold)}
-
-.teams{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
-.team{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
-.team.home{border-top:3px solid var(--home)}
-.team.away{border-top:3px solid var(--away)}
-.team h3{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 10px;font-family:var(--f-disp);letter-spacing:.14em;font-size:15px}
-.team.home h3{color:var(--home)}
-.team.away h3{color:var(--away)}
-.tr{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);letter-spacing:.08em}
-.tr.ok{border-color:var(--ok);color:var(--ok);background:rgba(95,214,160,.1)}
-.seat{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--panel2);min-height:44px}
-.seat.empty{border-style:dashed;background:transparent;color:var(--muted)}
-.seat.me{border-color:var(--gold)}
-.seat .sn{font-family:var(--f-disp);color:var(--muted);font-size:12px}
-.seat .who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.seat .who small{color:var(--muted);margin-left:6px}
-.rd{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
-.rd i{width:12px;height:12px;border-radius:50%;background:var(--line);display:inline-block}
-.rd.on{color:var(--ok)}
-.rd.on i{background:var(--ok);box-shadow:0 0 8px var(--ok)}
-.kick{border:0;background:transparent;color:var(--muted);padding:0 4px;font-size:16px;line-height:1}
-.kick:hover{color:var(--away)}
-.team .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.readybar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0}
-
-/* draft */
-.turnbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 18px;align-items:center;padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top,0px));background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;position:sticky;top:0;z-index:20;overflow:hidden;box-shadow:0 8px 18px -10px #000}
-.turnbar.home{border-color:var(--home)}
-.turnbar.away{border-color:var(--away)}
-.turnbar.mine{box-shadow:0 0 0 1px var(--gold),0 0 24px -6px var(--gold),0 8px 18px -10px #000}
-.tb-l .k{font-family:var(--f-disp);font-size:12px;letter-spacing:.16em;color:var(--muted)}
-.tb-l .v{font-size:18px;font-weight:700;margin-top:2px}
-.tb-l .v em{font-style:normal;color:var(--gold)}
-.tb-act{margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
-.tb-r{font-family:var(--f-disp);font-weight:700;font-size:44px;line-height:1;text-align:right;font-variant-numeric:tabular-nums}
-.tb-r.low{color:var(--away)}
-.tbar{grid-column:1/-1;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
-.tbar i{display:block;height:100%;background:var(--gold);width:100%}
-.turnbar.home .tbar i{background:var(--home)}
-.turnbar.away .tbar i{background:var(--away)}
-.fixed-wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
-.stage{display:grid;gap:12px;grid-template-columns:minmax(220px,1fr) minmax(0,2.2fr) minmax(220px,1fr);grid-template-areas:"home pool away"}
-#colHome{grid-area:home}
-#colAway{grid-area:away}
-#colPool{grid-area:pool;min-width:0}
-.colh{font-family:var(--f-disp);letter-spacing:.16em;font-size:13px;margin:0 0 8px;display:flex;justify-content:space-between}
-#colHome .colh{color:var(--home)}
-#colAway .colh{color:var(--away)}
-.cell{display:grid;grid-template-columns:20px 44px minmax(0,1fr);align-items:center;gap:8px;min-height:62px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);margin-bottom:6px}
-.cell.B{min-height:46px;background:rgba(255,112,98,.07)}
-.cell .rn{font-family:var(--f-disp);font-size:12px;color:var(--muted)}
-.cell .mono{width:40px;height:40px;font-size:13px}
-.cell.B .mono{width:30px;height:30px;font-size:11px;border-radius:6px;filter:grayscale(1) brightness(.55)}
-.cell .ph{width:40px;height:40px;border-radius:8px;border:1px dashed var(--line);display:grid;place-items:center;font-family:var(--f-disp);font-size:10px;letter-spacing:.1em;color:var(--muted)}
-.cell.B .ph{width:30px;height:30px;font-size:9px}
-.cell .tx{min-width:0}
-.cell .hn{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cell.B .hn{text-decoration:line-through;text-decoration-color:var(--away);font-weight:500}
-.cell .ow{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cell.cur.home{border-color:var(--home);box-shadow:0 0 18px -4px var(--home)}
-.cell.cur.away{border-color:var(--away);box-shadow:0 0 18px -4px var(--away)}
-.cell.cur .ph,.cell.cur .mono{outline:2px dashed var(--gold);outline-offset:1px}
-.cell.cur{animation:pulse 1.6s ease-in-out infinite}
-@keyframes pulse{50%{background:var(--panel2)}}
-.cell.me{border-color:var(--gold)}
-.searchrow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
-.searchrow .field{flex:1}
-.actbar{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;z-index:2;padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
-.actbar .t{min-width:0;flex:1 1 220px}
-.actbar .t b{color:var(--gold)}
-.actbar .t small{display:block;color:var(--muted);font-size:12px}
-.pool-scroll{max-height:56vh;overflow-y:auto;padding:2px}
-
-/* 確定ボタン(右下に固定) */
-.fab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:30;min-width:156px;padding:12px 22px;border-radius:14px;border:0;background:var(--gold);color:#241b05;font-weight:700;font-size:16px;line-height:1.3;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.6)}
-.fab small{display:block;font-weight:500;font-size:11px;opacity:.8;max-width:140px;margin:0 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.fab:disabled{background:var(--panel2);color:var(--muted);border:1px solid var(--line);box-shadow:none;cursor:not-allowed}
-body.has-fab .wrap{padding-bottom:110px}
-/* チーム内で共有される候補 */
-.tile .cb{position:absolute;top:2px;left:2px;right:2px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;font-style:normal;pointer-events:none}
-.tile .cb b{display:block;max-width:100%;font-family:var(--f-disp);font-weight:700;font-size:9px;line-height:1.25;padding:1px 5px;border-radius:6px;background:var(--gold);color:#241b05;white-space:normal;word-break:break-all;overflow-wrap:anywhere}
-.tile.cand-home{outline:2px dotted var(--home);outline-offset:1px}
-.tile.cand-away{outline:2px dotted var(--away);outline-offset:1px}
-
-/* ---- ロール別グループ ---- */
-.grp{margin-bottom:12px}
-.gh{display:flex;align-items:baseline;gap:10px;margin:10px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--line);font-family:var(--f-disp);font-size:13px;font-weight:700;letter-spacing:.14em;color:var(--gold)}
-.gh small{color:var(--muted);letter-spacing:.2em;font-size:10px;font-weight:500}
-#colPool .pool-scroll{max-height:none;overflow:visible}
-@media (min-width:901px){#colPool .pool-scroll{max-height:64vh;overflow-y:auto}}
-/* ---- ヒーロー画像(一覧は画像いっぱいのタイルに名前を重ねる) ---- */
-.mono.hv{background-size:cover;background-position:center;background-repeat:no-repeat;font-size:0;color:transparent}
-.tile{display:block;padding:0;aspect-ratio:1/1;overflow:hidden;border-radius:8px}
-.tile .mono{position:absolute;inset:0;width:100%;height:100%;border-radius:0;font-size:22px}
-.tile .mono.hv{font-size:0}
-.tile .nm{position:absolute;left:0;right:0;bottom:0;z-index:1;max-width:none;padding:18px 2px 3px;text-align:center;font-size:11px;font-weight:700;line-height:1.15;color:#fff;text-shadow:0 1px 3px #000;background:linear-gradient(to top,rgba(6,7,18,.94),rgba(6,7,18,0))}
-.tile .nm.lg{font-size:10px}
-.tile .nm.xl{font-size:9px;letter-spacing:-.02em}
-.tile.ban::after,.tile.fixed::after{inset:0;width:auto;height:auto;margin:0;z-index:2}
-.tile .cb{z-index:3}
-body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%),hsl(calc(var(--h) + 32) 55% 22%))!important;font-size:15px!important;color:#fff!important}
-/* countdown */
-.cd{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(7,8,18,.86);text-align:center}
-.cd p{margin:0;font-family:var(--f-disp);letter-spacing:.3em;color:var(--muted);font-size:14px}
-.cd .big{font-family:var(--f-disp);font-weight:700;font-size:clamp(110px,28vw,240px);line-height:1;color:var(--gold);font-variant-numeric:tabular-nums}
-.toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--panel2);border:1px solid var(--gold);padding:8px 16px;border-radius:999px;z-index:60;font-size:13px;max-width:90vw}
-
-@media (max-width:900px){
-  .stage{grid-template-columns:1fr 1fr;grid-template-areas:"home away" "pool pool"}
-  .cols{grid-template-columns:1fr}
-}
-@media (max-width:560px){
-  .cell{grid-template-columns:16px 34px minmax(0,1fr);gap:6px;padding:5px 6px}
-  .cell .mono,.cell .ph{width:34px;height:34px}
-  .tb-r{font-size:32px}
-  .logo b{font-size:18px}
-  .turnbar{padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top,0px));gap:4px 12px;border-radius:0 0 12px 12px}
-  .tb-l .v{font-size:15px}
-  .tb-act .note{display:none}
-}
-@media (max-width:420px){.teams{grid-template-columns:1fr}}
-@media (prefers-reduced-motion:reduce){.cell.cur{animation:none}}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <header class="top">
-    <div class="logo"><b>VAINGLORY</b><span>Custom Draft</span></div>
-    <div class="topr" id="topr" hidden>
-      <div class="chip-id"><small>ROOM</small><code id="roomCode"></code><button class="btn sm" id="maskBtn" type="button" aria-pressed="true">表示</button><button class="btn sm" id="copyId" type="button">IDコピー</button></div>
-      <button class="btn sm" id="copyHome" type="button">ホーム参加リンク</button>
-      <button class="btn sm" id="copyAway" type="button">アウェイ参加リンク</button>
-      <button class="btn sm" id="copyWatch" type="button">観戦リンク</button>
-      <button class="btn sm ghost" id="leaveBtn" type="button">退出</button>
-    </div>
-  </header>
-
-  <div class="banner" id="netBanner" hidden></div>
-  <div class="banner" id="imgBanner" hidden>ヒーロー画像を読み込めませんでした。index.html と同じ場所の images フォルダに、hero-captain.png / hero-jungler.png / hero-laner-1.png / hero-laner-2.png を置いてください。画像なしでもイニシャル表示で使えます。</div>
-
-  <!-- ENTRY -->
-  <section id="vEntry">
-    <div class="hero-h">
-      <h1>3v3 / 5v5 のBAN&amp;ピックを、ルームIDで共有する</h1>
-      <p>ホーム(左)とアウェイ(右)に分かれ、全員が準備完了になると5秒後に開始します。参加者と観戦者は、ルームIDか招待リンクで入室します。</p>
-    </div>
-    <div class="namebar" id="nameBar" hidden>
-      <label for="myName">表示名</label>
-      <input class="field" id="myName" maxlength="14" placeholder="あなたの名前" autocomplete="off">
-    </div>
-    <div class="cols">
-      <div class="card" id="gateCard" hidden>
-        <h2>ホストログイン</h2>
-        <p class="hint">ルームを作成できるのはホストだけです。参加・観戦する人は、ホストから届いた <b>ルーム付きのリンク</b> を開いてください。</p>
-        <div class="row" style="margin-bottom:6px"><label for="gateUser" class="lab">ユーザー名</label></div>
-        <input class="field" id="gateUser" autocomplete="username" autocapitalize="off" style="width:100%">
-        <div class="row" style="margin:10px 0 6px"><label for="gatePass" class="lab">パスワード</label></div>
-        <input class="field" id="gatePass" type="password" autocomplete="current-password" style="width:100%">
-        <div class="btns" style="margin-top:14px"><button class="btn pri" id="gateBtn" type="button">ログイン</button></div>
-        <p class="msg" id="gateMsg" role="status"></p>
-      </div>
-      <div class="card" id="createCard" hidden>
-        <h2>ルームを作成 <button class="btn sm ghost" id="gateOut" type="button" style="float:right">ログアウト</button></h2>
-        <div class="row"><span class="lab">形式</span><div class="seg" id="segSize" role="group" aria-label="形式"><button type="button" data-v="3">3v3</button><button type="button" data-v="5">5v5</button></div></div>
-        <div class="row"><span class="lab">1手番の制限時間</span><div class="seg" id="segTimer" role="group" aria-label="制限時間"><button type="button" data-v="15">15秒</button><button type="button" data-v="30">30秒</button><button type="button" data-v="45">45秒</button><button type="button" data-v="60">60秒</button></div></div>
-        <div class="row"><span class="lab">BANの人数(各チーム)</span><div class="seg" id="segBans" role="group" aria-label="BANの人数"><button type="button" data-v="1">1人</button><button type="button" data-v="2">2人</button><button type="button" data-v="3">3人</button><button type="button" data-v="4">4人</button><button type="button" data-v="5">5人</button></div></div>
-        <div class="lab" style="margin-bottom:6px">進行順</div>
-        <div class="rlist" id="cStrip"></div>
-        <p class="hint" id="stripHint"></p>
-        <div class="lab" style="margin-top:14px">固定BAN(最初からBANするヒーロー) <span id="fixedCount"></span></div>
-        <div class="fixed-list" id="fixedList"></div>
-        <details class="fx" id="fixedDet">
-          <summary>固定BANを変更する(タップで追加・解除)</summary>
-          <div class="searchrow"><input class="field" id="fq" placeholder="ヒーロー名で絞り込み" autocomplete="off"></div>
-          <div class="pool-scroll" style="max-height:320px"><div id="fPool"></div></div>
-        </details>
-        <div class="sum" id="cSum"></div>
-        <button class="btn pri" id="createBtn" type="button" disabled>ルームを作成して入室</button>
-        <p class="hint">作った人がホストです(「ロビーに戻す」や席の入れ替えができます)。進行はサーバーが行うので、タブを閉じても再読み込みしても続けられます。</p>
-        <p class="msg" id="createMsg" role="status"></p>
-      </div>
-      <div class="card" id="joinCard" hidden>
-        <h2>ルームに入室</h2>
-        <div class="row" style="margin-bottom:8px"><label for="joinId" class="lab">ルームID</label></div>
-        <input class="field num" id="joinId" maxlength="10" placeholder="例: K7M2QX" autocomplete="off" style="width:100%;font-size:22px;letter-spacing:.2em;text-transform:uppercase">
-        <p class="hint">参加者は入室後にロビーで席に座ります。観戦で入ると閲覧だけで、座ること・選ぶことはできません。</p>
-        <div class="btns" style="margin-top:14px">
-          <button class="btn pri" id="joinBtn" type="button" disabled>参加者として入室</button>
-          <button class="btn" id="watchBtn" type="button" disabled>観戦で入室</button>
-        </div>
-        <p class="msg" id="joinMsg" role="status"></p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ROOM -->
-  <section id="vRoom" hidden>
-    <div class="meta" id="roomMeta"></div>
-    <div id="fixedWrap" class="fixed-wrap" hidden></div>
-
-    <div id="lobby" hidden>
-      <div class="teams" id="teams"></div>
-      <div class="readybar" id="readybar"></div>
-      <div class="lab" style="margin-bottom:6px">進行順</div>
-      <div class="strip" id="rStrip"></div>
-    </div>
-
-    <div id="draft" hidden>
-      <div class="turnbar" id="turnbar"></div>
-      <div class="stage">
-        <div id="colHome"></div>
-        <div id="colPool">
-          <div class="searchrow"><input class="field" id="q" placeholder="ヒーロー名で絞り込み" autocomplete="off"></div>
-          <div class="pool-scroll"><div id="poolGrid"></div></div>
-          <div class="actbar" id="actbar"></div>
-        </div>
-        <div id="colAway"></div>
-      </div>
-    </div>
-  </section>
-</div>
-
-<div class="cd" id="cd" hidden role="status"><div><p>ドラフト開始まで</p><div class="big" id="cdNum">5</div><button class="btn" id="cdCancel" type="button" hidden>準備を解除して中止</button></div></div>
-<button class="fab" id="fab" type="button" hidden></button>
-<div class="toast" id="toast" hidden></div>
-
-<script>
-(function(){
-"use strict";
-
-/* ---------------------------------------------------------------
-   仕組み: Vercel の API 関数(api/room.js)+ Upstash Redis がルームの状態を持ち、
-   進行(時間切れ・開始)と全ての操作の検証もサーバー側で行います。
-   参加者・観戦者・ホストはみな同じサーバーを 1秒ちょっと毎に読むだけなので、
-   ネットワークが違っても、ホストがタブを閉じても続きます。
-   --------------------------------------------------------------- */
-
-/* ヒーロー一覧とグループ(キャプテン/ジャングラー/レーナー)。追加・削除・移動はここを編集します。分類は目安です。 */
-var ROLES=[
-  {k:"captain",ja:"キャプテン",en:"CAPTAIN",list:["アダージオ","アーダン","キャサリン","チャーンウォーカー","フリッカー","フォートレス","グレース","ランス","ローレライ","ライラ","フィン","ヴィオラ","イェーツ"]},
-  {k:"jungler",ja:"ジャングラー",en:"JUNGLER",list:["アルファ","グレイヴ","グランプジョー","イナラ","ジュール","コシュカ","クラル","オゾ","ペタル","ライム","ロナ","シン","タカ","トニー","イルバ"]},
-  {k:"laner",ja:"レーナー",en:"LANER",list:["アマエル","アンカ","バティスト","バロン","ブラックフェザー","ケイン","セレス","グウェン","イドリス","イシュター","カラス","剣聖","ケストレル","キネティック","レオ","マグナス","マレン","ミホ","レザ","リンゴ","サムエル","サンポウ","ソー","シルバーネイル","スカーフ","スカイ","ヴァーリア","ヴォックス","ウォーホーク"]}
-];
-var HEROES=[];ROLES.forEach(function(g){g.list.forEach(function(h){HEROES.push(h)})});
-/* ヒーロー画像: images フォルダの4枚のスクリーンショットを、CSSで1人ずつ切り出して使います。
-   SHEETS: file=画像ファイル / w,h=画像の大きさ(px) / x,y=1人目のタイルの左上(px)
-   HERO_POS: ヒーロー名 → [何枚目, 列, 行](0始まり、1行5人)。ヒーローを足すときはここに位置を書きます。 */
-var SHEETS=[
-  {file:"images/hero-captain.png",w:1220,h:733,x:4,y:6},
-  {file:"images/hero-jungler.png",w:1219,h:735,x:6,y:8},
-  {file:"images/hero-laner-1.png",w:1220,h:737,x:8,y:7},
-  {file:"images/hero-laner-2.png",w:1215,h:736,x:5,y:7}
-];
-var HERO_POS={"アダージオ":[0,0,0],"アーダン":[0,1,0],"キャサリン":[0,2,0],"チャーンウォーカー":[0,3,0],"フリッカー":[0,4,0],"フォートレス":[0,0,1],"グレース":[0,1,1],"ランス":[0,2,1],"ローレライ":[0,3,1],"ライラ":[0,4,1],"フィン":[0,0,2],"ヴィオラ":[0,1,2],"イェーツ":[0,2,2],"アルファ":[1,0,0],"グレイヴ":[1,1,0],"グランプジョー":[1,2,0],"イナラ":[1,3,0],"ジュール":[1,4,0],"コシュカ":[1,0,1],"クラル":[1,1,1],"オゾ":[1,2,1],"ペタル":[1,3,1],"ライム":[1,4,1],"ロナ":[1,0,2],"シン":[1,1,2],"タカ":[1,2,2],"トニー":[1,3,2],"イルバ":[1,4,2],"アマエル":[2,0,0],"アンカ":[2,1,0],"バティスト":[2,2,0],"バロン":[2,3,0],"ブラックフェザー":[2,4,0],"ケイン":[2,0,1],"セレス":[2,1,1],"グウェン":[2,2,1],"イドリス":[2,3,1],"イシュター":[2,4,1],"カラス":[2,0,2],"剣聖":[2,1,2],"ケストレル":[2,2,2],"キネティック":[2,3,2],"レオ":[2,4,2],"マグナス":[3,0,0],"マレン":[3,1,0],"ミホ":[3,2,0],"レザ":[3,3,0],"リンゴ":[3,4,0],"サムエル":[3,0,1],"サンポウ":[3,1,1],"ソー":[3,2,1],"シルバーネイル":[3,3,1],"スカーフ":[3,4,1],"スカイ":[3,0,2],"ヴァーリア":[3,1,2],"ヴォックス":[3,2,2],"ウォーホーク":[3,3,2]};
-
-var $=function(s){return document.querySelector(s)};
-var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
-function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
-function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
-function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
-function lsDel(k){try{localStorage.removeItem(k)}catch(e){}}
-function rnd(n){var s="";while(s.length<n)s+=Math.random().toString(36).slice(2);return s.slice(0,n)}
-function hash(s){var h=0;for(var i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))>>>0}return h}
-function mono(n){var w=n.split(" ");return (w.length>1?w[0][0]+w[1][0]:n.slice(0,2)).toUpperCase()}
-var HIDX={};HEROES.forEach(function(h,i){HIDX[h]=i});
-function monoHTML(n){
-  var im=HERO_POS[n]&&HIDX[n]>=0;
-  return '<span aria-hidden="true" class="mono'+(im?' hv hi'+HIDX[n]:'')+'" style="--h:'+(hash(n)%360)+'">'+esc(mono(n))+'</span>';
-}
-/* 画像の拡大率と位置をパーセントで指定して、1人分(正方形)だけを見せる。どの大きさの枠でも同じ切り出しになる */
-function buildHeroCss(){
-  var css="",CROP=168,OX=27,OY=5,PX=243.3,PY=243.5;
-  HEROES.forEach(function(h,i){
-    var p=HERO_POS[h],sh=p&&SHEETS[p[0]];if(!sh)return;
-    var cx=Math.round(sh.x+PX*p[1])+OX,cy=Math.round(sh.y+PY*p[2])+OY;
-    css+=".mono.hv.hi"+i+"{background-image:url("+sh.file+");background-size:"+(sh.w/CROP*100).toFixed(3)+"% "+(sh.h/CROP*100).toFixed(3)+"%;background-position:"+(cx/(sh.w-CROP)*100).toFixed(3)+"% "+(cy/(sh.h-CROP)*100).toFixed(3)+"%}";
+/* ---------- Redis (Upstash REST pipeline) ---------- */
+async function redis(cmds) {
+  var r = await fetch(DB_URL + "/pipeline", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + DB_TOKEN, "Content-Type": "application/json" },
+    body: JSON.stringify(cmds)
   });
-  var st=document.createElement("style");st.id="heroCss";st.textContent=css;document.head.appendChild(st);
-  /* 画像を読み込めないときは、イニシャル表示に戻して案内を出す */
-  var miss=false;
-  SHEETS.forEach(function(sh){var im=new Image();im.onerror=function(){if(miss)return;miss=true;document.body.classList.add("img-missing");$("#imgBanner").hidden=false};im.src=sh.file});
+  if (!r.ok) throw new Error("redis http " + r.status);
+  var j = await r.json();
+  return j.map(function (x) { if (x && x.error) throw new Error(x.error); return x.result; });
 }
-function nmCls(h){return "nm"+(h.length>=7?" xl":(h.length>=6?" lg":""))}
-function teamJa(t){return t==="home"?"ホーム":"アウェイ"}
-function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
+function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+var kRoom = function (id) { return "vgd:r:" + id; };
+var kSeen = function (id) { return "vgd:s:" + id; };
+var kLock = function (id) { return "vgd:l:" + id; };
 
-/* ---------- identity (この端末だけの識別子) ---------- */
-var myUid=lsGet("vgd_uid");
-if(!myUid){myUid="u"+rnd(12);lsSet("vgd_uid",myUid)}
-var myTok=lsGet("vgd_tok");
-if(!myTok){myTok=rnd(24);lsSet("vgd_tok",myTok)}
-var myName=lsGet("vgd_name")||"";
-
-/* ---------- state ---------- */
-var S=null,D=null;                    /* S: ルームの状態(ホストが正)  D: Sから導いた値 */
-var roomId=null,isHost=false,inRoom=false,joining=false,joinSpec=false;
-var netGen=0,joinTeam="";
-var hostOK=false,entryRoom="",hostAuth=null;
-try{hostAuth=JSON.parse(lsGet("vgd_ha")||"null")}catch(e){hostAuth=null}
-/* 入口画面の出し分け: ホストログイン前(ルームの指定なし)=ログインだけ / ルーム指定のリンク=入室だけ / ログイン済みのホスト=作成+入室 */
-function refreshEntry(){
-  var mode=hostOK?"host":(entryRoom?"join":"gate");
-  $("#gateCard").hidden=mode!=="gate";
-  $("#createCard").hidden=mode!=="host";
-  $("#joinCard").hidden=!(mode==="host"||mode==="join");
-  $("#nameBar").hidden=mode==="gate";
-}
-async function hostLogin(u,p,silent){
-  var r=await apiCall({op:"auth",hu:u,hp:p});
-  if(r.status===200){hostOK=true;hostAuth={u:u,p:p};lsSet("vgd_ha",JSON.stringify(hostAuth));refreshEntry();return true}
-  if(r.status===401||r.status===403){hostAuth=null;lsDel("vgd_ha")}
-  if(!silent){
-    $("#gateMsg").textContent=r.status===401?"ユーザー名またはパスワードが違います。":r.status===429?"試行回数が多すぎます。しばらく待ってからもう一度お試しください。":(r.status===500&&r.data&&r.data.err==="nopw")?"サーバーにホストのパスワードが設定されていません(Vercel の環境変数 HOST_USER / HOST_PASSWORD を設定して再デプロイしてください)。":"サーバーに接続できませんでした。";
+async function withLock(id, fn) {
+  var ok = false;
+  for (var i = 0; i < 25 && !ok; i++) {
+    ok = (await redis([["SET", kLock(id), "1", "NX", "PX", "4000"]]))[0] === "OK";
+    if (!ok) await sleep(60 + Math.random() * 80);
   }
-  return false;
+  if (!ok) { var e = new Error("busy"); e.busy = true; throw e; }
+  try { return await fn(); }
+  finally { try { await redis([["DEL", kLock(id)]]); } catch (e) {} }
 }
-var off=0,connected=false;
-var localSel="",q="";
-var cs={size:5,timer:45,bans:1,rows:[],fixed:["チャーンウォーカー","ヴィオラ"]};   /* 既定の固定BAN(作成画面で変更できます) */
+function seenMap(arr) {      /* HGETALL の [k,v,k,v…] → {k:v} */
+  var o = {}; arr = arr || [];
+  for (var i = 0; i + 1 < arr.length; i += 2) o[arr[i]] = +arr[i + 1];
+  return o;
+}
 
-function nowS(){return Date.now()+off}
-function toast(t){var el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true},2600)}
-function getName(){var n=($("#myName").value||"").trim().slice(0,14);if(!n){n="Player"+(10+Math.floor(Math.random()*90))}$("#myName").value=n;myName=n;lsSet("vgd_name",n);return n}
-
-/* ---------- draft model ---------- */
-function buildTurns(cfg){
-  /* ジグザグ順: BANとPICKを別々に数え、その種類の1行目・3行目…はホーム→アウェイ、2行目・4行目…はアウェイ→ホームの順に手番が進む */
-  var N=cfg.size,turns=[],p=0,b=0;
-  for(var r=0;r<cfg.rows.length;r++){
-    var type=cfg.rows[r],k=type==="P"?p++:b++;
-    var slot=type==="P"?k:(k%N),order=k%2===0?["home","away"]:["away","home"];
-    turns.push({r:r,team:order[0],type:type,slot:slot});
-    turns.push({r:r,team:order[1],type:type,slot:slot});
+/* ---------- ドラフトのモデル(画面側 index.html と同じ規則) ---------- */
+function buildTurns(cfg) {
+  var N = cfg.size, turns = [], p = 0, b = 0;
+  for (var r = 0; r < cfg.rows.length; r++) {
+    var type = cfg.rows[r], k = type === "P" ? p++ : b++;
+    var slot = type === "P" ? k : (k % N), order = k % 2 === 0 ? ["home", "away"] : ["away", "home"];
+    turns.push({ r: r, team: order[0], type: type, slot: slot });
+    turns.push({ r: r, team: order[1], type: type, slot: slot });
   }
   return turns;
 }
-function defaultRows(size,k){
-  /* 1行目から1行おきにBAN(例: 3v3でBAN2人 → BAN,PICK,BAN,PICK,PICK) */
-  var R=size+k,pos=[],i;
-  for(i=0;pos.length<k&&i<=R-2;i+=2)pos.push(i);
-  for(i=1;pos.length<k&&i<=R-2;i++)if(pos.indexOf(i)<0)pos.push(i);
-  var rows=[];
-  for(i=0;i<R;i++)rows.push(pos.indexOf(i)>=0?"B":"P");
-  return rows.join("");
+function rankOf(S, team) {
+  var mem = S.members || {};
+  return Object.keys(mem).filter(function (k) { return mem[k].team === team; })
+    .sort(function (a, b) { return (mem[a].t - mem[b].t) || (a < b ? -1 : 1); });
 }
-function rankOf(team){
-  var mem=S.members||{};
-  return Object.keys(mem).filter(function(k){return mem[k].team===team}).sort(function(a,b){return (mem[a].t-mem[b].t)||(a<b?-1:1)});
-}
-function derive(){
-  var cfg=S.cfg,N=cfg.size,mem=S.members||{},seats;
-  if(S.phase==="lobby"){seats={home:rankOf("home").slice(0,N),away:rankOf("away").slice(0,N)}}
-  else seats={home:(S.seats&&S.seats.home)||[],away:(S.seats&&S.seats.away)||[]};
-  var tr={};
-  ["home","away"].forEach(function(t){tr[t]=seats[t].length===N&&seats[t].every(function(u){return mem[u]&&mem[u].ready===true})});
-  var turns=buildTurns(cfg),tix={};
-  turns.forEach(function(t,i){tix[t.r+t.team]=i});      /* (行,チーム) → 手番番号 */
-  var cur=S.phase==="draft"?turns[S.turn]||null:null;
-  var actor=cur?seats[cur.team][cur.slot]:null;
-  var myTeam=seats.home.indexOf(myUid)>=0?"home":(seats.away.indexOf(myUid)>=0?"away":"");
-  return {cfg:cfg,N:N,turns:turns,tix:tix,seats:seats,teamReady:tr,cur:cur,actor:actor,myTeam:myTeam,host:isHost,all:seats.home.concat(seats.away)};
-}
-function nameOf(u){var m=S.members&&S.members[u];return m&&m.name?m.name:"(不在)"}
-function isActor(){return !!(D&&D.cur&&D.actor===myUid)}
-/* 自分のチームの候補 {ヒーロー: [名前…]}(自分の分は含めない)。ホストの画面でも相手チームの分は使わない */
-var idMasked=lsGet("vgd_mask")!=="0";      /* 既定は隠す(配信・画面共有での荒らし対策) */
-function isSpectator(){var m=S&&S.members&&S.members[myUid];return !!(m&&m.spec&&!(D&&D.myTeam))}
-function renderRoomCode(){
-  var sp=isSpectator();                                  /* 観戦者には ROOM ID と招待リンクを出さない(観戦リンクと退出だけ) */
-  var mt=D&&D.myTeam;
-  $(".chip-id").hidden=sp;
-  $("#copyHome").hidden=sp||!(isHost||mt==="home");        /* 自分のチームの参加リンクだけ(ホストは両方) */
-  $("#copyAway").hidden=sp||!(isHost||mt==="away");
-  $("#roomCode").textContent=idMasked?"\u2022\u2022\u2022\u2022\u2022\u2022":(roomId||"");
-  var b=$("#maskBtn");b.textContent=idMasked?"表示":"隠す";b.setAttribute("aria-pressed",idMasked?"true":"false");
-}
-function mateCands(){
-  var out={};
-  if(!D.myTeam)return out;
-  var c=S.cands||{};
-  Object.keys(c).forEach(function(u){
-    if(u===myUid||D.seats[D.myTeam].indexOf(u)<0)return;
-    (out[c[u]]=out[c[u]]||[]).push(nameOf(u));
+function derive(S) {
+  var cfg = S.cfg, N = cfg.size, mem = S.members || {}, seats;
+  if (S.phase === "lobby") seats = { home: rankOf(S, "home").slice(0, N), away: rankOf(S, "away").slice(0, N) };
+  else seats = { home: (S.seats && S.seats.home) || [], away: (S.seats && S.seats.away) || [] };
+  var tr = {};
+  ["home", "away"].forEach(function (t) {
+    tr[t] = seats[t].length === N && seats[t].every(function (u) { return mem[u] && mem[u].ready === true; });
   });
-  return out;
+  var turns = buildTurns(cfg);
+  var cur = S.phase === "draft" ? turns[S.turn] || null : null;
+  var actor = cur ? seats[cur.team][cur.slot] : null;
+  return { cfg: cfg, N: N, turns: turns, seats: seats, teamReady: tr, cur: cur, actor: actor, all: seats.home.concat(seats.away) };
 }
-function taken(h){
-  if(S.cfg.fixedBans.indexOf(h)>=0)return true;
-  var lg=S.log||{};
-  for(var k in lg){if(lg[k].hero===h)return true}
+function taken(S, h) {
+  if (S.cfg.fixedBans.indexOf(h) >= 0) return true;
+  var lg = S.log || {};
+  for (var k in lg) { if (lg[k].hero === h) return true; }
   return false;
 }
-function statusOf(h){
-  if(S.cfg.fixedBans.indexOf(h)>=0)return {k:"fixed"};
-  var lg=S.log||{};
-  for(var k in lg){
-    if(lg[k].hero===h){var t=D.turns[+k];return t.type==="B"?{k:"ban",team:t.team}:{k:"pick",team:t.team}}
-  }
-  return null;
+function cleanName(n) { return String(n == null ? "" : n).replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, 14); }
+function autoHero(S) {
+  var free = S.cfg.heroes.filter(function (h) { return !taken(S, h); });
+  return free.length ? free[Math.floor(Math.random() * free.length)] : "";
 }
-
-/* =========================================================
-   サーバー通信(Vercel の /api/room)
-   進行・検証は全てサーバー側。この画面は 1秒ちょっと毎に状態を取得し、操作は同じ経路で送ります。
-   ========================================================= */
-var API="/api/room",POLL_MS=1300,outq=[],wake=null;
-function apiCall(body,keep){
-  var ctl=typeof AbortController!=="undefined"?new AbortController():null,to=setTimeout(function(){if(ctl)ctl.abort()},9000);
-  return fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),cache:"no-store",keepalive:!!keep,signal:ctl?ctl.signal:undefined})
-    .then(function(r){clearTimeout(to);return r.json().catch(function(){return {}}).then(function(j){return {status:r.status,data:j||{}}})})
-    .catch(function(){clearTimeout(to);return {status:0,data:{}}});
-}
-function syncBody(a,hello){return {op:"sync",id:roomId,uid:myUid,tok:myTok,name:myName,spec:!!joinSpec,hello:!!hello,team:hello&&!joinSpec?joinTeam:"",a:a||null}}
-function applySnap(d){
-  off=d.now-Date.now();connected=true;S=d.s;isHost=S.host===myUid;D=derive();setBanner();onState();
-  if(d.msg)toast(d.msg);
-}
-async function pump(gen){
-  while(inRoom&&gen===netGen){
-    var m=outq.shift();
-    var r=await apiCall(syncBody(m,false));
-    if(!(inRoom&&gen===netGen))return;
-    if(r.status===200&&r.data.s){applySnap(r.data)}
-    else if(r.status===404){leaveRoom(true,"ルームが終了したか、期限切れです");return}
-    else if(r.status===403){leaveRoom(true,"この名前の参加者はすでに別の端末で入室しています。");return}
-    else{connected=false;setBanner();if(m&&m.a!=="cand")toast("送信できませんでした。再接続しています…")}
-    if(!outq.length)await new Promise(function(res){wake=res;setTimeout(res,connected?POLL_MS:2500)});
-    wake=null;
+function advance(S, hero, auto, by) {
+  var D = derive(S);
+  S.log[S.turn] = { hero: hero, by: by || "", auto: !!auto };
+  S.pendingHero = ""; S.pendingTurn = -1; S.turn++;
+  S.cands = S.cands || {};
+  Object.keys(S.cands).forEach(function (k) { if (hero && S.cands[k] === hero) delete S.cands[k]; });
+  if (S.turn >= D.turns.length) { S.phase = "done"; S.deadline = 0; S.cands = {}; }
+  else {
+    S.deadline = Date.now() + S.cfg.timer * 1000;
+    var nt = D.turns[S.turn]; delete S.cands[D.seats[nt.team][nt.slot]];
   }
 }
-function startLoop(){var gen=netGen;pump(gen)}
-function enterRoom(id,d){
-  netGen++;outq=[];
-  roomId=id;entryRoom=id;inRoom=true;joining=false;
-  lsSet("vgd_room",JSON.stringify({id:id,spec:!!joinSpec}));
-  showView("room");
-  applySnap(d);
-  setBusy(false);$("#joinMsg").textContent="";
-  startLoop();
-}
-function failText(r,kind){
-  if(r.status===429)return "試行回数が多すぎます。しばらく待ってからお試しください。";
-  if(r.status===404)return "そのIDのルームは見つかりません。IDを確認してください(終了または期限切れの可能性もあります)。";
-  if(r.status===403)return "この名前の参加者はすでに別の端末で入室しています。";
-  if(r.status===500&&r.data.err==="nodb")return "サーバーのデータベースが設定されていません。Vercel で Upstash Redis を接続してください。";
-  if(r.status===503)return "サーバーが混み合っています。もう一度お試しください。";
-  if(r.status===400&&r.data.err==="cfg")return "ルーム設定が正しくありません。";
-  if(r.data&&r.data.msg)return r.data.msg;
-  return "サーバーに接続できませんでした。ネットワークを確認してもう一度お試しください。";
-}
-async function createRoom(){
-  var msg=$("#createMsg"),btn=$("#createBtn");
-  getName();btn.disabled=true;msg.textContent="ルームを作成中…";
-  var cfg={size:cs.size,timer:cs.timer,rows:cs.rows.join(""),fixedBans:cs.fixed.slice(),heroes:HEROES.slice()};
-  joinSpec=false;
-  var r=await apiCall({op:"create",uid:myUid,tok:myTok,name:myName,cfg:cfg,hu:hostAuth&&hostAuth.u,hp:hostAuth&&hostAuth.p});
-  btn.disabled=false;
-  if(r.status===200&&r.data.s){msg.textContent="";enterRoom(r.data.id,r.data);return}
-  if(r.status===401||r.status===403){hostOK=false;hostAuth=null;lsDel("vgd_ha");refreshEntry();$("#gateMsg").textContent="ホストのログインが必要です。もう一度ログインしてください。";msg.textContent="";return}
-  msg.textContent=failText(r);renderCreate();
-}
-async function joinRoom(raw,spec){
-  var id=String(raw||"").trim().toUpperCase(),jm=$("#joinMsg");
-  if(!/^[A-Z0-9]{4,10}$/.test(id)){jm.textContent="ルームIDは英数字で入力してください。";return}
-  getName();
-  joining=true;setBusy(true);jm.textContent="接続中…";
-  roomId=id;joinSpec=!!spec;
-  var r=await apiCall(syncBody(null,true));
-  if(!joining)return;
-  if(r.status===200&&r.data.s){enterRoom(id,r.data);return}
-  joining=false;roomId=null;setBusy(false);
-  if(r.status===404)lsDel("vgd_room");
-  jm.textContent=failText(r);
-}
-function setBusy(b){
-  $("#joinBtn").disabled=b;$("#watchBtn").disabled=b;
-  renderCreateBtn();
-}
-function leaveRoom(silent,msg){
-  if(!inRoom&&!joining)return;
-  if(inRoom&&!silent&&roomId)apiCall(syncBody({a:"leave"},false),true);
-  netGen++;outq=[];if(wake)wake();
-  inRoom=false;joining=false;isHost=false;connected=false;S=null;D=null;roomId=null;
-  lsDel("vgd_room");
-  $("#cd").hidden=true;$("#fab").hidden=true;document.body.classList.remove("has-fab");
-  showView("entry");setBanner();setBusy(false);
-  toast(msg||"退出しました");
+function newState(cfg, host) {
+  return { cfg: cfg, host: host, created: Date.now(), v: 0, phase: "lobby", turn: 0, deadline: 0, startsAt: 0,
+    pendingHero: "", pendingTurn: -1, resetT: -1, cands: {}, log: {}, seats: { home: [], away: [] }, members: {}, toks: {} };
 }
 
-/* ---------- アクション(送信) ---------- */
-function act(m){
-  if(!S||!inRoom)return;
-  if(!connected){toast("サーバーに接続されていません");return}
-  outq.push(m);if(wake)wake();
-}
-
-function chooseHero(h){
-  if(!D||S.phase!=="draft"||taken(h)||!D.myTeam)return;       /* 観戦者・未着席は操作不可 */
-  if(isActor()){act({a:"pick",h:h})}
-  else{                                                        /* 手番でない人の候補: 自分の画面と、同じチームの人にだけ見える */
-    localSel=localSel===h?"":h;
-    act({a:"cand",h:localSel});
-    renderPool();renderAct();
+/* 送信者 uid の操作 m を検証して反映する。変化したら changed:true、メッセージは msg */
+function handle(S, uid, m, body) {
+  var D = derive(S), now = Date.now(), mem = S.members, me = mem[uid], ph = S.phase;
+  var seated = D.all.indexOf(uid) >= 0, isHost = uid === S.host, changed = false;
+  if (!me || body.hello) {
+    if (!me && Object.keys(mem).length >= MAX_MEMBERS) return { msg: "ルームが満員です" };
+    if (!me) me = mem[uid] = { name: "", team: "", t: now, ready: false, left: false, spec: false };
+    var nm = cleanName(body.name);
+    if (nm) me.name = nm; else if (!me.name) me.name = "Player";
+    me.left = false; me.spec = seated ? false : !!body.spec;
+    changed = true;
   }
+  var msg = null;
+  if (body.hello && (body.team === "home" || body.team === "away") && ph === "lobby" && !me.spec && !me.team) {
+    if (D.seats[body.team].length >= D.N) msg = "そのチームは満席です";
+    else { me.team = body.team; me.t = now; me.ready = false; changed = true; }      /* チーム別の参加リンクから入った人は、そのまま着席 */
+  }
+  if (!m || typeof m.a !== "string") return { changed: changed, msg: msg };
+  switch (m.a) {
+    case "sit":
+      if (ph !== "lobby" || me.spec || (m.team !== "home" && m.team !== "away")) break;
+      if (me.team === m.team) break;
+      if (D.seats[m.team].length >= D.N) { msg = "満席です"; break; }
+      me.team = m.team; me.t = now; me.ready = false; changed = true; break;
+    case "stand":
+      if (ph !== "lobby") break;
+      me.team = ""; me.ready = false; changed = true; break;
+    case "ready":
+      if ((ph !== "lobby" && ph !== "countdown") || !seated) break;
+      me.ready = !me.ready; changed = true; break;
+    case "leave":
+      me.left = true;
+      if (ph === "lobby" || ph === "countdown") me.ready = false;
+      if (ph === "lobby") me.team = "";
+      changed = true; break;
+    case "kick":
+      if (!isHost || ph !== "lobby" || typeof m.u !== "string" || !mem[m.u] || m.u === uid) break;
+      mem[m.u].team = ""; mem[m.u].ready = false; changed = true; break;
+    case "reset":
+      if (!isHost || ph !== "done") break;
+      S.phase = "lobby"; S.turn = 0; S.deadline = 0; S.startsAt = 0; S.pendingHero = ""; S.pendingTurn = -1; S.resetT = -1;
+      S.cands = {}; S.log = {}; S.seats = { home: [], away: [] };
+      Object.keys(mem).forEach(function (k) { mem[k].ready = false; });
+      changed = true; break;
+    case "cand":      /* 手番でない人の候補。同じチームの人にだけ配信される */
+      if (ph !== "draft" || !seated || D.actor === uid) break;
+      S.cands = S.cands || {};
+      if (m.h === "") { if (S.cands[uid]) { delete S.cands[uid]; changed = true; } break; }
+      if (S.cfg.heroes.indexOf(m.h) < 0 || taken(S, m.h)) break;
+      S.cands[uid] = m.h; changed = true; break;
+    case "pick":
+      if (ph !== "draft" || D.actor !== uid || S.cfg.heroes.indexOf(m.h) < 0 || taken(S, m.h)) break;
+      S.pendingTurn = S.turn; S.pendingHero = m.h; changed = true; break;
+    case "confirm":
+      if (ph !== "draft" || D.actor !== uid) break;
+      if (S.pendingTurn !== S.turn || !S.pendingHero || taken(S, S.pendingHero)) break;
+      advance(S, S.pendingHero, false, uid); changed = true; break;
+    case "extend":
+      if (ph !== "draft" || D.actor !== uid || S.resetT === S.turn || now >= S.deadline) break;
+      S.deadline = now + S.cfg.timer * 1000; S.resetT = S.turn; changed = true; break;
+  }
+  return { changed: changed, msg: msg };
 }
-function confirmTurn(){if(isActor())act({a:"confirm"})}
-function extendTime(){if(isActor()&&S.resetT!==S.turn&&nowS()<S.deadline)act({a:"extend"})}
 
-/* ---------- 作成フォーム ---------- */
-function genId(){var a="ABCDEFGHJKMNPQRSTUVWXYZ23456789",s="";for(var i=0;i<6;i++)s+=a[Math.floor(Math.random()*a.length)];return s}
-function setRows(){cs.rows=defaultRows(cs.size,cs.bans).split("")}
-function renderCreateBtn(){
-  var cnt=cs.rows.filter(function(x){return x==="B"}).length;
-  $("#createBtn").disabled=!(cnt===cs.bans&&!joining);
-}
-function renderCreate(){
-  $$("#segSize button").forEach(function(b){b.classList.toggle("on",+b.dataset.v===cs.size)});
-  $$("#segTimer button").forEach(function(b){b.classList.toggle("on",+b.dataset.v===cs.timer)});
-  $$("#segBans button").forEach(function(b){b.classList.toggle("on",+b.dataset.v===cs.bans)});
-  var target=cs.bans;
-  $("#cStrip").innerHTML=cs.rows.map(function(t,i){
-    var dis=i===0||i===cs.rows.length-1;
-    return '<button type="button" class="ritem '+t+'" data-r="'+i+'"'+(dis?" disabled":"")+'><span class="rn num">'+(i+1)+'</span><span class="rt">'+(t==="B"?"BAN":"PICK")+'</span>'+(i===0?'<small>固定</small>':'')+'</button>';
-  }).join("");
-  $("#stripHint").textContent="各チーム"+target+"人BAN、"+cs.size+"人ピックで全"+cs.rows.length+"行です。1行目はBAN固定です。"+(target>1?"BANにしたい行をタップすると、いちばん近いBANがその行に移動します。":"BANは1行目だけです。")+" 手番は、BAN・PICKそれぞれ1行目がホーム→アウェイ、2行目がアウェイ→ホーム…と交互(ジグザグ)に進みます。";
-  $("#fixedCount").textContent=cs.fixed.length?"("+cs.fixed.length+"人)":"";
-  $("#fixedList").innerHTML=cs.fixed.map(function(h){return '<span class="fchip">'+monoHTML(h)+esc(h)+'</span>'}).join("");
-  renderFixedPool();
-  $("#cSum").textContent=cs.size+"v"+cs.size+" / 各手番 "+cs.timer+"秒 / BAN 各チーム"+cs.bans+"人(計"+cs.bans*2+"人) + 固定BAN "+cs.fixed.length+"人 / 全 "+cs.rows.length+" 行";
-  renderCreateBtn();
-}
-function groupsHTML(filter,tileFn){
-  var f=String(filter||"").trim().toLowerCase(),out="";
-  ROLES.forEach(function(g){
-    var tiles=g.list.filter(function(h){return !f||h.toLowerCase().indexOf(f)>=0}).map(tileFn).join("");
-    if(tiles)out+='<section class="grp"><h4 class="gh"><span>'+g.ja+'</span><small>'+g.en+'</small></h4><div class="pool">'+tiles+'</div></section>';
-  });
-  return out||'<p class="hint">該当するヒーローがいません。</p>';
-}
-function renderFixedPool(){
-  $("#fPool").innerHTML=groupsHTML($("#fq").value,function(h){
-    var on=cs.fixed.indexOf(h)>=0;
-    return '<button type="button" class="tile'+(on?" fixed":"")+'" data-h="'+esc(h)+'">'+monoHTML(h)+'<span class="'+nmCls(h)+'">'+esc(h)+'</span></button>';
-  });
-}
-function wireCreate(){
-  $("#segSize").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.size=+b.dataset.v;setRows();renderCreate()});
-  $("#segTimer").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.timer=+b.dataset.v;renderCreate()});
-  $("#segBans").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.bans=+b.dataset.v;setRows();renderCreate()});
-  $("#cStrip").addEventListener("click",function(e){
-    var b=e.target.closest("button");if(!b||b.disabled)return;
-    var i=+b.dataset.r;
-    if(cs.rows[i]==="B")return;
-    var best=-1;
-    for(var j=1;j<cs.rows.length;j++){
-      if(cs.rows[j]==="B"&&(best<0||Math.abs(j-i)<Math.abs(best-i)))best=j;
+/* 時間経過で進む状態遷移 + 切断した人の準備解除。変化したら true */
+function step(S, seen, selfUid) {
+  var now = Date.now(), ch = false;
+  if (S.phase === "lobby" || S.phase === "countdown") {
+    Object.keys(S.members).forEach(function (u) {
+      var m = S.members[u];
+      if (m.ready && u !== selfUid && !(seen[u] && now - seen[u] < PRESENCE_MS)) { m.ready = false; ch = true; }
+    });
+  }
+  var D = derive(S), both = D.teamReady.home && D.teamReady.away;
+  if (S.phase === "lobby") {
+    if (both) { S.phase = "countdown"; S.startsAt = now + 5000; S.seats = { home: D.seats.home.slice(), away: D.seats.away.slice() }; ch = true; }
+  } else if (S.phase === "countdown") {
+    if (!both) { S.phase = "lobby"; S.startsAt = 0; ch = true; }
+    else if (now >= S.startsAt) {
+      S.phase = "draft"; S.turn = 0; S.deadline = now + S.cfg.timer * 1000; S.pendingHero = ""; S.pendingTurn = -1; S.resetT = -1; S.cands = {}; ch = true;
     }
-    if(best<0){$("#createMsg").textContent="BANが1人のときは1行目のみがBANです。";return}
-    cs.rows[best]="P";cs.rows[i]="B";
-    $("#createMsg").textContent="";renderCreate();
-  });
-  $("#fPool").addEventListener("click",function(e){
-    var b=e.target.closest("button");if(!b)return;
-    var h=b.dataset.h,i=cs.fixed.indexOf(h);
-    if(i>=0)cs.fixed.splice(i,1);else cs.fixed.push(h);
-    renderCreate();
-  });
-  $("#fq").addEventListener("input",renderFixedPool);
-  $("#createBtn").addEventListener("click",createRoom);
-  $("#gateBtn").addEventListener("click",function(){$("#gateMsg").textContent="確認中…";hostLogin($("#gateUser").value.trim(),$("#gatePass").value,false).then(function(ok){if(ok){$("#gateMsg").textContent="";$("#gatePass").value=""}})});
-  $("#gatePass").addEventListener("keydown",function(e){if(e.key==="Enter")$("#gateBtn").click()});
-  $("#gateOut").addEventListener("click",function(){hostOK=false;hostAuth=null;lsDel("vgd_ha");refreshEntry()});
-  $("#joinBtn").addEventListener("click",function(){joinRoom($("#joinId").value,false)});
-  $("#watchBtn").addEventListener("click",function(){joinRoom($("#joinId").value,true)});
-  $("#joinId").addEventListener("keydown",function(e){if(e.key==="Enter")joinRoom($("#joinId").value,false)});
-  $("#myName").addEventListener("change",getName);
+  } else if (S.phase === "draft" && D.cur && now > S.deadline) {
+    advance(S, autoHero(S), true, ""); ch = true;      /* 時間切れはランダム */
+  }
+  return ch;
 }
 
-/* ---------- render ---------- */
-function showView(v){
-  if(v==="entry")refreshEntry();
-  $("#vEntry").hidden=v!=="entry";
-  $("#vRoom").hidden=v!=="room";
-  $("#topr").hidden=v!=="room";
-  if(v==="room"){renderRoomCode();try{history.replaceState(null,"",location.pathname)}catch(e){}}   /* 招待リンクのIDをアドレスバーに残さない */
-}
-function setBanner(){
-  var b=$("#netBanner"),msg="";
-  if(inRoom&&!connected)msg="サーバーとの接続が切れました。再接続しています…";
-  b.hidden=!msg;b.textContent=msg;
-}
-function onState(){
-  if(!S)return;
-  D=derive();renderRoomCode();
-  if(localSel&&(taken(localSel)||isActor()))localSel="";
-  renderAll();
-}
-function renderAll(){
-  if(!S||!D)return;
-  renderMeta();renderFixed();
-  var ph=S.phase;
-  $("#lobby").hidden=!(ph==="lobby"||ph==="countdown");
-  $("#draft").hidden=!(ph==="draft"||ph==="done");
-  $("#cd").hidden=ph!=="countdown";
-  $("#cdCancel").hidden=!D.myTeam;
-  if(ph!=="draft"){$("#fab").hidden=true;document.body.classList.remove("has-fab")}
-  if(ph==="lobby"||ph==="countdown")renderLobby();
-  else{renderTurn();renderBoard();renderPool();renderAct()}
-  tick();
-}
-function stripHTML(rows){
-  return rows.split("").map(function(t,i){return '<span class="rchip '+t+'"><small>'+(t==="B"?"BAN":"PICK")+'</small><b class="num">'+(i+1)+'</b></span>'}).join("");
-}
-function renderMeta(){
-  var cfg=S.cfg,mem=S.members||{},me=mem[myUid],spec=0;
-  Object.keys(mem).forEach(function(k){var m=mem[k];if(!m.left&&m.on!==false&&D.all.indexOf(k)<0)spec++});
-  var role=D.myTeam?'<span class="badge '+D.myTeam+'">'+teamJa(D.myTeam)+'で参加中</span>':(me&&me.spec?'<span class="badge spec">観戦</span>':'<span class="badge spec">未着席</span>');
-  var bans=cfg.rows.split("").filter(function(x){return x==="B"}).length;
-  var phase={lobby:"ロビー",countdown:"開始カウントダウン",draft:"ドラフト中",done:"ドラフト完了"}[S.phase];
-  $("#roomMeta").innerHTML=role+(isHost?'<span class="badge gold">ホスト</span>':'')+'<span class="badge gold">'+esc(phase)+'</span><span class="num">'+cfg.size+'v'+cfg.size+' / '+cfg.timer+'秒 / BAN 各チーム'+bans+'人 / '+cfg.rows.length+'行</span><span>観戦 '+spec+'人</span>';
-}
-function renderFixed(){
-  var el=$("#fixedWrap"),f=S.cfg.fixedBans;
-  el.hidden=!f.length;
-  if(f.length)el.innerHTML='<span class="lab">固定BAN</span>'+f.map(function(h){return '<span class="fchip">'+monoHTML(h)+esc(h)+'</span>'}).join("");
-}
-function renderLobby(){
-  var N=D.N,mem=S.members||{},me=mem[myUid]||{};
-  var canSit=S.phase==="lobby"&&!me.spec;
-  var html="";
-  ["home","away"].forEach(function(t){
-    var seats=D.seats[t],rc=seats.filter(function(u){return mem[u]&&mem[u].ready}).length;
-    var rows="";
-    for(var i=0;i<N;i++){
-      var u=seats[i];
-      if(!u){rows+='<div class="seat empty"><span class="sn num">'+(i+1)+'</span><span class="who">空席</span><span></span></div>';continue}
-      var m=mem[u]||{},mine=u===myUid;
-      rows+='<div class="seat'+(mine?" me":"")+'"><span class="sn num">'+(i+1)+'</span><span class="who">'+esc(m.name||"")+(mine?'<small>あなた</small>':'')+(u===S.host?'<small>ホスト</small>':'')+(m.on===false?'<small>切断中</small>':'')+'</span>'+
-        '<span style="display:flex;align-items:center;gap:6px"><span class="rd'+(m.ready?" on":"")+'" role="img" title="'+(m.ready?"準備完了":"未準備")+'" aria-label="'+(m.ready?"準備完了":"未準備")+'"><i></i></span>'+
-        (isHost&&!mine&&S.phase==="lobby"?'<button class="kick" type="button" data-kick="'+esc(u)+'" aria-label="席から外す">×</button>':'')+'</span></div>';
-    }
-    var acts="";
-    if(canSit){
-      if(D.myTeam===t)acts='<button class="btn sm" type="button" data-stand="1">席を離れる</button>';
-      else acts='<button class="btn sm '+t+'" type="button" data-sit="'+t+'"'+(seats.length>=N?" disabled":"")+'>'+teamJa(t)+'に参加</button>';
-    }
-    html+='<div class="team '+t+'"><h3><span>'+(t==="home"?"HOME":"AWAY")+'</span><span class="tr'+(D.teamReady[t]?" ok":"")+'">'+(D.teamReady[t]?"チーム準備完了":"準備 "+rc+"/"+N)+'</span></h3>'+rows+'<div class="acts">'+acts+'</div></div>';
+/* 受信者ごとに状態を絞る: 候補(cands)は同じチームの人にしか送らない。トークンは送らない */
+function viewFor(S, uid, seen, now) {
+  var D = derive(S);
+  var teamOf = function (u) { return D.seats.home.indexOf(u) >= 0 ? "home" : (D.seats.away.indexOf(u) >= 0 ? "away" : ""); };
+  var t = teamOf(uid), c = {}, src = S.cands || {}, v = {};
+  Object.keys(src).forEach(function (k) { if (k === uid || (t && teamOf(k) === t)) c[k] = src[k]; });
+  for (var k in S) { if (k !== "toks") v[k] = S[k]; }
+  v.cands = c;
+  v.members = {};
+  Object.keys(S.members).forEach(function (u) {
+    var m = S.members[u], o = {};
+    for (var f in m) o[f] = m[f];
+    o.on = !m.left && (u === uid || !!(seen[u] && now - seen[u] < PRESENCE_MS));
+    v.members[u] = o;
   });
-  $("#teams").innerHTML=html;
-  var rb="";
-  if(D.myTeam){
-    var rdy=!!(mem[myUid]&&mem[myUid].ready);
-    rb='<button class="btn pri" type="button" data-ready="1">'+(rdy?"準備を解除":"準備完了にする")+'</button><span class="lab">全員が準備完了になると5秒後に開始します。</span>';
-  }else if(me.spec)rb='<span class="lab">観戦で入室しています。閲覧のみで、操作はできません。</span>';
-  else rb='<span class="lab">まだ席に座っていません。参加するには、ホームかアウェイの「参加」を押してください。</span>';
-  $("#readybar").innerHTML=rb;
-  $("#rStrip").innerHTML=stripHTML(S.cfg.rows);
-}
-function tick(){
-  if(!S||!D)return;
-  var now=nowS();
-  if(S.phase==="countdown"){
-    var n=Math.ceil((S.startsAt-now)/1000);
-    $("#cdNum").textContent=n>0?n:"GO";
-  }
-  if(S.phase==="draft"){
-    var left=Math.max(0,S.deadline-now),el=$("#tbNum"),bar=$("#tbBar");
-    if(el){el.textContent=Math.ceil(left/1000);el.classList.toggle("low",left<=5000)}
-    if(bar)bar.style.width=Math.min(100,left/(S.cfg.timer*10))+"%";
-  }
-}
-function renderTurn(){
-  var tb=$("#turnbar");
-  if(S.phase==="done"){
-    tb.className="turnbar";
-    tb.innerHTML='<div class="tb-l"><div class="k">DRAFT</div><div class="v">ドラフト完了</div></div>'+(isHost?'<div><button class="btn" type="button" data-reset="1">ロビーに戻す</button></div>':'');
-    return;
-  }
-  var c=D.cur,mine=isActor(),verb=c.type==="B"?"BAN":"PICK",used=S.resetT===S.turn;
-  tb.className="turnbar "+c.team+(mine?" mine":"");
-  tb.innerHTML='<div class="tb-l"><div class="k num">手番 '+(S.turn+1)+' / '+D.turns.length+' · '+verb+'</div>'+
-    '<div class="v">'+(mine?'<em>あなたの番です</em>':esc(teamJa(c.team))+' '+esc(nameOf(D.actor))+' の'+verb)+'</div>'+
-    '<div class="tb-act">'+(mine?'<button class="btn sm" type="button" data-extend="1"'+(used?" disabled":"")+'>'+(used?"リセット済み":"時間をリセット(1回)")+'</button>':(used?'<span>この手番はリセット済み</span>':''))+'<span class="note">時間切れはランダムで確定</span></div></div>'+
-    '<div class="tb-r num" id="tbNum">0</div><div class="tbar"><i id="tbBar"></i></div>';
-}
-function cellHTML(t,r){
-  var type=S.cfg.rows[r],ti=D.tix[r+t],turn=D.turns[ti],en=(S.log||{})[ti];
-  var cur=S.phase==="draft"&&S.turn===ti,au=D.seats[t][turn.slot];
-  var inner,hn="",ow=(type==="B"&&!en?"BAN担当 ":"")+(au?nameOf(au):"");
-  if(en){
-    if(en.hero){inner=monoHTML(en.hero);hn=en.hero}
-    else{inner='<span class="ph">SKIP</span>';hn="スキップ"}
-    if(en.auto&&en.hero)ow+=" (時間切れ・ランダム)";
-  }else if(cur){
-    var ph=S.pendingTurn===ti&&S.pendingHero;
-    if(ph){inner=monoHTML(ph);hn=ph}else{inner='<span class="ph">…</span>';hn="選択中"}
-  }else{inner='<span class="ph">'+(type==="B"?"BAN":"PICK")+'</span>'}
-  return '<div class="cell '+type+(cur?" cur "+t:"")+(au===myUid?" me":"")+'"><span class="rn num">'+(ti+1)+'</span>'+inner+'<span class="tx"><div class="hn">'+esc(hn)+'</div><div class="ow">'+esc(ow)+'</div></span></div>';
-}
-function renderBoard(){
-  ["home","away"].forEach(function(t){
-    var h='<div class="colh"><span>'+(t==="home"?"HOME":"AWAY")+'</span></div>';
-    for(var r=0;r<S.cfg.rows.length;r++)h+=cellHTML(t,r);
-    $(t==="home"?"#colHome":"#colAway").innerHTML=h;
-  });
-}
-function renderPool(){
-  var can=S.phase==="draft"&&!!D.myTeam;
-  var shared=S.pendingTurn===S.turn&&S.pendingHero?S.pendingHero:"";
-  var mates=mateCands();
-  $("#poolGrid").innerHTML=groupsHTML(q,function(h){
-    var st=statusOf(h),cls="tile",badge="";
-    if(st)cls+=st.k==="pick"?" pick-"+st.team:" "+st.k;
-    else if(h===shared&&S.phase==="draft")cls+=" sel";
-    else if(h===localSel)cls+=" mine";
-    else if(mates[h]){
-      cls+=" cand-"+D.myTeam;
-      var nm=mates[h];
-      badge='<i class="cb">'+nm.map(function(n){return '<b>'+esc(n)+'</b>'}).join("")+'</i>';
-    }
-    return '<button type="button" class="'+cls+'" data-h="'+esc(h)+'"'+(st||!can?" disabled":"")+'>'+badge+monoHTML(h)+'<span class="'+nmCls(h)+'">'+esc(h)+'</span></button>';
-  });
-}
-function setFab(show,label,sub,disabled){
-  var fab=$("#fab");
-  fab.hidden=!show;
-  if(show){fab.disabled=!!disabled;fab.innerHTML=esc(label)+'<small>'+esc(sub)+'</small>'}
-  document.body.classList.toggle("has-fab",show);
-}
-function renderAct(){
-  var el=$("#actbar");
-  setFab(false);
-  if(S.phase==="done"){el.innerHTML='<div class="t"><b>ドラフト完了</b><small>お疲れさまでした。</small></div>';return}
-  if(!D.myTeam){el.innerHTML='<div class="t"><b>観戦中</b><small>観戦者は閲覧のみで、選択や確定はできません。</small></div>';return}
-  var c=D.cur;
-  if(isActor()){
-    var p=S.pendingTurn===S.turn?S.pendingHero:"",verb=c.type==="B"?"BAN":"ピック";
-    el.innerHTML='<div class="t">'+(p?'選択中: <b>'+esc(p)+'</b>':'<b>ヒーローをタップして選んでください</b>')+'<small>手番の間、選択中のヒーローは相手チームにも表示されます。右下のボタンで確定します。</small></div>';
-    setFab(true,verb+"を確定",p||"ヒーローを選択",!p);
-  }else{
-    var mates=mateCands(),mt=Object.keys(mates).map(function(h){return h+"("+mates[h].join("・")+")"}).join(" / ");
-    el.innerHTML='<div class="t">'+(localSel?'あなたの候補: <b>'+esc(localSel)+'</b>':'<b>'+esc(teamJa(c.team))+' '+esc(nameOf(D.actor))+' が選択中です</b>')+
-      (mt?'<small>チームの候補: '+esc(mt)+'</small>':'')+
-      '<small>手番ではないので、タップした候補は自分のチームの人にだけ見えます(相手チームと観戦者には見えません)。</small></div>';
-  }
+  return v;
 }
 
-/* ---------- wiring ---------- */
-function baseUrl(){return location.origin+location.pathname}
-function copyText(txt,okMsg){
-  var fail=function(){toast("コピーできませんでした。手動で選択してください")};
-  try{navigator.clipboard.writeText(txt).then(function(){toast(okMsg)},fail)}catch(e){fail()}
+/* ---------- 入力の検証 ---------- */
+function validCfg(c) {
+  if (!c || typeof c !== "object") return null;
+  var size = +c.size, timer = +c.timer, rows = String(c.rows || "");
+  if (size !== 3 && size !== 5) return null;
+  if ([15, 30, 45, 60].indexOf(timer) < 0) return null;
+  if (!/^[BP]+$/.test(rows) || rows.length > 20) return null;
+  var bans = rows.split("").filter(function (x) { return x === "B"; }).length;
+  if (bans < 1 || bans > 5 || rows.length - bans !== size) return null;
+  if (rows[0] !== "B" || rows[rows.length - 1] !== "P") return null;
+  var hs = c.heroes;
+  if (!Array.isArray(hs) || hs.length < 10 || hs.length > 150) return null;
+  var seen = {};
+  for (var i = 0; i < hs.length; i++) {
+    if (typeof hs[i] !== "string" || !hs[i] || hs[i].length > 30 || seen[hs[i]]) return null;
+    seen[hs[i]] = 1;
+  }
+  var fx = Array.isArray(c.fixedBans) ? c.fixedBans.filter(function (h, i, a) { return hs.indexOf(h) >= 0 && a.indexOf(h) === i; }) : [];
+  if (hs.length - fx.length < size * 2 + bans * 2) return null;       /* ヒーローが足りない */
+  return { size: size, timer: timer, rows: rows, fixedBans: fx, heroes: hs.slice() };
 }
-function wireRoom(){
-  $("#teams").addEventListener("click",function(e){
-    var b=e.target.closest("button");if(!b||b.disabled)return;
-    if(b.dataset.sit)act({a:"sit",team:b.dataset.sit});
-    else if(b.dataset.stand)act({a:"stand"});
-    else if(b.dataset.kick)act({a:"kick",u:b.dataset.kick});
-  });
-  $("#readybar").addEventListener("click",function(e){if(e.target.closest("[data-ready]"))act({a:"ready"})});
-  $("#cdCancel").addEventListener("click",function(){act({a:"ready"})});
-  $("#poolGrid").addEventListener("click",function(e){var b=e.target.closest("button");if(b&&!b.disabled)chooseHero(b.dataset.h)});
-  $("#fab").addEventListener("click",function(){if(!$("#fab").disabled)confirmTurn()});
-  $("#turnbar").addEventListener("click",function(e){
-    if(e.target.closest("[data-reset]"))act({a:"reset"});
-    else{var b=e.target.closest("[data-extend]");if(b&&!b.disabled)extendTime()}
-  });
-  $("#q").addEventListener("input",function(){q=$("#q").value;if(S&&D&&S.phase!=="lobby")renderPool()});
-  $("#leaveBtn").addEventListener("click",function(){
-    leaveRoom(false);
-  });
-  $("#copyId").addEventListener("click",function(){copyText(roomId,"ルームIDをコピーしました")});
-  $("#maskBtn").addEventListener("click",function(){idMasked=!idMasked;lsSet("vgd_mask",idMasked?"1":"0");renderRoomCode()});
-  $("#copyHome").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId+"&team=home","ホームの参加リンクをコピーしました")});
-  $("#copyAway").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId+"&team=away","アウェイの参加リンクをコピーしました")});
-  $("#copyWatch").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId+"&watch=1","観戦リンクをコピーしました")});
+var okUid = function (u) { return typeof u === "string" && /^[A-Za-z0-9]{3,40}$/.test(u); };
+var okTok = function (t) { return typeof t === "string" && t.length >= 8 && t.length <= 64; };
+var okId = function (i) { return typeof i === "string" && /^[A-Z0-9]{4,10}$/.test(i); };
+function genId() { var a = "ABCDEFGHJKMNPQRSTUVWXYZ23456789", s = ""; for (var i = 0; i < 6; i++) s += a[Math.floor(Math.random() * a.length)]; return s; }
+
+/* ---------- ホスト認証(ルームを作れるのはホストだけ) ---------- */
+var crypto = require("crypto");
+function same(a, b) {
+  var x = crypto.createHash("sha256").update(String(a == null ? "" : a)).digest();
+  var y = crypto.createHash("sha256").update(String(b == null ? "" : b)).digest();
+  return crypto.timingSafeEqual(x, y);
+}
+/* 失敗は IP ごとに10分で10回まで(総当たり対策)。戻り値: "ok" | "bad" | "limit" | "nopw" */
+async function checkHost(req, b) {
+  if (!HOST_PASSWORD) return "nopw";
+  var ip = String((req.headers && (req.headers["x-forwarded-for"] || req.headers["x-real-ip"])) || "ip").split(",")[0].trim().slice(0, 64);
+  var key = "vgd:f:" + ip;
+  var cnt = +((await redis([["GET", key]]))[0] || 0);
+  if (cnt >= 10) return "limit";
+  var ok = same(b.hp, HOST_PASSWORD) & (HOST_USER ? same(b.hu, HOST_USER) : true);
+  if (ok) return "ok";
+  await redis([["INCR", key], ["EXPIRE", key, "600"]]);
+  return "bad";
+}
+function hostFail(res, st) {
+  if (st === "nopw") return send(res, 500, { err: "nopw" });
+  if (st === "limit") return send(res, 429, { err: "limit" });
+  return send(res, 401, { err: "auth" });
 }
 
-async function init(){
-  $("#myName").value=myName;
-  buildHeroCss();
-  setRows();wireCreate();wireRoom();renderCreate();
-  setInterval(tick,250);
-  document.addEventListener("visibilitychange",function(){if(!document.hidden&&wake)wake()});
-  var params=new URLSearchParams(location.search);
-  var qRoom=(params.get("room")||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,10);
-  var qWatch=params.get("watch")==="1",qTeam=params.get("team");
-  if(qRoom&&!qWatch&&(qTeam==="home"||qTeam==="away")){
-    joinTeam=qTeam;$("#joinBtn").textContent=teamJa(qTeam)+"として入室";
-    $("#joinMsg").textContent="名前(IGN)を入力して「"+teamJa(qTeam)+"として入室」を押すと、"+teamJa(qTeam)+"の席に入ります。";
+/* ---------- ハンドラ ---------- */
+function send(res, code, obj) { res.status(code).json(obj); }
+
+async function opCreate(b, res) {
+  if (!okUid(b.uid) || !okTok(b.tok)) return send(res, 400, { err: "bad" });
+  var cfg = validCfg(b.cfg);
+  if (!cfg) return send(res, 400, { err: "cfg" });
+  for (var k = 0; k < 8; k++) {
+    var id = genId(), S = newState(cfg, b.uid);
+    S.toks[b.uid] = b.tok;
+    handle(S, b.uid, null, { hello: true, name: b.name, spec: false });
+    S.v = 1;
+    var r = await redis([["SET", kRoom(id), JSON.stringify(S), "NX", "EX", String(TTL)], ["HSET", kSeen(id), b.uid, String(Date.now())], ["EXPIRE", kSeen(id), String(TTL)]]);
+    if (r[0] === "OK") {
+      var now = Date.now();
+      return send(res, 200, { id: id, s: viewFor(S, b.uid, seenMap(["x", "0"]), now), now: now });
+    }
   }
-  if(qRoom){$("#joinId").value=qRoom;entryRoom=qRoom}
-  refreshEntry();
-  setBusy(false);setBanner();
-  if(!qRoom&&hostAuth)hostLogin(hostAuth.u,hostAuth.p,true);        /* 保存済みのログイン情報を確認(失敗したらログイン画面のまま) */
-  var sr=null;
-  try{sr=JSON.parse(lsGet("vgd_room")||"null")}catch(e){sr=null}
-  if(sr&&sr.id&&!qRoom){$("#joinId").value=sr.id;joinRoom(sr.id,!!sr.spec);return}
-  if(qRoom&&qWatch){joinRoom(qRoom,true);return}
+  send(res, 503, { err: "idfull" });
 }
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
-})();
-</script>
-</body>
-</html>
+
+async function opSync(b, res) {
+  if (!okId(b.id) || !okUid(b.uid) || !okTok(b.tok)) return send(res, 400, { err: "bad" });
+  var id = b.id, uid = b.uid, tok = b.tok, now = Date.now();
+  var m = b.a && typeof b.a === "object" ? b.a : null;
+  var r = await redis([["GET", kRoom(id)], ["HSET", kSeen(id), uid, String(now)], ["HGETALL", kSeen(id)]]);
+  if (!r[0]) { try { await redis([["DEL", kSeen(id)]]); } catch (e) {} return send(res, 404, { err: "noroom" }); }
+  var S = JSON.parse(r[0]), seen = seenMap(r[2]);
+  if (S.toks[uid] && S.toks[uid] !== tok) return send(res, 403, { err: "denied" });
+
+  var need = !!m || !!b.hello || !S.toks[uid] || !S.members[uid];
+  if (!need) {                 /* 変更がなさそうなら読み取りだけで返す。時間経過で状態が変わる場合だけ書き込む */
+    var probe = JSON.parse(r[0]);
+    need = step(probe, seen, uid);
+  }
+  var msg = null;
+  if (need) {
+    await withLock(id, async function () {
+      var rr = await redis([["GET", kRoom(id)], ["HGETALL", kSeen(id)]]);
+      if (!rr[0]) { var e = new Error("gone"); e.gone = true; throw e; }
+      S = JSON.parse(rr[0]); seen = seenMap(rr[1]); seen[uid] = now;
+      if (S.toks[uid] && S.toks[uid] !== tok) { var e2 = new Error("denied"); e2.denied = true; throw e2; }
+      var ch = false;
+      if (!S.toks[uid]) { S.toks[uid] = tok; ch = true; }
+      var h = handle(S, uid, m, b);
+      if (h.changed) ch = true;
+      if (h.msg) msg = h.msg;
+      if (step(S, seen, uid)) ch = true;
+      if (ch) {
+        S.v = (S.v || 0) + 1;
+        await redis([["SET", kRoom(id), JSON.stringify(S), "EX", String(TTL)], ["EXPIRE", kSeen(id), String(TTL)]]);
+      }
+    });
+  }
+  send(res, 200, { s: viewFor(S, uid, seen, Date.now()), now: Date.now(), msg: msg });
+}
+
+module.exports = async function (req, res) {
+  res.setHeader("Cache-Control", "no-store");
+  if (req.method !== "POST") return send(res, 405, { err: "method" });
+  if (!DB_URL || !DB_TOKEN) return send(res, 500, { err: "nodb" });
+  var b = req.body;
+  if (typeof b === "string") { try { b = JSON.parse(b); } catch (e) { b = null; } }
+  if (!b || typeof b !== "object") return send(res, 400, { err: "bad" });
+  try {
+    if (b.op === "auth") { var st = await checkHost(req, b); return st === "ok" ? send(res, 200, { ok: true }) : hostFail(res, st); }
+    if (b.op === "create") { var st2 = await checkHost(req, b); if (st2 !== "ok") return hostFail(res, st2); return await opCreate(b, res); }
+    if (b.op === "sync") return await opSync(b, res);
+    return send(res, 400, { err: "op" });
+  } catch (e) {
+    if (e && e.busy) return send(res, 503, { err: "busy" });
+    if (e && e.gone) return send(res, 404, { err: "noroom" });
+    if (e && e.denied) return send(res, 403, { err: "denied" });
+    console.error(e && e.stack || e);
+    return send(res, 500, { err: "server" });
+  }
+};
