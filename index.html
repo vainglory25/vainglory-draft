@@ -137,7 +137,7 @@ details.fx[open] summary{margin-bottom:10px}
 .seat .who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .seat .who small{color:var(--muted);margin-left:6px}
 .rd{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
-.rd i{width:9px;height:9px;border-radius:50%;background:var(--line);display:inline-block}
+.rd i{width:12px;height:12px;border-radius:50%;background:var(--line);display:inline-block}
 .rd.on{color:var(--ok)}
 .rd.on i{background:var(--ok);box-shadow:0 0 8px var(--ok)}
 .kick{border:0;background:transparent;color:var(--muted);padding:0 4px;font-size:16px;line-height:1}
@@ -274,7 +274,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
         <div class="row"><span class="lab">形式</span><div class="seg" id="segSize" role="group" aria-label="形式"><button type="button" data-v="3">3v3</button><button type="button" data-v="5">5v5</button></div></div>
         <div class="row"><span class="lab">1手番の制限時間</span><div class="seg" id="segTimer" role="group" aria-label="制限時間"><button type="button" data-v="15">15秒</button><button type="button" data-v="30">30秒</button><button type="button" data-v="45">45秒</button><button type="button" data-v="60">60秒</button></div></div>
         <div class="row"><span class="lab">BANの人数(各チーム)</span><div class="seg" id="segBans" role="group" aria-label="BANの人数"><button type="button" data-v="1">1人</button><button type="button" data-v="2">2人</button><button type="button" data-v="3">3人</button><button type="button" data-v="4">4人</button><button type="button" data-v="5">5人</button></div></div>
-        <div class="lab" style="margin-bottom:6px">進行順(1行ごとにホーム→アウェイの順に手番)</div>
+        <div class="lab" style="margin-bottom:6px">進行順</div>
         <div class="rlist" id="cStrip"></div>
         <p class="hint" id="stripHint"></p>
         <div class="lab" style="margin-top:14px">固定BAN(最初からBANするヒーロー) <span id="fixedCount"></span></div>
@@ -311,7 +311,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
     <div id="lobby" hidden>
       <div class="teams" id="teams"></div>
       <div class="readybar" id="readybar"></div>
-      <div class="lab" style="margin-bottom:6px">進行順(1行ごとにホーム→アウェイ)</div>
+      <div class="lab" style="margin-bottom:6px">進行順</div>
       <div class="strip" id="rStrip"></div>
     </div>
 
@@ -455,7 +455,10 @@ function nameOf(u){var m=S.members&&S.members[u];return m&&m.name?m.name:"(不�
 function isActor(){return !!(D&&D.cur&&D.actor===myUid)}
 /* 自分のチームの候補 {ヒーロー: [名前…]}(自分の分は含めない)。ホストの画面でも相手チームの分は使わない */
 var idMasked=lsGet("vgd_mask")!=="0";      /* 既定は隠す(配信・画面共有での荒らし対策) */
+function isSpectator(){var m=S&&S.members&&S.members[myUid];return !!(m&&m.spec&&!(D&&D.myTeam))}
 function renderRoomCode(){
+  var sp=isSpectator();                                  /* 観戦者には ROOM ID と招待リンクを出さない(観戦リンクと退出だけ) */
+  $(".chip-id").hidden=sp;$("#copyInvite").hidden=sp;
   $("#roomCode").textContent=idMasked?"\u2022\u2022\u2022\u2022\u2022\u2022":(roomId||"");
   var b=$("#maskBtn");b.textContent=idMasked?"表示":"隠す";b.setAttribute("aria-pressed",idMasked?"true":"false");
 }
@@ -670,7 +673,7 @@ function setBanner(){
 }
 function onState(){
   if(!S)return;
-  D=derive();
+  D=derive();renderRoomCode();
   if(localSel&&(taken(localSel)||isActor()))localSel="";
   renderAll();
 }
@@ -715,7 +718,7 @@ function renderLobby(){
       if(!u){rows+='<div class="seat empty"><span class="sn num">'+(i+1)+'</span><span class="who">空席</span><span></span></div>';continue}
       var m=mem[u]||{},mine=u===myUid;
       rows+='<div class="seat'+(mine?" me":"")+'"><span class="sn num">'+(i+1)+'</span><span class="who">'+esc(m.name||"")+(mine?'<small>あなた</small>':'')+(u===S.host?'<small>ホスト</small>':'')+(m.on===false?'<small>切断中</small>':'')+'</span>'+
-        '<span style="display:flex;align-items:center;gap:6px"><span class="rd'+(m.ready?" on":"")+'"><i></i>'+(m.ready?"準備完了":"未準備")+'</span>'+
+        '<span style="display:flex;align-items:center;gap:6px"><span class="rd'+(m.ready?" on":"")+'" role="img" title="'+(m.ready?"準備完了":"未準備")+'" aria-label="'+(m.ready?"準備完了":"未準備")+'"><i></i></span>'+
         (isHost&&!mine&&S.phase==="lobby"?'<button class="kick" type="button" data-kick="'+esc(u)+'" aria-label="席から外す">×</button>':'')+'</span></div>';
     }
     var acts="";
