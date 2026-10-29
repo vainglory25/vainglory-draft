@@ -250,7 +250,8 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
     <div class="logo"><b>VAINGLORY</b><span>Custom Draft</span></div>
     <div class="topr" id="topr" hidden>
       <div class="chip-id"><small>ROOM</small><code id="roomCode"></code><button class="btn sm" id="maskBtn" type="button" aria-pressed="true">表示</button><button class="btn sm" id="copyId" type="button">IDコピー</button></div>
-      <button class="btn sm" id="copyInvite" type="button">招待リンク</button>
+      <button class="btn sm" id="copyHome" type="button">ホーム参加リンク</button>
+      <button class="btn sm" id="copyAway" type="button">アウェイ参加リンク</button>
       <button class="btn sm" id="copyWatch" type="button">観戦リンク</button>
       <button class="btn sm ghost" id="leaveBtn" type="button">退出</button>
     </div>
@@ -405,7 +406,7 @@ var myName=lsGet("vgd_name")||"";
 /* ---------- state ---------- */
 var S=null,D=null;                    /* S: ルームの状態(ホストが正)  D: Sから導いた値 */
 var roomId=null,isHost=false,inRoom=false,joining=false,joinSpec=false;
-var netGen=0;
+var netGen=0,joinTeam="";
 var off=0,connected=false;
 var localSel="",q="";
 var cs={size:5,timer:45,bans:1,rows:[],fixed:["チャーンウォーカー","ヴィオラ"]};   /* 既定の固定BAN(作成画面で変更できます) */
@@ -459,7 +460,10 @@ var idMasked=lsGet("vgd_mask")!=="0";      /* 既定は隠す(配信・画面共
 function isSpectator(){var m=S&&S.members&&S.members[myUid];return !!(m&&m.spec&&!(D&&D.myTeam))}
 function renderRoomCode(){
   var sp=isSpectator();                                  /* 観戦者には ROOM ID と招待リンクを出さない(観戦リンクと退出だけ) */
-  $(".chip-id").hidden=sp;$("#copyInvite").hidden=sp;
+  var mt=D&&D.myTeam;
+  $(".chip-id").hidden=sp;
+  $("#copyHome").hidden=sp||!(isHost||mt==="home");        /* 自分のチームの参加リンクだけ(ホストは両方) */
+  $("#copyAway").hidden=sp||!(isHost||mt==="away");
   $("#roomCode").textContent=idMasked?"\u2022\u2022\u2022\u2022\u2022\u2022":(roomId||"");
   var b=$("#maskBtn");b.textContent=idMasked?"表示":"隠す";b.setAttribute("aria-pressed",idMasked?"true":"false");
 }
@@ -499,7 +503,7 @@ function apiCall(body,keep){
     .then(function(r){clearTimeout(to);return r.json().catch(function(){return {}}).then(function(j){return {status:r.status,data:j||{}}})})
     .catch(function(){clearTimeout(to);return {status:0,data:{}}});
 }
-function syncBody(a,hello){return {op:"sync",id:roomId,uid:myUid,tok:myTok,name:myName,spec:!!joinSpec,hello:!!hello,a:a||null}}
+function syncBody(a,hello){return {op:"sync",id:roomId,uid:myUid,tok:myTok,name:myName,spec:!!joinSpec,hello:!!hello,team:hello&&!joinSpec?joinTeam:"",a:a||null}}
 function applySnap(d){
   off=d.now-Date.now();connected=true;S=d.s;isHost=S.host===myUid;D=derive();setBanner();onState();
   if(d.msg)toast(d.msg);
@@ -769,7 +773,7 @@ function renderTurn(){
 function cellHTML(t,r){
   var type=S.cfg.rows[r],ti=D.tix[r+t],turn=D.turns[ti],en=(S.log||{})[ti];
   var cur=S.phase==="draft"&&S.turn===ti,au=D.seats[t][turn.slot];
-  var inner,hn="",ow=(type==="B"?"BAN担当 ":"")+(au?nameOf(au):"");
+  var inner,hn="",ow=(type==="B"&&!en?"BAN担当 ":"")+(au?nameOf(au):"");
   if(en){
     if(en.hero){inner=monoHTML(en.hero);hn=en.hero}
     else{inner='<span class="ph">SKIP</span>';hn="スキップ"}
@@ -855,7 +859,8 @@ function wireRoom(){
   });
   $("#copyId").addEventListener("click",function(){copyText(roomId,"ルームIDをコピーしました")});
   $("#maskBtn").addEventListener("click",function(){idMasked=!idMasked;lsSet("vgd_mask",idMasked?"1":"0");renderRoomCode()});
-  $("#copyInvite").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId,"招待リンクをコピーしました")});
+  $("#copyHome").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId+"&team=home","ホームの参加リンクをコピーしました")});
+  $("#copyAway").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId+"&team=away","アウェイの参加リンクをコピーしました")});
   $("#copyWatch").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId+"&watch=1","観戦リンクをコピーしました")});
 }
 
@@ -867,7 +872,11 @@ async function init(){
   document.addEventListener("visibilitychange",function(){if(!document.hidden&&wake)wake()});
   var params=new URLSearchParams(location.search);
   var qRoom=(params.get("room")||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,10);
-  var qWatch=params.get("watch")==="1";
+  var qWatch=params.get("watch")==="1",qTeam=params.get("team");
+  if(qRoom&&!qWatch&&(qTeam==="home"||qTeam==="away")){
+    joinTeam=qTeam;$("#joinBtn").textContent=teamJa(qTeam)+"として入室";
+    $("#joinMsg").textContent="名前(IGN)を入力して「"+teamJa(qTeam)+"として入室」を押すと、"+teamJa(qTeam)+"の席に入ります。";
+  }
   if(qRoom)$("#joinId").value=qRoom;
   setBusy(false);setBanner();
   var sr=null;
