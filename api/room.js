@@ -87,19 +87,25 @@ function autoHero(S) {
 }
 function advance(S, hero, auto, by) {
   var D = derive(S);
+  if (extMode(S) === "pool" && D.cur && S.pool) {      /* 制限時間を超えた分は、そのチームの時間プールから消費する */
+    var tm = D.cur.team, over = Math.max(0, clock(S) - S.deadline);
+    S.pool[tm] = Math.max(0, (S.pool[tm] || 0) - over);
+  }
   S.log[S.turn] = { hero: hero, by: by || "", auto: !!auto };
   S.pendingHero = ""; S.pendingTurn = -1; S.turn++;
   S.cands = S.cands || {};
   Object.keys(S.cands).forEach(function (k) { if (hero && S.cands[k] === hero) delete S.cands[k]; });
-  if (S.turn >= D.turns.length) { S.phase = "done"; S.deadline = 0; S.cands = {}; }
+  if (S.turn >= D.turns.length) { S.phase = "done"; S.deadline = 0; S.cands = {}; S.pausedAt = 0; }
   else {
-    S.deadline = Date.now() + S.cfg.timer * 1000;
+    S.deadline = clock(S) + S.cfg.timer * 1000;      /* 一時停止中は、再開するまで時間が進まない */
     var nt = D.turns[S.turn]; delete S.cands[D.seats[nt.team][nt.slot]];
   }
 }
+function clock(S) { return S.pausedAt || Date.now(); }      /* 一時停止中は止まった時刻 */
+function extMode(S) { return (S.cfg && S.cfg.ext) || "reset"; }
 function newState(cfg, host) {
   return { cfg: cfg, host: host, created: Date.now(), v: 0, phase: "lobby", turn: 0, deadline: 0, startsAt: 0,
-    pendingHero: "", pendingTurn: -1, resetT: -1, cands: {}, log: {}, seats: { home: [], away: [] }, members: {}, toks: {} };
+    pendingHero: "", pendingTurn: -1, resetT: -1, pausedAt: 0, pool: { home: 0, away: 0 }, cands: {}, log: {}, seats: { home: [], away: [] }, members: {}, toks: {} };
 }
 
 /* 送信者 uid の操作 m を検証して反映する。変化したら changed:true、メッセージは msg */
@@ -142,8 +148,8 @@ function handle(S, uid, m, body) {
       mem[m.u].team = ""; mem[m.u].ready = false; changed = true; break;
     case "reset":
       if (!isHost || ph !== "done") break;
-      S.phase = "lobby"; S.turn = 0; S.deadline = 0; S.startsAt = 0; S.pendingHero = ""; S.pendingTurn = -1; S.resetT = -1;
-      S.cands = {}; S.log = {}; S.seats = { home: [], away: [] };
+      S.phase = "lobby"; S.turn = 0; S.deadline = 0; S.startsAt = 0; S.pendingHero = ""; S.pendingTurn = -1; S.resetT = -1; S.pausedAt = 0;
+      S.cands = {}; S.log = {}; S.seats = { home: [], away: [] }; S.pool = { home: 0, away: 0 };
       Object.keys(mem).forEach(function (k) { mem[k].ready = false; });
       changed = true; break;
     case "cand":      /* 手番でない人の候補。同じチームの人にだけ配信される */
@@ -159,9 +165,17 @@ function handle(S, uid, m, body) {
       if (ph !== "draft" || D.actor !== uid) break;
       if (S.pendingTurn !== S.turn || !S.pendingHero || taken(S, S.pendingHero)) break;
       advance(S, S.pendingHero, false, uid); changed = true; break;
+    case "pause":      /* ホストだけ: 制限時間の一時停止 / 再開 */
+      if (!isHost || ph !== "draft") break;
+      if (S.pausedAt) { S.deadline += Math.max(0, now - S.pausedAt); S.pausedAt = 0; }
+      else S.pausedAt = now;
+      changed = true; break;
     case "extend":
-      if (ph !== "draft" || D.actor !== uid || S.resetT === S.turn || now >= S.deadline) break;
-      S.deadline = now + S.cfg.timer * 1000; S.resetT = S.turn; changed = true; break;
+      if (ph !== "draft" || D.actor !== uid || S.resetT === S.turn || clock(S) >= S.deadline) break;
+      if (extMode(S) === "pool") break;                              /* 時間プール方式では延長ボタンはない */
+      if (extMode(S) === "half") S.deadline += Math.round(S.cfg.timer / 2) * 1000;   /* 半分(四捨五入)を残り時間に追加 */
+      else S.deadline = clock(S) + S.cfg.timer * 1000;               /* リセット: 制限時間いっぱいに戻す */
+      S.resetT = S.turn; changed = true; break;
   }
   return { changed: changed, msg: msg };
 }
@@ -181,10 +195,11 @@ function step(S, seen, selfUid) {
   } else if (S.phase === "countdown") {
     if (!both) { S.phase = "lobby"; S.startsAt = 0; ch = true; }
     else if (now >= S.startsAt) {
-      S.phase = "draft"; S.turn = 0; S.deadline = now + S.cfg.timer * 1000; S.pendingHero = ""; S.pendingTurn = -1; S.resetT = -1; S.cands = {}; ch = true;
+      S.phase = "draft"; S.turn = 0; S.deadline = now + S.cfg.timer * 1000; S.pendingHero = ""; S.pendingTurn = -1; S.resetT = -1; S.pausedAt = 0; S.cands = {}; ch = true;
+      var pm = (S.cfg.pool || 0) * 1000; S.pool = { home: pm, away: pm };
     }
-  } else if (S.phase === "draft" && D.cur && now > S.deadline) {
-    advance(S, autoHero(S), true, ""); ch = true;      /* 時間切れはランダム */
+  } else if (S.phase === "draft" && D.cur && !S.pausedAt && now > S.deadline + (extMode(S) === "pool" ? ((S.pool && S.pool[D.cur.team]) || 0) : 0)) {
+    advance(S, D.cur.type === "P" ? autoHero(S) : "", true, ""); ch = true;      /* 時間切れ: ピックはランダム、BANは選択なしで次へ */
   }
   return ch;
 }
@@ -226,7 +241,12 @@ function validCfg(c) {
   }
   var fx = Array.isArray(c.fixedBans) ? c.fixedBans.filter(function (h, i, a) { return hs.indexOf(h) >= 0 && a.indexOf(h) === i; }) : [];
   if (hs.length - fx.length < size * 2 + bans * 2) return null;       /* ヒーローが足りない */
-  return { size: size, timer: timer, rows: rows, fixedBans: fx, heroes: hs.slice() };
+  var ext = c.ext === undefined ? "pool" : String(c.ext);
+  if (["pool", "reset", "half"].indexOf(ext) < 0) return null;
+  var pool = Math.round(+c.pool);
+  if (ext === "pool" && !(pool >= 10 && pool <= 600)) return null;
+  if (ext !== "pool") pool = 0;
+  return { size: size, timer: timer, rows: rows, fixedBans: fx, heroes: hs.slice(), ext: ext, pool: pool };
 }
 var okUid = function (u) { return typeof u === "string" && /^[A-Za-z0-9]{3,40}$/.test(u); };
 var okTok = function (t) { return typeof t === "string" && t.length >= 8 && t.length <= 64; };
