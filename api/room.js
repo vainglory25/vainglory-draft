@@ -112,8 +112,12 @@ function handle(S, uid, m, body) {
     me.left = false; me.spec = seated ? false : !!body.spec;
     changed = true;
   }
-  if (!m || typeof m.a !== "string") return { changed: changed };
   var msg = null;
+  if (body.hello && (body.team === "home" || body.team === "away") && ph === "lobby" && !me.spec && !me.team) {
+    if (D.seats[body.team].length >= D.N) msg = "そのチームは満席です";
+    else { me.team = body.team; me.t = now; me.ready = false; changed = true; }      /* チーム別の参加リンクから入った人は、そのまま着席 */
+  }
+  if (!m || typeof m.a !== "string") return { changed: changed, msg: msg };
   switch (m.a) {
     case "sit":
       if (ph !== "lobby" || me.spec || (m.team !== "home" && m.team !== "away")) break;
