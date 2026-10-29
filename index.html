@@ -286,7 +286,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
         </details>
         <div class="sum" id="cSum"></div>
         <button class="btn pri" id="createBtn" type="button" disabled>ルームを作成して入室</button>
-        <p class="hint">作った人がホストです。ホストのブラウザがドラフトの進行役になるので、終わるまでタブを開いたままにしてください(再読み込みなら復元されます)。</p>
+        <p class="hint">作った人がホストです(「ロビーに戻す」や席の入れ替えができます)。進行はサーバーが行うので、タブを閉じても再読み込みしても続けられます。</p>
         <p class="msg" id="createMsg" role="status"></p>
       </div>
       <div class="card">
@@ -339,9 +339,10 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 "use strict";
 
 /* ---------------------------------------------------------------
-   仕組み: ホストのブラウザが進行役(権威)になり、参加者・観戦者は
-   PeerJS(WebRTC)でホストに接続します。サーバーは不要です。
-   ホストが全ての操作を検証し、状態を全員に配信します。
+   仕組み: Vercel の API 関数(api/room.js)+ Upstash Redis がルームの状態を持ち、
+   進行(時間切れ・開始)と全ての操作の検証もサーバー側で行います。
+   参加者・観戦者・ホストはみな同じサーバーを 1秒ちょっと毎に読むだけなので、
+   ネットワークが違っても、ホストがタブを閉じても続きます。
    --------------------------------------------------------------- */
 
 /* ヒーロー一覧とグループ(キャプテン/ジャングラー/レーナー)。追加・削除・移動はここを編集します。分類は目安です。 */
@@ -361,7 +362,6 @@ var SHEETS=[
   {file:"images/hero-laner-2.png",w:1215,h:736,x:5,y:7}
 ];
 var HERO_POS={"アダージオ":[0,0,0],"アーダン":[0,1,0],"キャサリン":[0,2,0],"チャーンウォーカー":[0,3,0],"フリッカー":[0,4,0],"フォートレス":[0,0,1],"グレース":[0,1,1],"ランス":[0,2,1],"ローレライ":[0,3,1],"ライラ":[0,4,1],"フィン":[0,0,2],"ヴィオラ":[0,1,2],"イェーツ":[0,2,2],"アルファ":[1,0,0],"グレイヴ":[1,1,0],"グランプジョー":[1,2,0],"イナラ":[1,3,0],"ジュール":[1,4,0],"コシュカ":[1,0,1],"クラル":[1,1,1],"オゾ":[1,2,1],"ペタル":[1,3,1],"ライム":[1,4,1],"ロナ":[1,0,2],"シン":[1,1,2],"タカ":[1,2,2],"トニー":[1,3,2],"イルバ":[1,4,2],"アマエル":[2,0,0],"アンカ":[2,1,0],"バティスト":[2,2,0],"バロン":[2,3,0],"ブラックフェザー":[2,4,0],"ケイン":[2,0,1],"セレス":[2,1,1],"グウェン":[2,2,1],"イドリス":[2,3,1],"イシュター":[2,4,1],"カラス":[2,0,2],"剣聖":[2,1,2],"ケストレル":[2,2,2],"キネティック":[2,3,2],"レオ":[2,4,2],"マグナス":[3,0,0],"マレン":[3,1,0],"ミホ":[3,2,0],"レザ":[3,3,0],"リンゴ":[3,4,0],"サムエル":[3,0,1],"サンポウ":[3,1,1],"ソー":[3,2,1],"シルバーネイル":[3,3,1],"スカーフ":[3,4,1],"スカイ":[3,0,2],"ヴァーリア":[3,1,2],"ヴォックス":[3,2,2],"ウォーホーク":[3,3,2]};
-var PEER_SRC=["https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js","https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js","https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"];
 
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
@@ -404,8 +404,8 @@ var myName=lsGet("vgd_name")||"";
 /* ---------- state ---------- */
 var S=null,D=null;                    /* S: ルームの状態(ホストが正)  D: Sから導いた値 */
 var roomId=null,isHost=false,inRoom=false,joining=false,joinSpec=false;
-var peer=null,hostConn=null,conns={},toks={},netGen=0;
-var off=0,hbAt=0,lastHb=0,connected=false,retryTimer=null;
+var netGen=0;
+var off=0,connected=false;
 var localSel="",q="";
 var cs={size:5,timer:45,bans:1,rows:[],fixed:["チャーンウォーカー","ヴィオラ"]};   /* 既定の固定BAN(作成画面で変更できます) */
 
@@ -485,341 +485,86 @@ function statusOf(h){
 }
 
 /* =========================================================
-   ホスト側ロジック(進行・検証は全てここ)
+   サーバー通信(Vercel の /api/room)
+   進行・検証は全てサーバー側。この画面は 1秒ちょっと毎に状態を取得し、操作は同じ経路で送ります。
    ========================================================= */
-function newState(cfg){
-  return {cfg:cfg,host:myUid,created:Date.now(),phase:"lobby",turn:0,deadline:0,startsAt:0,
-    pendingHero:"",pendingTurn:-1,resetT:-1,cands:{},log:{},seats:{home:[],away:[]},members:{}};
+var API="/api/room",POLL_MS=1300,outq=[],wake=null;
+function apiCall(body,keep){
+  var ctl=typeof AbortController!=="undefined"?new AbortController():null,to=setTimeout(function(){if(ctl)ctl.abort()},9000);
+  return fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),cache:"no-store",keepalive:!!keep,signal:ctl?ctl.signal:undefined})
+    .then(function(r){clearTimeout(to);return r.json().catch(function(){return {}}).then(function(j){return {status:r.status,data:j||{}}})})
+    .catch(function(){clearTimeout(to);return {status:0,data:{}}});
 }
-function cleanName(n){return String(n==null?"":n).replace(/[\u0000-\u001f<>]/g,"").trim().slice(0,14)}
-function autoHero(){
-  var free=HEROES.filter(function(h){return !taken(h)});
-  return free.length?free[Math.floor(Math.random()*free.length)]:"";
+function syncBody(a,hello){return {op:"sync",id:roomId,uid:myUid,tok:myTok,name:myName,spec:!!joinSpec,hello:!!hello,a:a||null}}
+function applySnap(d){
+  off=d.now-Date.now();connected=true;S=d.s;isHost=S.host===myUid;D=derive();setBanner();onState();
+  if(d.msg)toast(d.msg);
 }
-function advance(hero,auto,by){
-  S.log[S.turn]={hero:hero,by:by||"",auto:!!auto};
-  S.pendingHero="";S.pendingTurn=-1;S.turn++;
-  S.cands=S.cands||{};
-  Object.keys(S.cands).forEach(function(k){if(hero&&S.cands[k]===hero)delete S.cands[k]});   /* 選ばれたヒーローの候補は消す */
-  if(S.turn>=D.turns.length){S.phase="done";S.deadline=0;S.cands={}}
-  else{
-    S.deadline=Date.now()+S.cfg.timer*1000;
-    var nt=D.turns[S.turn];delete S.cands[D.seats[nt.team][nt.slot]];    /* 手番になった人の候補は「選択中」に切り替わる */
+async function pump(gen){
+  while(inRoom&&gen===netGen){
+    var m=outq.shift();
+    var r=await apiCall(syncBody(m,false));
+    if(!(inRoom&&gen===netGen))return;
+    if(r.status===200&&r.data.s){applySnap(r.data)}
+    else if(r.status===404){leaveRoom(true,"ルームが終了したか、期限切れです");return}
+    else if(r.status===403){leaveRoom(true,"この名前の参加者はすでに別の端末で入室しています。");return}
+    else{connected=false;setBanner();if(m&&m.a!=="cand")toast("送信できませんでした。再接続しています…")}
+    if(!outq.length)await new Promise(function(res){wake=res;setTimeout(res,connected?POLL_MS:2500)});
+    wake=null;
   }
 }
-/* uid: 送信者  local: ホスト自身の画面からの操作か */
-function hostHandle(uid,m,local){
-  if(!S||!m||typeof m.a!=="string")return;
-  D=derive();
-  var now=Date.now(),mem=S.members,me=mem[uid],ph=S.phase,seated=D.all.indexOf(uid)>=0;
-  if(m.a==="hello"){
-    if(typeof m.tok!=="string"||m.tok.length<8)return "denied";
-    if(toks[uid]&&toks[uid]!==m.tok)return "denied";
-    toks[uid]=m.tok;
-    if(!me)me=mem[uid]={name:"",team:"",t:now,ready:false,left:false,spec:false,on:true};
-    var nm=cleanName(m.name);
-    if(nm)me.name=nm;else if(!me.name)me.name="Player";
-    me.left=false;me.on=true;me.spec=seated?false:!!m.spec;
-    return;
-  }
-  if(!me)return;
-  var t;
-  switch(m.a){
-    case "sit":
-      if(ph!=="lobby"||me.spec||(m.team!=="home"&&m.team!=="away"))return;
-      if(me.team===m.team)return;
-      if(D.seats[m.team].length>=D.N)return "満席です";
-      me.team=m.team;me.t=now;me.ready=false;break;
-    case "stand":
-      if(ph!=="lobby")return;
-      me.team="";me.ready=false;break;
-    case "ready":
-      if((ph!=="lobby"&&ph!=="countdown")||!seated)return;
-      me.ready=!me.ready;break;
-    case "leave":
-      me.left=true;me.on=false;
-      if(ph==="lobby"||ph==="countdown")me.ready=false;
-      if(ph==="lobby")me.team="";
-      break;
-    case "kick":
-      if(!local||ph!=="lobby"||!mem[m.u]||m.u===uid)return;
-      mem[m.u].team="";mem[m.u].ready=false;break;
-    case "reset":
-      if(!local||ph!=="done")return;
-      S.phase="lobby";S.turn=0;S.deadline=0;S.startsAt=0;S.pendingHero="";S.pendingTurn=-1;S.resetT=-1;S.cands={};S.log={};S.seats={home:[],away:[]};
-      Object.keys(mem).forEach(function(k){mem[k].ready=false});
-      break;
-    case "cand":      /* 手番でない人の候補。同じチームの人にだけ配信される */
-      if(ph!=="draft"||!seated||D.actor===uid)return;
-      S.cands=S.cands||{};
-      if(m.h===""){delete S.cands[uid];break}
-      if(HEROES.indexOf(m.h)<0||taken(m.h))return;
-      S.cands[uid]=m.h;break;
-    case "pick":
-      if(ph!=="draft"||D.actor!==uid||HEROES.indexOf(m.h)<0||taken(m.h))return;
-      S.pendingTurn=S.turn;S.pendingHero=m.h;break;
-    case "confirm":
-      if(ph!=="draft"||D.actor!==uid)return;
-      if(S.pendingTurn!==S.turn||!S.pendingHero||taken(S.pendingHero))return;
-      advance(S.pendingHero,false,uid);break;
-    case "extend":
-      if(ph!=="draft"||D.actor!==uid||S.resetT===S.turn||now>=S.deadline)return;
-      S.deadline=now+S.cfg.timer*1000;S.resetT=S.turn;break;
-  }
-}
-/* 時間経過で進む状態遷移。変化したら true */
-function step(){
-  if(!S)return false;
-  D=derive();
-  var now=Date.now(),ch=false,both=D.teamReady.home&&D.teamReady.away;
-  if(S.phase==="lobby"){
-    if(both){S.phase="countdown";S.startsAt=now+5000;S.seats={home:D.seats.home.slice(),away:D.seats.away.slice()};ch=true}
-  }else if(S.phase==="countdown"){
-    if(!both){S.phase="lobby";S.startsAt=0;ch=true}
-    else if(now>=S.startsAt){S.phase="draft";S.turn=0;S.deadline=now+S.cfg.timer*1000;S.pendingHero="";S.pendingTurn=-1;S.resetT=-1;S.cands={};ch=true}
-  }else if(S.phase==="draft"&&D.cur&&now>S.deadline){
-    advance(autoHero(),true,"");ch=true;       /* 時間切れはランダム */
-  }
-  if(ch)D=derive();
-  return ch;
-}
-function saveHost(){lsSet("vgd_host",JSON.stringify({id:roomId,state:S,toks:toks}))}
-function sendAll(msg){Object.keys(conns).forEach(function(k){var c=conns[k];if(c&&c.open){try{c.send(msg)}catch(e){}}})}
-/* 受信者ごとに状態を絞る: 候補(cands)は同じチームの人にしか送らない */
-function teamOf(u){return D.seats.home.indexOf(u)>=0?"home":(D.seats.away.indexOf(u)>=0?"away":"")}
-function viewFor(u){
-  var t=teamOf(u),c={},src=S.cands||{},v={};
-  Object.keys(src).forEach(function(k){if(k===u||(t&&teamOf(k)===t))c[k]=src[k]});
-  for(var k in S)v[k]=S[k];
-  v.cands=c;return v;
-}
-function broadcast(){
-  var now=Date.now();
-  Object.keys(conns).forEach(function(k){
-    var c=conns[k];
-    if(c&&c.open&&c.__uid){try{c.send({t:"snap",s:viewFor(c.__uid),now:now})}catch(e){}}
-  });
-}
-function commit(){
-  if(!isHost||!S)return;
-  step();D=derive();
-  saveHost();broadcast();onState();
-}
-function onHostConn(conn,gen){
-  conn.on("data",function(m){
-    if(gen!==netGen||!isHost||!m||typeof m!=="object")return;
-    if(m.a==="hello"){
-      if(typeof m.uid!=="string"||!/^[A-Za-z0-9]{3,40}$/.test(m.uid))return;
-      var r=hostHandle(m.uid,m,false);
-      if(r==="denied"){try{conn.send({t:"denied",msg:"この名前の参加者はすでに別の端末で入室しています。"})}catch(e){}setTimeout(function(){try{conn.close()}catch(e){}},300);return}
-      conn.__uid=m.uid;conns[conn.peer]=conn;
-      commit();return;
-    }
-    if(!conn.__uid)return;
-    var res=hostHandle(conn.__uid,m,false);
-    if(typeof res==="string"&&res!=="denied"){try{conn.send({t:"err",msg:res})}catch(e){}}
-    commit();
-  });
-  var drop=function(){
-    if(gen!==netGen||!isHost)return;
-    if(conns[conn.peer]===conn)delete conns[conn.peer];
-    var u=conn.__uid;if(!u||!S)return;
-    var still=Object.keys(conns).some(function(k){return conns[k].__uid===u&&conns[k].open});
-    if(still)return;
-    var me=S.members[u];
-    if(me){me.on=false;if(S.phase==="lobby"||S.phase==="countdown")me.ready=false}
-    commit();
-  };
-  conn.on("close",drop);conn.on("error",drop);
-}
-
-/* ---------- ICE(STUN/TURN)設定 ----------
-   別ネットワーク同士(携帯回線・厳しいルーター等)では、STUNだけだと直接つながらず TURN(中継)が必要です。
-   確実に使うには、無料の TURN(Metered / Cloudflare Calls など)の認証情報を取得して TURN_SERVERS に追記してください。
-   例: {urls:["turn:xxx.metered.live:80","turn:xxx.metered.live:443","turns:xxx.metered.live:443?transport=tcp"],username:"...",credential:"..."} */
-var TURN_SERVERS=[];
-var ICE_SERVERS=[
-  {urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"},
-  {urls:"stun:stun.cloudflare.com:3478"},{urls:"stun:global.stun.twilio.com:3478"},
-  {urls:["turn:openrelay.metered.ca:80","turn:openrelay.metered.ca:443","turn:openrelay.metered.ca:443?transport=tcp"],username:"openrelayproject",credential:"openrelayproject"}
-].concat(TURN_SERVERS);
-var PEER_OPTS={debug:0,config:{iceServers:ICE_SERVERS,iceCandidatePoolSize:4}};
-/* ---------- 通信(ホスト起動 / クライアント接続) ---------- */
-function loadPeer(){
-  return new Promise(function(resolve){
-    if(window.Peer){resolve(true);return}
-    var i=0;
-    (function next(){
-      if(i>=PEER_SRC.length){resolve(false);return}
-      var s=document.createElement("script");s.src=PEER_SRC[i++];
-      s.onload=function(){window.Peer?resolve(true):next()};
-      s.onerror=function(){next()};
-      document.head.appendChild(s);
-    })();
-  });
-}
-function killNet(){
-  netGen++;
-  clearTimeout(retryTimer);
-  var c=hostConn,p=peer;hostConn=null;peer=null;conns={};
-  if(c){try{c.close()}catch(e){}}
-  if(p){try{p.destroy()}catch(e){}}
-}
-function startHost(id,cb){
-  killNet();
-  var gen=netGen,opened=false,fin=false;
-  var finish=function(r){if(fin)return;fin=true;clearTimeout(to);cb(r)};
-  var p;
-  try{p=new window.Peer("vgd-"+id,PEER_OPTS)}catch(e){cb({ok:false,err:"init"});return}
-  peer=p;
-  var to=setTimeout(function(){finish({ok:false,err:"timeout"})},12000);
-  p.on("open",function(){if(gen!==netGen)return;opened=true;finish({ok:true})});
-  p.on("connection",function(conn){if(gen!==netGen)return;onHostConn(conn,gen)});
-  p.on("disconnected",function(){if(gen!==netGen||!opened)return;try{p.reconnect()}catch(e){}});
-  p.on("error",function(e){
-    if(gen!==netGen)return;
-    var t=e&&e.type;
-    if(!opened){finish({ok:false,err:t==="unavailable-id"?"taken":(t||"error")});return}
-    if(t==="network"||t==="socket-closed"||t==="socket-error"||t==="server-error"){try{p.reconnect()}catch(x){}}
-  });
-}
-function enterAsHost(id,state){
-  S=state;isHost=true;roomId=id;inRoom=true;joining=false;connected=true;off=0;
-  lsDel("vgd_room");
+function startLoop(){var gen=netGen;pump(gen)}
+function enterRoom(id,d){
+  netGen++;outq=[];
+  roomId=id;inRoom=true;joining=false;
+  lsSet("vgd_room",JSON.stringify({id:id,spec:!!joinSpec}));
   showView("room");
+  applySnap(d);
+  setBusy(false);$("#joinMsg").textContent="";
+  startLoop();
+}
+function failText(r,kind){
+  if(r.status===404)return "そのIDのルームは見つかりません。IDを確認してください(終了または期限切れの可能性もあります)。";
+  if(r.status===403)return "この名前の参加者はすでに別の端末で入室しています。";
+  if(r.status===500&&r.data.err==="nodb")return "サーバーのデータベースが設定されていません。Vercel で Upstash Redis を接続してください。";
+  if(r.status===503)return "サーバーが混み合っています。もう一度お試しください。";
+  if(r.status===400&&r.data.err==="cfg")return "ルーム設定が正しくありません。";
+  if(r.data&&r.data.msg)return r.data.msg;
+  return "サーバーに接続できませんでした。ネットワークを確認してもう一度お試しください。";
 }
 async function createRoom(){
   var msg=$("#createMsg"),btn=$("#createBtn");
-  if(!window.Peer){msg.textContent="通信ライブラリを読み込めていません。再読み込みしてください。";return}
   getName();btn.disabled=true;msg.textContent="ルームを作成中…";
-  var cfg={size:cs.size,timer:cs.timer,rows:cs.rows.join(""),fixedBans:cs.fixed.slice()};
-  var last="";
-  for(var k=0;k<6;k++){
-    var id=genId();
-    var r=await new Promise(function(res){startHost(id,res)});
-    if(r.ok){
-      toks={};
-      enterAsHost(id,newState(cfg));
-      hostHandle(myUid,{a:"hello",tok:myTok,name:myName,spec:false},true);
-      msg.textContent="";btn.disabled=false;
-      commit();return;
-    }
-    last=r.err;
-    if(r.err!=="taken")break;
-  }
-  killNet();
-  msg.textContent=last==="taken"?"IDを確保できませんでした。もう一度お試しください。":"接続サーバーに接続できませんでした。ネットワークを確認してもう一度お試しください。";
-  btn.disabled=false;renderCreate();
+  var cfg={size:cs.size,timer:cs.timer,rows:cs.rows.join(""),fixedBans:cs.fixed.slice(),heroes:HEROES.slice()};
+  joinSpec=false;
+  var r=await apiCall({op:"create",uid:myUid,tok:myTok,name:myName,cfg:cfg});
+  btn.disabled=false;
+  if(r.status===200&&r.data.s){msg.textContent="";enterRoom(r.data.id,r.data);return}
+  msg.textContent=failText(r);renderCreate();
 }
-async function resumeHost(sv){
-  $("#joinMsg").textContent="ルームを復元中…";
-  for(var k=0;k<10;k++){
-    var r=await new Promise(function(res){startHost(sv.id,res)});
-    if(r.ok){
-      toks=sv.toks||{};
-      var st=sv.state;st.cands=st.cands||{};
-      Object.keys(st.members).forEach(function(u){st.members[u].on=false;if(st.phase==="lobby"||st.phase==="countdown")st.members[u].ready=false});
-      if(st.members[myUid])st.members[myUid].on=true;
-      if(st.phase==="countdown"){st.phase="lobby";st.startsAt=0}
-      if(st.phase==="draft")st.deadline=Date.now()+st.cfg.timer*1000;
-      enterAsHost(sv.id,st);
-      $("#joinMsg").textContent="";
-      commit();toast("ルームを復元しました");return true;
-    }
-    if(r.err!=="taken")break;
-    await sleep(2500);
-  }
-  lsDel("vgd_host");killNet();
-  $("#joinMsg").textContent="ルームを復元できませんでした。";
-  return false;
-}
-
-function failJoin(text,retry){
-  if(retry&&inRoom){
-    connected=false;setBanner();
-    clearTimeout(retryTimer);
-    retryTimer=setTimeout(function(){if(inRoom&&!isHost)connectClient(roomId,joinSpec,true)},3000);
-    return;
-  }
-  joining=false;killNet();roomId=null;
-  $("#joinMsg").textContent=text;
-  setBusy(false);
-}
-function connectClient(id,spec,retry){
-  killNet();
-  var gen=netGen,done=false,p;
-  roomId=id;joinSpec=!!spec;
-  try{p=new window.Peer(undefined,PEER_OPTS)}catch(e){failJoin("通信を開始できませんでした。",retry);return}
-  peer=p;
-  var fail=function(text){if(done)return;done=true;clearTimeout(to);failJoin(text,retry)};
-  var to=setTimeout(function(){fail("接続がタイムアウトしました。ホストがページを開いているか確認してください。(別ネットワーク同士の場合は通信の中継サーバー(TURN)が必要なことがあります)")},25000);
-  p.on("error",function(e){
-    if(gen!==netGen)return;
-    var t=e&&e.type;
-    if(t==="peer-unavailable")fail("そのIDのルームは見つかりません。IDを確認してください(ホストが閉じた可能性もあります)。");
-    else fail("通信エラーが発生しました"+(t?" ("+t+")":"")+"。");
-  });
-  p.on("open",function(){
-    if(gen!==netGen)return;
-    var c=p.connect("vgd-"+id,{reliable:true,serialization:"json"});
-    hostConn=c;
-    c.on("open",function(){if(gen===netGen)c.send({a:"hello",uid:myUid,tok:myTok,name:myName,spec:!!spec})});
-    c.on("data",function(m){
-      if(gen!==netGen||!m)return;
-      if(!done&&(m.t==="snap")){done=true;clearTimeout(to)}
-      onClientMsg(m);
-    });
-    var lost=function(){
-      if(gen!==netGen||hostConn!==c)return;
-      if(!done){fail("ホストに接続できませんでした。");return}
-      onLost();
-    };
-    c.on("close",lost);c.on("error",lost);
-  });
-}
-function onClientMsg(m){
-  if(m.t==="snap"){
-    if(!inRoom){
-      if(!joining)return;
-      joining=false;inRoom=true;isHost=false;
-      lsSet("vgd_room",JSON.stringify({id:roomId,spec:joinSpec}));
-      showView("room");setBusy(false);$("#joinMsg").textContent="";
-    }
-    off=m.now-Date.now();hbAt=Date.now();connected=true;
-    S=m.s;D=derive();setBanner();onState();
-  }else if(m.t==="hb"){off=m.now-Date.now();hbAt=Date.now()}
-  else if(m.t==="err"){toast(m.msg)}
-  else if(m.t==="denied"){leaveRoom(true,m.msg)}
-  else if(m.t==="closed"){leaveRoom(true,"ホストがルームを終了しました")}
-}
-function onLost(){
-  if(!inRoom||isHost)return;
-  connected=false;setBanner();
-  clearTimeout(retryTimer);
-  retryTimer=setTimeout(function(){if(inRoom&&!isHost)connectClient(roomId,joinSpec,true)},2500);
-}
-function joinRoom(raw,spec){
+async function joinRoom(raw,spec){
   var id=String(raw||"").trim().toUpperCase(),jm=$("#joinMsg");
-  if(!window.Peer){jm.textContent="通信ライブラリを読み込めていません。再読み込みしてください。";return}
   if(!/^[A-Z0-9]{4,10}$/.test(id)){jm.textContent="ルームIDは英数字で入力してください。";return}
   getName();
   joining=true;setBusy(true);jm.textContent="接続中…";
-  connectClient(id,spec,false);
+  roomId=id;joinSpec=!!spec;
+  var r=await apiCall(syncBody(null,true));
+  if(!joining)return;
+  if(r.status===200&&r.data.s){enterRoom(id,r.data);return}
+  joining=false;roomId=null;setBusy(false);
+  if(r.status===404)lsDel("vgd_room");
+  jm.textContent=failText(r);
 }
 function setBusy(b){
-  var ok=!!window.Peer&&!b;
-  $("#joinBtn").disabled=!ok;$("#watchBtn").disabled=!ok;
+  $("#joinBtn").disabled=b;$("#watchBtn").disabled=b;
   renderCreateBtn();
 }
 function leaveRoom(silent,msg){
   if(!inRoom&&!joining)return;
-  var wasHost=isHost,c=hostConn;
-  if(wasHost){sendAll({t:"closed"});lsDel("vgd_host")}
-  else if(c&&c.open){try{c.send({a:"leave"})}catch(e){}}
+  if(inRoom&&!silent&&roomId)apiCall(syncBody({a:"leave"},false),true);
+  netGen++;outq=[];if(wake)wake();
   inRoom=false;joining=false;isHost=false;connected=false;S=null;D=null;roomId=null;
   lsDel("vgd_room");
-  clearTimeout(retryTimer);
-  setTimeout(killNet,300);
   $("#cd").hidden=true;$("#fab").hidden=true;document.body.classList.remove("has-fab");
   showView("entry");setBanner();setBusy(false);
   toast(msg||"退出しました");
@@ -827,11 +572,11 @@ function leaveRoom(silent,msg){
 
 /* ---------- アクション(送信) ---------- */
 function act(m){
-  if(!S)return;
-  if(isHost){var r=hostHandle(myUid,m,true);if(typeof r==="string"&&r!=="denied")toast(r);commit();return}
-  if(hostConn&&hostConn.open&&connected)hostConn.send(m);
-  else toast("ホストに接続されていません");
+  if(!S||!inRoom)return;
+  if(!connected){toast("サーバーに接続されていません");return}
+  outq.push(m);if(wake)wake();
 }
+
 function chooseHero(h){
   if(!D||S.phase!=="draft"||taken(h)||!D.myTeam)return;       /* 観戦者・未着席は操作不可 */
   if(isActor()){act({a:"pick",h:h})}
@@ -849,7 +594,7 @@ function genId(){var a="ABCDEFGHJKMNPQRSTUVWXYZ23456789",s="";for(var i=0;i<6;i+
 function setRows(){cs.rows=defaultRows(cs.size,cs.bans).split("")}
 function renderCreateBtn(){
   var cnt=cs.rows.filter(function(x){return x==="B"}).length;
-  $("#createBtn").disabled=!(window.Peer&&cnt===cs.bans&&!joining);
+  $("#createBtn").disabled=!(cnt===cs.bans&&!joining);
 }
 function renderCreate(){
   $$("#segSize button").forEach(function(b){b.classList.toggle("on",+b.dataset.v===cs.size)});
@@ -920,8 +665,7 @@ function showView(v){
 }
 function setBanner(){
   var b=$("#netBanner"),msg="";
-  if(!window.Peer)msg="通信ライブラリを読み込めませんでした。ネットワークを確認して再読み込みしてください。";
-  else if(inRoom&&!isHost&&!connected)msg="ホストとの接続が切れました。再接続しています…";
+  if(inRoom&&!connected)msg="サーバーとの接続が切れました。再接続しています…";
   b.hidden=!msg;b.textContent=msg;
 }
 function onState(){
@@ -1103,7 +847,6 @@ function wireRoom(){
   });
   $("#q").addEventListener("input",function(){q=$("#q").value;if(S&&D&&S.phase!=="lobby")renderPool()});
   $("#leaveBtn").addEventListener("click",function(){
-    if(isHost&&!window.confirm("ホストが退出すると、ルームは終了します。退出しますか?"))return;
     leaveRoom(false);
   });
   $("#copyId").addEventListener("click",function(){copyText(roomId,"ルームIDをコピーしました")});
@@ -1116,27 +859,13 @@ async function init(){
   $("#myName").value=myName;
   buildHeroCss();
   setRows();wireCreate();wireRoom();renderCreate();
-  setInterval(function(){
-    if(isHost&&S){
-      if(step()){saveHost();broadcast();onState()}
-      if(Date.now()-lastHb>4000){lastHb=Date.now();sendAll({t:"hb",now:Date.now()})}
-    }else if(inRoom&&!isHost&&connected&&Date.now()-hbAt>15000){
-      var c=hostConn;if(c){try{c.close()}catch(e){}}
-      onLost();
-    }
-    tick();
-  },250);
+  setInterval(tick,250);
+  document.addEventListener("visibilitychange",function(){if(!document.hidden&&wake)wake()});
   var params=new URLSearchParams(location.search);
   var qRoom=(params.get("room")||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,10);
   var qWatch=params.get("watch")==="1";
   if(qRoom)$("#joinId").value=qRoom;
-  setBusy(true);
-  var ok=await loadPeer();
-  setBanner();setBusy(false);
-  if(!ok)return;
-  var sv=null;
-  try{sv=JSON.parse(lsGet("vgd_host")||"null")}catch(e){sv=null}
-  if(sv&&sv.id&&sv.state&&sv.state.host===myUid){await resumeHost(sv);return}
+  setBusy(false);setBanner();
   var sr=null;
   try{sr=JSON.parse(lsGet("vgd_room")||"null")}catch(e){sr=null}
   if(sr&&sr.id&&!qRoom){$("#joinId").value=sr.id;joinRoom(sr.id,!!sr.spec);return}
