@@ -155,6 +155,7 @@ details.fx[open] summary{margin-bottom:10px}
 .tb-l .v em{font-style:normal;color:var(--gold)}
 .tb-act{margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
 .tb-r{font-family:var(--f-disp);font-weight:700;font-size:44px;line-height:1;text-align:right;font-variant-numeric:tabular-nums}
+.tb-r.ot{color:var(--gold)}
 .tb-r.low{color:var(--away)}
 .tbar{grid-column:1/-1;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
 .tbar i{display:block;height:100%;background:var(--gold);width:100%}
@@ -285,6 +286,9 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
         <h2>ルームを作成 <button class="btn sm ghost" id="gateOut" type="button" style="float:right">ログアウト</button></h2>
         <div class="row"><span class="lab">形式</span><div class="seg" id="segSize" role="group" aria-label="形式"><button type="button" data-v="3">3v3</button><button type="button" data-v="5">5v5</button></div></div>
         <div class="row"><span class="lab">1手番の制限時間</span><div class="seg" id="segTimer" role="group" aria-label="制限時間"><button type="button" data-v="15">15秒</button><button type="button" data-v="30">30秒</button><button type="button" data-v="45">45秒</button><button type="button" data-v="60">60秒</button></div></div>
+        <div class="row"><span class="lab">タイマー延長</span><div class="seg" id="segExt" role="group" aria-label="タイマー延長"><button type="button" data-v="pool">時間プール</button><button type="button" data-v="reset">リセット</button><button type="button" data-v="half">半分追加</button></div></div>
+        <div class="row" id="poolRow"><label class="lab" for="poolSec">チームの時間プール(秒)</label><input class="field num" id="poolSec" type="number" inputmode="numeric" min="10" max="600" step="5" style="width:110px"></div>
+        <p class="hint" id="extHint"></p>
         <div class="row"><span class="lab">BANの人数(各チーム)</span><div class="seg" id="segBans" role="group" aria-label="BANの人数"><button type="button" data-v="1">1人</button><button type="button" data-v="2">2人</button><button type="button" data-v="3">3人</button><button type="button" data-v="4">4人</button><button type="button" data-v="5">5人</button></div></div>
         <div class="lab" style="margin-bottom:6px">進行順</div>
         <div class="rlist" id="cStrip"></div>
@@ -438,7 +442,7 @@ async function hostLogin(u,p,silent){
 }
 var off=0,connected=false;
 var localSel="",q="";
-var cs={size:5,timer:45,bans:1,rows:[],fixed:["チャーンウォーカー","ヴィオラ"]};   /* 既定の固定BAN(作成画面で変更できます) */
+var cs={size:3,timer:30,bans:2,ext:"pool",pool:120,rows:[],fixed:["チャーンウォーカー","ヴィオラ"]};   /* 既定の固定BAN(作成画面で変更できます) */
 
 function nowS(){return Date.now()+off}
 function toast(t){var el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true},2600)}
@@ -573,7 +577,7 @@ function failText(r,kind){
 async function createRoom(){
   var msg=$("#createMsg"),btn=$("#createBtn");
   getName();btn.disabled=true;msg.textContent="ルームを作成中…";
-  var cfg={size:cs.size,timer:cs.timer,rows:cs.rows.join(""),fixedBans:cs.fixed.slice(),heroes:HEROES.slice()};
+  var cfg={size:cs.size,timer:cs.timer,ext:cs.ext,pool:cs.ext==="pool"?cs.pool:0,rows:cs.rows.join(""),fixedBans:cs.fixed.slice(),heroes:HEROES.slice()};
   joinSpec=false;
   var r=await apiCall({op:"create",uid:myUid,tok:myTok,name:myName,cfg:cfg,hu:hostAuth&&hostAuth.u,hp:hostAuth&&hostAuth.p});
   btn.disabled=false;
@@ -626,7 +630,7 @@ function chooseHero(h){
   }
 }
 function confirmTurn(){if(isActor())act({a:"confirm"})}
-function extendTime(){if(isActor()&&S.resetT!==S.turn&&nowS()<S.deadline)act({a:"extend"})}
+function extendTime(){if(isActor()&&S.resetT!==S.turn&&(S.pausedAt||nowS())<S.deadline)act({a:"extend"})}
 
 /* ---------- 作成フォーム ---------- */
 function genId(){var a="ABCDEFGHJKMNPQRSTUVWXYZ23456789",s="";for(var i=0;i<6;i++)s+=a[Math.floor(Math.random()*a.length)];return s}
@@ -639,6 +643,11 @@ function renderCreate(){
   $$("#segSize button").forEach(function(b){b.classList.toggle("on",+b.dataset.v===cs.size)});
   $$("#segTimer button").forEach(function(b){b.classList.toggle("on",+b.dataset.v===cs.timer)});
   $$("#segBans button").forEach(function(b){b.classList.toggle("on",+b.dataset.v===cs.bans)});
+  $$("#segExt button").forEach(function(b){b.classList.toggle("on",b.dataset.v===cs.ext)});
+  $("#poolRow").hidden=cs.ext!=="pool";
+  if(document.activeElement!==$("#poolSec"))$("#poolSec").value=cs.pool;
+  var half=Math.round(cs.timer/2);
+  $("#extHint").textContent=cs.ext==="pool"?"制限時間を過ぎた分だけ、そのチームの時間プールから減っていきます(使った分は戻りません)。プールが0になると、ピックはランダム、BANは選択なしで次の手番へ進みます。延長ボタンはありません。":cs.ext==="reset"?"手番ごとに1回、残り時間を制限時間("+cs.timer+"秒)いっぱいに戻せます。時間切れは、ピックはランダム、BANは選択なしで次へ進みます。":"手番ごとに1回、残り時間に制限時間の約半分(+"+half+"秒)を追加できます。時間切れは、ピックはランダム、BANは選択なしで次へ進みます。";
   var target=cs.bans;
   $("#cStrip").innerHTML=cs.rows.map(function(t,i){
     var dis=i===0||i===cs.rows.length-1;
@@ -648,7 +657,7 @@ function renderCreate(){
   $("#fixedCount").textContent=cs.fixed.length?"("+cs.fixed.length+"人)":"";
   $("#fixedList").innerHTML=cs.fixed.map(function(h){return '<span class="fchip">'+monoHTML(h)+esc(h)+'</span>'}).join("");
   renderFixedPool();
-  $("#cSum").textContent=cs.size+"v"+cs.size+" / 各手番 "+cs.timer+"秒 / BAN 各チーム"+cs.bans+"人(計"+cs.bans*2+"人) + 固定BAN "+cs.fixed.length+"人 / 全 "+cs.rows.length+" 行";
+  $("#cSum").textContent=cs.size+"v"+cs.size+" / 各手番 "+cs.timer+"秒("+(cs.ext==="pool"?"チーム時間プール "+cs.pool+"秒":cs.ext==="reset"?"リセット":"半分追加")+") / BAN 各チーム"+cs.bans+"人(計"+cs.bans*2+"人) + 固定BAN "+cs.fixed.length+"人 / 全 "+cs.rows.length+" 行";
   renderCreateBtn();
 }
 function groupsHTML(filter,tileFn){
@@ -667,6 +676,9 @@ function renderFixedPool(){
 }
 function wireCreate(){
   $("#segSize").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.size=+b.dataset.v;setRows();renderCreate()});
+  $("#segExt").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.ext=b.dataset.v;renderCreate()});
+  $("#poolSec").addEventListener("input",function(){var v=Math.round(+$("#poolSec").value);if(v>=10&&v<=600)cs.pool=v;renderCreate()});
+  $("#poolSec").addEventListener("change",function(){var v=Math.round(+$("#poolSec").value);cs.pool=v>=10?Math.min(600,v):10;$("#poolSec").value=cs.pool;renderCreate()});
   $("#segTimer").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.timer=+b.dataset.v;renderCreate()});
   $("#segBans").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.bans=+b.dataset.v;setRows();renderCreate()});
   $("#cStrip").addEventListener("click",function(e){
@@ -778,6 +790,12 @@ function renderLobby(){
   $("#readybar").innerHTML=rb;
   $("#rStrip").innerHTML=stripHTML(S.cfg.rows);
 }
+function extOf(){return (S&&S.cfg&&S.cfg.ext)||"reset"}
+function poolLeft(t,now){                      /* チームの時間プールの残り(ミリ秒)。今の手番のチームは超過分を引いて表示 */
+  var p=(S.pool&&S.pool[t])||0;
+  if(S.phase==="draft"&&D.cur&&D.cur.team===t)p-=Math.max(0,now-S.deadline);
+  return Math.max(0,p);
+}
 function tick(){
   if(!S||!D)return;
   var now=nowS();
@@ -786,10 +804,21 @@ function tick(){
     $("#cdNum").textContent=n>0?n:"GO";
   }
   if(S.phase==="draft"){
-    var left=Math.max(0,S.deadline-now),el=$("#tbNum"),bar=$("#tbBar");
-    if(el){el.textContent=Math.ceil(left/1000);el.classList.toggle("low",left<=5000)}
-    if(bar)bar.style.width=Math.min(100,left/(S.cfg.timer*10))+"%";
+    if(S.pausedAt)now=S.pausedAt;                      /* 一時停止中は止まった時刻で表示 */
+    var left=Math.max(0,S.deadline-now),el=$("#tbNum"),bar=$("#tbBar"),ot=extOf()==="pool"&&now>S.deadline;
+    if(ot&&D.cur){left=poolLeft(D.cur.team,now)}          /* 制限時間を過ぎたら時間プールのカウントダウン */
+    if(el){el.textContent=Math.ceil(left/1000);el.classList.toggle("low",left<=5000);el.classList.toggle("ot",ot)}
+    if(bar)bar.style.width=ot?Math.min(100,left/(Math.max(1,S.cfg.pool)*10))+"%":Math.min(100,left/(S.cfg.timer*10))+"%";
+    var pn=$("#poolNote");
+    if(pn&&extOf()==="pool")pn.innerHTML=(ot?'<b>延長中(プール消費) </b>':'')+'時間プール ホーム <b>'+Math.ceil(poolLeft("home",now)/1000)+'</b>秒 / アウェイ <b>'+Math.ceil(poolLeft("away",now)/1000)+'</b>秒';
   }
+}
+function extUI(mine,used,c){
+  var pz=(isHost?'<button class="btn sm'+(S.pausedAt?' pri':'')+'" type="button" data-pause="1">'+(S.pausedAt?'▶ 再開':'⏸ 一時停止')+'</button>':'')+(S.pausedAt?'<span class="note"><b>一時停止中</b></span>':'');
+  var e=extOf(),fail=c.type==="B"?"時間切れはBANなしで次へ":"時間切れはランダムで確定";
+  if(e==="pool")return pz+'<span class="note" id="poolNote"></span><span class="note">'+fail+'</span>';
+  var half=Math.round(S.cfg.timer/2),lab=e==="half"?"+"+half+"秒を追加(1回)":"時間をリセット(1回)",done=e==="half"?"追加済み":"リセット済み";
+  return pz+(mine?'<button class="btn sm" type="button" data-extend="1"'+(used?" disabled":"")+'>'+(used?done:lab)+'</button>':(used?'<span>この手番は'+done+'</span>':''))+'<span class="note">'+fail+'</span>';
 }
 function renderTurn(){
   var tb=$("#turnbar");
@@ -802,7 +831,7 @@ function renderTurn(){
   tb.className="turnbar "+c.team+(mine?" mine":"");
   tb.innerHTML='<div class="tb-l"><div class="k num">手番 '+(S.turn+1)+' / '+D.turns.length+' · '+verb+'</div>'+
     '<div class="v">'+(mine?'<em>あなたの番です</em>':esc(teamJa(c.team))+' '+esc(nameOf(D.actor))+' の'+verb)+'</div>'+
-    '<div class="tb-act">'+(mine?'<button class="btn sm" type="button" data-extend="1"'+(used?" disabled":"")+'>'+(used?"リセット済み":"時間をリセット(1回)")+'</button>':(used?'<span>この手番はリセット済み</span>':''))+'<span class="note">時間切れはランダムで確定</span></div></div>'+
+    '<div class="tb-act">'+extUI(mine,used,c)+'</div></div>'+
     '<div class="tb-r num" id="tbNum">0</div><div class="tbar"><i id="tbBar"></i></div>';
 }
 function cellHTML(t,r){
@@ -812,7 +841,7 @@ function cellHTML(t,r){
   if(en){
     if(en.hero){inner=monoHTML(en.hero);hn=en.hero}
     else{inner='<span class="ph">SKIP</span>';hn="スキップ"}
-    if(en.auto&&en.hero)ow+=" (時間切れ・ランダム)";
+    if(en.auto)ow+=en.hero?" (時間切れ・ランダム)":" (時間切れ・BANなし)";
   }else if(cur){
     var ph=S.pendingTurn===ti&&S.pendingHero;
     if(ph){inner=monoHTML(ph);hn=ph}else{inner='<span class="ph">…</span>';hn="選択中"}
@@ -886,6 +915,7 @@ function wireRoom(){
   $("#fab").addEventListener("click",function(){if(!$("#fab").disabled)confirmTurn()});
   $("#turnbar").addEventListener("click",function(e){
     if(e.target.closest("[data-reset]"))act({a:"reset"});
+    else if(e.target.closest("[data-pause]")&&isHost)act({a:"pause"});
     else{var b=e.target.closest("[data-extend]");if(b&&!b.disabled)extendTime()}
   });
   $("#q").addEventListener("input",function(){q=$("#q").value;if(S&&D&&S.phase!=="lobby")renderPool()});
