@@ -106,7 +106,7 @@ function advance(S, hero, auto, by) {
   S.pendingHero = ""; S.pendingTurn = -1; S.turn++;
   S.cands = S.cands || {};
   Object.keys(S.cands).forEach(function (k) { if (hero && S.cands[k] === hero) delete S.cands[k]; });
-  if (S.turn >= D.turns.length) { S.phase = "done"; S.deadline = 0; S.cands = {}; S.pausedAt = 0; S.leaders = S.leaders || null; }
+  if (S.turn >= D.turns.length) { S.phase = "done"; S.deadline = 0; S.cands = {}; S.pausedAt = 0; S.code = 3001 + Math.floor(Math.random() * 6999);      /* 3001〜9999 */ S.leaders = S.leaders || null; }
   else {
     S.deadline = clock(S) + S.cfg.timer * 1000;      /* 一時停止中は、再開するまで時間が進まない */
     var nt = D.turns[S.turn]; delete S.cands[D.actorAt(nt)];
@@ -173,7 +173,7 @@ function handle(S, uid, m, body) {
     case "reset":
       if (!isHost || ph !== "done") break;
       S.phase = "lobby"; S.turn = 0; S.deadline = 0; S.startsAt = 0; S.pendingHero = ""; S.pendingTurn = -1; S.resetT = -1; S.pausedAt = 0;
-      S.cands = {}; S.log = {}; S.leaders = null; S.seats = { home: [], away: [] }; S.pool = { home: 0, away: 0 };
+      S.cands = {}; S.log = {}; S.leaders = null; S.code = 0; S.seats = { home: [], away: [] }; S.pool = { home: 0, away: 0 };
       Object.keys(mem).forEach(function (k) { mem[k].ready = false; });
       changed = true; break;
     case "cand":      /* 手番でない人の候補。同じチームの人にだけ配信される */
@@ -236,6 +236,7 @@ function viewFor(S, uid, seen, now) {
   Object.keys(src).forEach(function (k) { if (k === uid || (t && teamOf(k) === t)) c[k] = src[k]; });
   for (var k in S) { if (k !== "toks") v[k] = S[k]; }
   v.cands = c;
+  if (!t) delete v.code;      /* ランダム数字は着席した参加者にだけ送る(ホスト・観戦者には送らない) */
   v.members = {};
   Object.keys(S.members).forEach(function (u) {
     var m = S.members[u], o = {};
