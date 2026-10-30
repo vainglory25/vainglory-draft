@@ -136,6 +136,7 @@ details.fx[open] summary{margin-bottom:10px}
 .seat .sn{font-family:var(--f-disp);color:var(--muted);font-size:12px}
 .seat .who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cell .own{min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.codebox{margin-top:6px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}.codebox small{flex-basis:100%;color:var(--muted);font-size:11px}.codebox b{font-size:18px;letter-spacing:.04em;word-break:break-all}
 .rtag{flex:none;display:inline-flex;align-items:center;gap:3px;margin-left:auto;padding:0 6px;border-radius:999px;border:1px solid var(--line);font-size:10px;color:var(--muted);font-weight:600}
 .rtag i{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--line)}
 .rtag i.red,.rb-c.red i{background:#ef5350}.rtag i.blue,.rb-c.blue i{background:#42a5f5}.rtag i.yellow,.rb-c.yellow i{background:#fdd835}
@@ -165,6 +166,16 @@ details.fx[open] summary{margin-bottom:10px}
 .tb-l .k{font-family:var(--f-disp);font-size:12px;letter-spacing:.16em;color:var(--muted)}
 .tb-l .v{font-size:18px;font-weight:700;margin-top:2px}
 .tb-l .v em{font-style:normal;color:var(--gold)}
+.poolrow{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-size:13px}
+.poolrow .pl{color:var(--muted);font-size:11px}
+.poolrow .pc{padding:2px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel2)}
+.poolrow .pc b{font-size:16px;font-variant-numeric:tabular-nums}
+.poolrow .pc small{margin-left:4px;color:var(--gold);font-size:10px}
+.poolrow .pc.home{border-color:var(--home)}.poolrow .pc.away{border-color:var(--away)}
+.poolrow .pc.me{background:rgba(255,200,60,.14)}
+.poolrow .pc.cur{box-shadow:0 0 0 1px var(--gold)}
+.poolrow .pc.low b{color:var(--away)}
+.poolrow .pc.ot{color:var(--gold);border-color:var(--gold)}
 .tb-act{margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
 .tb-r{font-family:var(--f-disp);font-weight:700;font-size:44px;line-height:1;text-align:right;font-variant-numeric:tabular-nums}
 .tb-r.ot{color:var(--gold)}
@@ -252,6 +263,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
   .turnbar{padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top,0px));gap:4px 12px;border-radius:0 0 12px 12px}
   .tb-l .v{font-size:15px}
   .tb-act .note{display:none}
+  .poolrow .pl{display:none}.poolrow .pc{padding:2px 8px}.poolrow{gap:6px}
 }
 @media (max-width:420px){.teams{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.cell.cur{animation:none}}
@@ -854,23 +866,29 @@ function tick(){
     if(bar)bar.style.width=ot?Math.min(100,left/(Math.max(1,S.cfg.pool)*10))+"%":Math.min(100,left/(S.cfg.timer*10))+"%";
     var pn=$("#poolNote");
     if(pn&&extOf()==="pool"){
-      var hs=Math.ceil(poolLeft("home",now)/1000),as=Math.ceil(poolLeft("away",now)/1000),mt=D.myTeam;
-      pn.innerHTML=(ot?'<b>延長中 </b>':'')+(mt?'<span class="pn-me">あなたのチーム 残り<b>'+(mt==="home"?hs:as)+'</b>秒</span> ':'')+'<span class="pn-o">ホーム '+hs+'秒 / アウェイ '+as+'秒</span>';
+      var hs=Math.ceil(poolLeft("home",now)/1000),as=Math.ceil(poolLeft("away",now)/1000),mt=D.myTeam,ct=D.cur&&D.cur.team;
+      var chip=function(t,v){return '<span class="pc '+t+(mt===t?" me":"")+(ct===t?" cur":"")+(v<=10?" low":"")+'">'+(t==="home"?"ホーム":"アウェイ")+' <b>'+v+'</b>秒'+(mt===t?'<small>(あなた)</small>':'')+'</span>'};
+      pn.innerHTML='<span class="pl">時間プール</span>'+chip("home",hs)+chip("away",as)+(ot?'<span class="pc ot">延長中</span>':'');
     }
   }
 }
 function extUI(mine,used,c){
   var pz=(isHost?'<button class="btn sm'+(S.pausedAt?' pri':'')+'" type="button" data-pause="1">'+(S.pausedAt?'▶ 再開':'⏸ 一時停止')+'</button>':'')+(S.pausedAt?'<span class="note"><b>一時停止中</b></span>':'');
   var e=extOf(),fail=c.type==="B"?"時間切れはBANなしで次へ":"時間切れはランダムで確定";
-  if(e==="pool")return pz+'<span class="note" id="poolNote"></span><span class="note">'+fail+'</span>';
+  if(e==="pool")return pz+'<span class="note">'+fail+'</span>';
   var half=Math.round(S.cfg.timer/2),lab=e==="half"?"+"+half+"秒を追加(1回)":"時間をリセット(1回)",done=e==="half"?"追加済み":"リセット済み";
   return pz+(mine?'<button class="btn sm" type="button" data-extend="1"'+(used?" disabled":"")+'>'+(used?done:lab)+'</button>':(used?'<span>この手番は'+done+'</span>':''))+'<span class="note">'+fail+'</span>';
+}
+function codeHTML(){
+  if(!S.code||!D.myTeam)return "";
+  var pre=S.code+"-"+(D.myTeam==="home"?1:2)+"_",full=pre+nameOf(myUid);
+  return '<div class="codebox"><small>あなたのチームの名前(ゲーム内の名前に付けてください)</small><b class="num">'+esc(full)+'</b> <button class="btn sm" type="button" data-copycode="'+esc(full)+'">コピー</button></div>';
 }
 function renderTurn(){
   var tb=$("#turnbar");
   if(S.phase==="done"){
     tb.className="turnbar";
-    tb.innerHTML='<div class="tb-l"><div class="k">DRAFT</div><div class="v">ドラフト完了</div></div>'+(isHost?'<div><button class="btn" type="button" data-reset="1">ロビーに戻す</button></div>':'');
+    tb.innerHTML='<div class="tb-l"><div class="k">DRAFT</div><div class="v">ドラフト完了</div>'+codeHTML()+'</div>'+(isHost?'<div><button class="btn" type="button" data-reset="1">ロビーに戻す</button></div>':'');
     return;
   }
   var c=D.cur,mine=isActor(),verb=c.type==="B"?"BAN":"PICK",used=S.resetT===S.turn;
@@ -878,7 +896,7 @@ function renderTurn(){
   tb.innerHTML='<div class="tb-l"><div class="k num">手番 '+(S.turn+1)+' / '+D.turns.length+' · '+verb+'</div>'+
     '<div class="v">'+(mine?'<em>あなたの番です</em>':esc(teamJa(c.team))+' '+esc(nameOf(D.actor))+' の'+verb)+'</div>'+
     '<div class="tb-act">'+extUI(mine,used,c)+'</div></div>'+
-    '<div class="tb-r num" id="tbNum">0</div><div class="tbar"><i id="tbBar"></i></div>';
+    '<div class="tb-r num" id="tbNum">0</div>'+(extOf()==="pool"?'<div class="poolrow" id="poolNote"></div>':'')+'<div class="tbar"><i id="tbBar"></i></div>';
 }
 function cellHTML(t,r){
   var type=S.cfg.rows[r],ti=D.tix[r+t],turn=D.turns[ti],en=(S.log||{})[ti];
@@ -966,7 +984,9 @@ function wireRoom(){
   $("#poolGrid").addEventListener("click",function(e){var b=e.target.closest("button");if(b&&!b.disabled)chooseHero(b.dataset.h)});
   $("#fab").addEventListener("click",function(){if(!$("#fab").disabled)confirmTurn()});
   $("#turnbar").addEventListener("click",function(e){
-    if(e.target.closest("[data-reset]"))act({a:"reset"});
+    var cc=e.target.closest("[data-copycode]");
+    if(cc)copyText(cc.dataset.copycode,"コピーしました");
+    else if(e.target.closest("[data-reset]"))act({a:"reset"});
     else if(e.target.closest("[data-pause]")&&isHost)act({a:"pause"});
     else{var b=e.target.closest("[data-extend]");if(b&&!b.disabled)extendTime()}
   });
