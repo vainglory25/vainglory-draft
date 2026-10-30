@@ -240,6 +240,7 @@ function viewFor(S, uid, seen, now) {
   Object.keys(S.members).forEach(function (u) {
     var m = S.members[u], o = {};
     for (var f in m) o[f] = m[f];
+    if (u !== uid && !(t && teamOf(u) === t)) { delete o.role; delete o.color; }      /* ロール・色は同じチームの人にしか送らない(相手・観戦者には見せない) */
     o.on = !m.left && (u === uid || !!(seen[u] && now - seen[u] < PRESENCE_MS));
     v.members[u] = o;
   });
