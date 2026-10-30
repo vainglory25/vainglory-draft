@@ -135,6 +135,17 @@ details.fx[open] summary{margin-bottom:10px}
 .seat.me{border-color:var(--gold)}
 .seat .sn{font-family:var(--f-disp);color:var(--muted);font-size:12px}
 .seat .who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rtag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;font-size:10px;color:var(--muted);font-weight:600}
+.rtag i{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--line)}
+.rtag i.red,.rb-c.red i{background:#ef5350}.rtag i.blue,.rb-c.blue i{background:#42a5f5}.rtag i.yellow,.rb-c.yellow i{background:#fdd835}
+.rolebar{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin:0 0 12px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.rolebar .lab{font-size:11px}
+.rolebar .grp{display:flex;gap:4px;flex-wrap:wrap}
+.rolebar button{font:inherit;font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer}
+.rolebar button.on{background:var(--gold);color:#241b05;border-color:var(--gold);font-weight:700}
+.rb-c i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.pn-me{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;border:1px solid var(--gold);background:rgba(255,200,60,.12);font-size:13px}
+.pn-me b{font-size:16px}
 .seat .who small{color:var(--muted);margin-left:6px}
 .rd{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
 .rd i{width:12px;height:12px;border-radius:50%;background:var(--line);display:inline-block}
@@ -312,6 +323,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
         <p class="hint">参加者は入室後にロビーで席に座ります。観戦で入ると閲覧だけで、座ること・選ぶことはできません。</p>
         <div class="btns" style="margin-top:14px">
           <button class="btn pri" id="joinBtn" type="button" disabled>参加者として入室</button>
+          <button class="btn pri" id="joinLeaderBtn" type="button" disabled hidden>参戦者(代表者)として入室</button>
           <button class="btn" id="watchBtn" type="button" disabled>観戦で入室</button>
         </div>
         <p class="msg" id="joinMsg" role="status"></p>
@@ -322,6 +334,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
   <!-- ROOM -->
   <section id="vRoom" hidden>
     <div class="meta" id="roomMeta"></div>
+    <div class="rolebar" id="rolebar" hidden></div>
     <div id="fixedWrap" class="fixed-wrap" hidden></div>
 
     <div id="lobby" hidden>
@@ -353,6 +366,9 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
+var VG_MODE="host";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) */
+var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
+var COLORS=[["red","赤"],["blue","青"],["yellow","黄"]];
 
 /* ---------------------------------------------------------------
    仕組み: Vercel の API 関数(api/room.js)+ Upstash Redis がルームの状態を持ち、
@@ -421,11 +437,11 @@ var myName=lsGet("vgd_name")||"";
 var S=null,D=null;                    /* S: ルームの状態(ホストが正)  D: Sから導いた値 */
 var roomId=null,isHost=false,inRoom=false,joining=false,joinSpec=false;
 var netGen=0,joinTeam="";
-var hostOK=false,entryRoom="",hostAuth=null;
+var hostOK=false,entryRoom="",hostAuth=null,joinLeader=false;
 try{hostAuth=JSON.parse(lsGet("vgd_ha")||"null")}catch(e){hostAuth=null}
 /* 入口画面の出し分け: ホストログイン前(ルームの指定なし)=ログインだけ / ルーム指定のリンク=入室だけ / ログイン済みのホスト=作成+入室 */
 function refreshEntry(){
-  var mode=hostOK?"host":(entryRoom?"join":"gate");
+  var mode=VG_MODE==="free"?(entryRoom?"join":"host"):(hostOK?"host":(entryRoom?"join":"gate"));
   $("#gateCard").hidden=mode!=="gate";
   $("#createCard").hidden=mode!=="host";
   $("#joinCard").hidden=!(mode==="host"||mode==="join");
@@ -471,25 +487,46 @@ function defaultRows(size,k){
 }
 function rankOf(team){
   var mem=S.members||{};
-  return Object.keys(mem).filter(function(k){return mem[k].team===team}).sort(function(a,b){return (mem[a].t-mem[b].t)||(a<b?-1:1)});
+  var ld=S.cfg&&S.cfg.leader;
+  return Object.keys(mem).filter(function(k){return mem[k].team===team}).sort(function(a,b){return ((ld&&mem[b].leader?1:0)-(ld&&mem[a].leader?1:0))||(mem[a].t-mem[b].t)||(a<b?-1:1)});
 }
 function derive(){
   var cfg=S.cfg,N=cfg.size,mem=S.members||{},seats;
   if(S.phase==="lobby"){seats={home:rankOf("home").slice(0,N),away:rankOf("away").slice(0,N)}}
   else seats={home:(S.seats&&S.seats.home)||[],away:(S.seats&&S.seats.away)||[]};
-  var tr={};
-  ["home","away"].forEach(function(t){tr[t]=seats[t].length===N&&seats[t].every(function(u){return mem[u]&&mem[u].ready===true})});
+  var tr={},leaders={home:null,away:null};
+  if(cfg.leader){
+    ["home","away"].forEach(function(t){
+      if(S.phase==="lobby"){seats[t].forEach(function(u){if(mem[u]&&mem[u].leader)leaders[t]=u})}
+      else leaders[t]=(S.leaders&&S.leaders[t])||null;
+      tr[t]=!!(leaders[t]&&mem[leaders[t]]&&mem[leaders[t]].ready===true);
+    });
+  }else ["home","away"].forEach(function(t){tr[t]=seats[t].length===N&&seats[t].every(function(u){return mem[u]&&mem[u].ready===true})});
   var turns=buildTurns(cfg),tix={};
   turns.forEach(function(t,i){tix[t.r+t.team]=i});      /* (行,チーム) → 手番番号 */
   var cur=S.phase==="draft"?turns[S.turn]||null:null;
-  var actor=cur?seats[cur.team][cur.slot]:null;
+  var actorAt=function(tn){return !tn?null:(cfg.leader?leaders[tn.team]:seats[tn.team][tn.slot])};
+  var actor=actorAt(cur);
   var myTeam=seats.home.indexOf(myUid)>=0?"home":(seats.away.indexOf(myUid)>=0?"away":"");
-  return {cfg:cfg,N:N,turns:turns,tix:tix,seats:seats,teamReady:tr,cur:cur,actor:actor,myTeam:myTeam,host:isHost,all:seats.home.concat(seats.away)};
+  return {cfg:cfg,N:N,turns:turns,tix:tix,seats:seats,teamReady:tr,leaders:leaders,actorAt:actorAt,cur:cur,actor:actor,myTeam:myTeam,host:isHost,all:seats.home.concat(seats.away)};
+}
+function rtag(m){
+  if(!m||(!m.role&&!m.color))return "";
+  var cn={red:"赤",blue:"青",yellow:"黄"}[m.color]||"";
+  return '<span class="rtag">'+(m.color?'<i class="'+m.color+'" title="'+cn+'"></i>':'')+esc(m.role||"")+'</span>';
+}
+function renderRolebar(){
+  var el=$("#rolebar"),me=(S.members||{})[myUid];
+  if(!D.myTeam||!me){el.hidden=true;el.innerHTML="";return}
+  var RL=S.cfg.size===3?ROLES3:ROLES5;
+  el.hidden=false;
+  el.innerHTML='<span class="lab">あなたのロール</span><span class="grp">'+RL.map(function(r){return '<button type="button" data-role="'+esc(r)+'"'+(me.role===r?' class="on"':'')+'>'+esc(r)+'</button>'}).join("")+'</span>'+
+    '<span class="lab">色</span><span class="grp">'+COLORS.map(function(c){return '<button type="button" class="rb-c '+c[0]+(me.color===c[0]?' on':'')+'" data-color="'+c[0]+'"><i></i>'+c[1]+'</button>'}).join("")+'</span>';
 }
 function nameOf(u){var m=S.members&&S.members[u];return m&&m.name?m.name:"(不在)"}
 function isActor(){return !!(D&&D.cur&&D.actor===myUid)}
 /* 自分のチームの候補 {ヒーロー: [名前…]}(自分の分は含めない)。ホストの画面でも相手チームの分は使わない */
-var idMasked=lsGet("vgd_mask")!=="0";      /* 既定は隠す(配信・画面共有での荒らし対策) */
+var idMasked=true;      /* 既定は隠す(配信・画面共有での荒らし対策) */
 function isSpectator(){var m=S&&S.members&&S.members[myUid];return !!(m&&m.spec&&!(D&&D.myTeam))}
 function renderRoomCode(){
   var sp=isSpectator();                                  /* 観戦者には ROOM ID と招待リンクを出さない(観戦リンクと退出だけ) */
@@ -536,7 +573,7 @@ function apiCall(body,keep){
     .then(function(r){clearTimeout(to);return r.json().catch(function(){return {}}).then(function(j){return {status:r.status,data:j||{}}})})
     .catch(function(){clearTimeout(to);return {status:0,data:{}}});
 }
-function syncBody(a,hello){return {op:"sync",id:roomId,uid:myUid,tok:myTok,name:myName,spec:!!joinSpec,hello:!!hello,team:hello&&!joinSpec?joinTeam:"",a:a||null}}
+function syncBody(a,hello){return {op:"sync",id:roomId,uid:myUid,tok:myTok,name:myName,spec:!!joinSpec,hello:!!hello,team:hello&&!joinSpec?joinTeam:"",leader:hello&&!joinSpec&&joinLeader,a:a||null}}
 function applySnap(d){
   off=d.now-Date.now();connected=true;S=d.s;isHost=S.host===myUid;D=derive();setBanner();onState();
   if(d.msg)toast(d.msg);
@@ -557,14 +594,15 @@ async function pump(gen){
 function startLoop(){var gen=netGen;pump(gen)}
 function enterRoom(id,d){
   netGen++;outq=[];
-  roomId=id;entryRoom=id;inRoom=true;joining=false;
-  lsSet("vgd_room",JSON.stringify({id:id,spec:!!joinSpec}));
+  roomId=id;entryRoom=id;inRoom=true;joining=false;idMasked=true;
+  lsSet("vgd_room",JSON.stringify({id:id,spec:!!joinSpec,ld:!!joinLeader}));
   showView("room");
   applySnap(d);
   setBusy(false);$("#joinMsg").textContent="";
   startLoop();
 }
 function failText(r,kind){
+  if(r.status===429&&r.data&&r.data.err==="freelimit")return "無料版で作れる部屋は、同じ回線から24時間に3回までです。";
   if(r.status===429)return "試行回数が多すぎます。しばらく待ってからお試しください。";
   if(r.status===404)return "そのIDのルームは見つかりません。IDを確認してください(終了または期限切れの可能性もあります)。";
   if(r.status===403)return "この名前の参加者はすでに別の端末で入室しています。";
@@ -577,20 +615,21 @@ function failText(r,kind){
 async function createRoom(){
   var msg=$("#createMsg"),btn=$("#createBtn");
   getName();btn.disabled=true;msg.textContent="ルームを作成中…";
-  var cfg={size:cs.size,timer:cs.timer,ext:cs.ext,pool:cs.ext==="pool"?cs.pool:0,rows:cs.rows.join(""),fixedBans:cs.fixed.slice(),heroes:HEROES.slice()};
+  var cfg={leader:VG_MODE==="leader",size:cs.size,timer:cs.timer,ext:cs.ext,pool:cs.ext==="pool"?cs.pool:0,rows:cs.rows.join(""),fixedBans:cs.fixed.slice(),heroes:HEROES.slice()};
   joinSpec=false;
-  var r=await apiCall({op:"create",uid:myUid,tok:myTok,name:myName,cfg:cfg,hu:hostAuth&&hostAuth.u,hp:hostAuth&&hostAuth.p});
+  var r=await apiCall({op:"create",uid:myUid,tok:myTok,name:myName,cfg:cfg,free:VG_MODE==="free",hu:hostAuth&&hostAuth.u,hp:hostAuth&&hostAuth.p});
   btn.disabled=false;
   if(r.status===200&&r.data.s){msg.textContent="";enterRoom(r.data.id,r.data);return}
-  if(r.status===401||r.status===403){hostOK=false;hostAuth=null;lsDel("vgd_ha");refreshEntry();$("#gateMsg").textContent="ホストのログインが必要です。もう一度ログインしてください。";msg.textContent="";return}
+  if(r.status===429&&r.data&&r.data.err==="freelimit"){msg.textContent="無料版で作れる部屋は、同じ回線から24時間に3回までです。";renderCreate();return}
+  if(VG_MODE!=="free"&&(r.status===401||r.status===403)){hostOK=false;hostAuth=null;lsDel("vgd_ha");refreshEntry();$("#gateMsg").textContent="ホストのログインが必要です。もう一度ログインしてください。";msg.textContent="";return}
   msg.textContent=failText(r);renderCreate();
 }
-async function joinRoom(raw,spec){
+async function joinRoom(raw,spec,leader){
   var id=String(raw||"").trim().toUpperCase(),jm=$("#joinMsg");
   if(!/^[A-Z0-9]{4,10}$/.test(id)){jm.textContent="ルームIDは英数字で入力してください。";return}
   getName();
   joining=true;setBusy(true);jm.textContent="接続中…";
-  roomId=id;joinSpec=!!spec;
+  roomId=id;joinSpec=!!spec;joinLeader=!!leader&&!spec;
   var r=await apiCall(syncBody(null,true));
   if(!joining)return;
   if(r.status===200&&r.data.s){enterRoom(id,r.data);return}
@@ -599,7 +638,7 @@ async function joinRoom(raw,spec){
   jm.textContent=failText(r);
 }
 function setBusy(b){
-  $("#joinBtn").disabled=b;$("#watchBtn").disabled=b;
+  $("#joinBtn").disabled=b;$("#watchBtn").disabled=b;$("#joinLeaderBtn").disabled=b;
   renderCreateBtn();
 }
 function leaveRoom(silent,msg){
@@ -704,7 +743,8 @@ function wireCreate(){
   $("#gateBtn").addEventListener("click",function(){$("#gateMsg").textContent="確認中…";hostLogin($("#gateUser").value.trim(),$("#gatePass").value,false).then(function(ok){if(ok){$("#gateMsg").textContent="";$("#gatePass").value=""}})});
   $("#gatePass").addEventListener("keydown",function(e){if(e.key==="Enter")$("#gateBtn").click()});
   $("#gateOut").addEventListener("click",function(){hostOK=false;hostAuth=null;lsDel("vgd_ha");refreshEntry()});
-  $("#joinBtn").addEventListener("click",function(){joinRoom($("#joinId").value,false)});
+  $("#joinBtn").addEventListener("click",function(){joinRoom($("#joinId").value,false,false)});
+  $("#joinLeaderBtn").addEventListener("click",function(){joinRoom($("#joinId").value,false,true)});
   $("#watchBtn").addEventListener("click",function(){joinRoom($("#joinId").value,true)});
   $("#joinId").addEventListener("keydown",function(e){if(e.key==="Enter")joinRoom($("#joinId").value,false)});
   $("#myName").addEventListener("change",getName);
@@ -731,12 +771,12 @@ function onState(){
 }
 function renderAll(){
   if(!S||!D)return;
-  renderMeta();renderFixed();
+  renderMeta();renderRolebar();renderFixed();
   var ph=S.phase;
   $("#lobby").hidden=!(ph==="lobby"||ph==="countdown");
   $("#draft").hidden=!(ph==="draft"||ph==="done");
   $("#cd").hidden=ph!=="countdown";
-  $("#cdCancel").hidden=!D.myTeam;
+  $("#cdCancel").hidden=!D.myTeam||!!(S.cfg.leader&&!(S.members[myUid]&&S.members[myUid].leader));
   if(ph!=="draft"){$("#fab").hidden=true;document.body.classList.remove("has-fab")}
   if(ph==="lobby"||ph==="countdown")renderLobby();
   else{renderTurn();renderBoard();renderPool();renderAct()}
@@ -769,22 +809,24 @@ function renderLobby(){
       var u=seats[i];
       if(!u){rows+='<div class="seat empty"><span class="sn num">'+(i+1)+'</span><span class="who">空席</span><span></span></div>';continue}
       var m=mem[u]||{},mine=u===myUid;
-      rows+='<div class="seat'+(mine?" me":"")+'"><span class="sn num">'+(i+1)+'</span><span class="who">'+esc(m.name||"")+(mine?'<small>あなた</small>':'')+(u===S.host?'<small>ホスト</small>':'')+(m.on===false?'<small>切断中</small>':'')+'</span>'+
-        '<span style="display:flex;align-items:center;gap:6px"><span class="rd'+(m.ready?" on":"")+'" role="img" title="'+(m.ready?"準備完了":"未準備")+'" aria-label="'+(m.ready?"準備完了":"未準備")+'"><i></i></span>'+
+      rows+='<div class="seat'+(mine?" me":"")+'"><span class="sn num">'+(i+1)+'</span><span class="who">'+esc(m.name||"")+(S.cfg.leader&&m.leader?'<small>代表</small>':'')+rtag(m)+(mine?'<small>あなた</small>':'')+(u===S.host?'<small>ホスト</small>':'')+(m.on===false?'<small>切断中</small>':'')+'</span>'+
+        '<span style="display:flex;align-items:center;gap:6px">'+((S.cfg.leader&&!m.leader)?'':'<span class="rd'+(m.ready?" on":"")+'" role="img" title="'+(m.ready?"準備完了":"未準備")+'" aria-label="'+(m.ready?"準備完了":"未準備")+'"><i></i></span>')+
         (isHost&&!mine&&S.phase==="lobby"?'<button class="kick" type="button" data-kick="'+esc(u)+'" aria-label="席から外す">×</button>':'')+'</span></div>';
     }
     var acts="";
     if(canSit){
-      if(D.myTeam===t)acts='<button class="btn sm" type="button" data-stand="1">席を離れる</button>';
+      if(D.myTeam===t)acts=me.locked?"":'<button class="btn sm" type="button" data-stand="1">席を離れる</button>';
       else acts='<button class="btn sm '+t+'" type="button" data-sit="'+t+'"'+(seats.length>=N?" disabled":"")+'>'+teamJa(t)+'に参加</button>';
     }
-    html+='<div class="team '+t+'"><h3><span>'+(t==="home"?"HOME":"AWAY")+'</span><span class="tr'+(D.teamReady[t]?" ok":"")+'">'+(D.teamReady[t]?"チーム準備完了":"準備 "+rc+"/"+N)+'</span></h3>'+rows+'<div class="acts">'+acts+'</div></div>';
+    html+='<div class="team '+t+'"><h3><span>'+(t==="home"?"HOME":"AWAY")+'</span><span class="tr'+(D.teamReady[t]?" ok":"")+'">'+(D.teamReady[t]?"チーム準備完了":(S.cfg.leader?(D.leaders[t]?"代表者 未準備":"代表者なし"):"準備 "+rc+"/"+N))+'</span></h3>'+rows+'<div class="acts">'+acts+'</div></div>';
   });
   $("#teams").innerHTML=html;
   var rb="";
-  if(D.myTeam){
+  if(D.myTeam&&S.cfg.leader&&!me.leader){
+    rb='<span class="lab">あなたは代表者ではありません。代表者が準備OKにすると、チームの準備が完了します。ドラフト中は、仮ピックをチームに共有できます。</span>';
+  }else if(D.myTeam){
     var rdy=!!(mem[myUid]&&mem[myUid].ready);
-    rb='<button class="btn pri" type="button" data-ready="1">'+(rdy?"準備を解除":"準備完了にする")+'</button><span class="lab">全員が準備完了になると5秒後に開始します。</span>';
+    rb='<button class="btn pri" type="button" data-ready="1">'+(rdy?"準備を解除":"準備完了にする")+'</button><span class="lab">'+(S.cfg.leader?"両チームの代表者が準備完了になると5秒後に開始します(全員が揃っていなくても始められます)。":"全員が準備完了になると5秒後に開始します。")+'</span>';
   }else if(me.spec)rb='<span class="lab">観戦で入室しています。閲覧のみで、操作はできません。</span>';
   else rb='<span class="lab">まだ席に座っていません。参加するには、ホームかアウェイの「参加」を押してください。</span>';
   $("#readybar").innerHTML=rb;
@@ -810,7 +852,10 @@ function tick(){
     if(el){el.textContent=Math.ceil(left/1000);el.classList.toggle("low",left<=5000);el.classList.toggle("ot",ot)}
     if(bar)bar.style.width=ot?Math.min(100,left/(Math.max(1,S.cfg.pool)*10))+"%":Math.min(100,left/(S.cfg.timer*10))+"%";
     var pn=$("#poolNote");
-    if(pn&&extOf()==="pool")pn.innerHTML=(ot?'<b>延長中(プール消費) </b>':'')+'時間プール ホーム <b>'+Math.ceil(poolLeft("home",now)/1000)+'</b>秒 / アウェイ <b>'+Math.ceil(poolLeft("away",now)/1000)+'</b>秒';
+    if(pn&&extOf()==="pool"){
+      var hs=Math.ceil(poolLeft("home",now)/1000),as=Math.ceil(poolLeft("away",now)/1000),mt=D.myTeam;
+      pn.innerHTML=(ot?'<b>延長中 </b>':'')+(mt?'<span class="pn-me">あなたのチーム 残り<b>'+(mt==="home"?hs:as)+'</b>秒</span> ':'')+'<span class="pn-o">ホーム '+hs+'秒 / アウェイ '+as+'秒</span>';
+    }
   }
 }
 function extUI(mine,used,c){
@@ -836,7 +881,7 @@ function renderTurn(){
 }
 function cellHTML(t,r){
   var type=S.cfg.rows[r],ti=D.tix[r+t],turn=D.turns[ti],en=(S.log||{})[ti];
-  var cur=S.phase==="draft"&&S.turn===ti,au=D.seats[t][turn.slot];
+  var cur=S.phase==="draft"&&S.turn===ti,au=D.actorAt(turn);
   var inner,hn="",ow=(type==="B"&&!en?"BAN担当 ":"")+(au?nameOf(au):"");
   if(en){
     if(en.hero){inner=monoHTML(en.hero);hn=en.hero}
@@ -846,7 +891,7 @@ function cellHTML(t,r){
     var ph=S.pendingTurn===ti&&S.pendingHero;
     if(ph){inner=monoHTML(ph);hn=ph}else{inner='<span class="ph">…</span>';hn="選択中"}
   }else{inner='<span class="ph">'+(type==="B"?"BAN":"PICK")+'</span>'}
-  return '<div class="cell '+type+(cur?" cur "+t:"")+(au===myUid?" me":"")+'"><span class="rn num">'+(ti+1)+'</span>'+inner+'<span class="tx"><div class="hn">'+esc(hn)+'</div><div class="ow">'+esc(ow)+'</div></span></div>';
+  return '<div class="cell '+type+(cur?" cur "+t:"")+(au===myUid?" me":"")+'"><span class="rn num">'+(ti+1)+'</span>'+inner+'<span class="tx"><div class="hn">'+esc(hn)+'</div><div class="ow">'+esc(ow)+(au?rtag((S.members||{})[au]||{}):"")+'</div></span></div>';
 }
 function renderBoard(){
   ["home","away"].forEach(function(t){
@@ -910,6 +955,12 @@ function wireRoom(){
     else if(b.dataset.kick)act({a:"kick",u:b.dataset.kick});
   });
   $("#readybar").addEventListener("click",function(e){if(e.target.closest("[data-ready]"))act({a:"ready"})});
+  $("#rolebar").addEventListener("click",function(e){
+    var me=(S&&S.members||{})[myUid];if(!me)return;
+    var rb=e.target.closest("[data-role]"),cb=e.target.closest("[data-color]");
+    if(rb){var r=rb.dataset.role;act({a:"role",r:me.role===r?"":r,c:me.color||""})}
+    else if(cb){var c=cb.dataset.color;act({a:"role",r:me.role||"",c:me.color===c?"":c})}
+  });
   $("#cdCancel").addEventListener("click",function(){act({a:"ready"})});
   $("#poolGrid").addEventListener("click",function(e){var b=e.target.closest("button");if(b&&!b.disabled)chooseHero(b.dataset.h)});
   $("#fab").addEventListener("click",function(){if(!$("#fab").disabled)confirmTurn()});
@@ -923,7 +974,7 @@ function wireRoom(){
     leaveRoom(false);
   });
   $("#copyId").addEventListener("click",function(){copyText(roomId,"ルームIDをコピーしました")});
-  $("#maskBtn").addEventListener("click",function(){idMasked=!idMasked;lsSet("vgd_mask",idMasked?"1":"0");renderRoomCode()});
+  $("#maskBtn").addEventListener("click",function(){idMasked=!idMasked;renderRoomCode()});
   $("#copyHome").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId+"&team=home","ホームの参加リンクをコピーしました")});
   $("#copyAway").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId+"&team=away","アウェイの参加リンクをコピーしました")});
   $("#copyWatch").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId+"&watch=1","観戦リンクをコピーしました")});
@@ -939,16 +990,19 @@ async function init(){
   var qRoom=(params.get("room")||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,10);
   var qWatch=params.get("watch")==="1",qTeam=params.get("team");
   if(qRoom&&!qWatch&&(qTeam==="home"||qTeam==="away")){
-    joinTeam=qTeam;$("#joinBtn").textContent=teamJa(qTeam)+"として入室";
-    $("#joinMsg").textContent="名前(IGN)を入力して「"+teamJa(qTeam)+"として入室」を押すと、"+teamJa(qTeam)+"の席に入ります。";
+    joinTeam=qTeam;
+    if(VG_MODE==="leader")$("#joinMsg").textContent="名前(IGN)を入力して、参戦者か代表者として入室すると、"+teamJa(qTeam)+"の席に入ります。";
+    else{$("#joinBtn").textContent=teamJa(qTeam)+"として入室";$("#joinMsg").textContent="名前(IGN)を入力して「"+teamJa(qTeam)+"として入室」を押すと、"+teamJa(qTeam)+"の席に入ります。";}
   }
   if(qRoom){$("#joinId").value=qRoom;entryRoom=qRoom}
+  if(VG_MODE==="leader"){$("#joinBtn").textContent="参戦者として入室";$("#joinLeaderBtn").hidden=false}
+  if(VG_MODE==="free")$("#gateOut").hidden=true;
   refreshEntry();
   setBusy(false);setBanner();
-  if(!qRoom&&hostAuth)hostLogin(hostAuth.u,hostAuth.p,true);        /* 保存済みのログイン情報を確認(失敗したらログイン画面のまま) */
+  if(VG_MODE!=="free"&&!qRoom&&hostAuth)hostLogin(hostAuth.u,hostAuth.p,true);        /* 保存済みのログイン情報を確認(失敗したらログイン画面のまま) */
   var sr=null;
   try{sr=JSON.parse(lsGet("vgd_room")||"null")}catch(e){sr=null}
-  if(sr&&sr.id&&!qRoom){$("#joinId").value=sr.id;joinRoom(sr.id,!!sr.spec);return}
+  if(sr&&sr.id&&!qRoom){$("#joinId").value=sr.id;joinRoom(sr.id,!!sr.spec,!!sr.ld);return}
   if(qRoom&&qWatch){joinRoom(qRoom,true);return}
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
