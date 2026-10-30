@@ -7,6 +7,8 @@
 var DB_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
 var DB_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 
+var ROLES3 = ["ローム", "ジャングル", "レーン"], ROLES5 = ["ローム", "ジャングル", "トップ", "ミッド", "ボット"];
+var FREE_LIMIT = 3, FREE_WINDOW = 24 * 3600;      /* free.html: 同じIPから作れる部屋の数 / 期間(秒) */
 var HOST_USER = process.env.HOST_USER || "";
 var HOST_PASSWORD = process.env.HOST_PASSWORD || "";
 var TTL = 6 * 3600;          /* ルームは最後の更新から6時間で消えます */
@@ -58,21 +60,30 @@ function buildTurns(cfg) {
 }
 function rankOf(S, team) {
   var mem = S.members || {};
+  var ld = S.cfg && S.cfg.leader;      /* 代表者モード: 代表者を先頭にして、必ず席に入るようにする */
   return Object.keys(mem).filter(function (k) { return mem[k].team === team; })
-    .sort(function (a, b) { return (mem[a].t - mem[b].t) || (a < b ? -1 : 1); });
+    .sort(function (a, b) { return ((ld && mem[b].leader ? 1 : 0) - (ld && mem[a].leader ? 1 : 0)) || (mem[a].t - mem[b].t) || (a < b ? -1 : 1); });
 }
 function derive(S) {
   var cfg = S.cfg, N = cfg.size, mem = S.members || {}, seats;
   if (S.phase === "lobby") seats = { home: rankOf(S, "home").slice(0, N), away: rankOf(S, "away").slice(0, N) };
   else seats = { home: (S.seats && S.seats.home) || [], away: (S.seats && S.seats.away) || [] };
-  var tr = {};
-  ["home", "away"].forEach(function (t) {
-    tr[t] = seats[t].length === N && seats[t].every(function (u) { return mem[u] && mem[u].ready === true; });
-  });
+  var tr = {}, leaders = { home: null, away: null };
+  if (cfg.leader) {
+    ["home", "away"].forEach(function (t) {
+      if (S.phase === "lobby") { seats[t].forEach(function (u) { if (mem[u] && mem[u].leader) leaders[t] = u; }); }
+      else leaders[t] = (S.leaders && S.leaders[t]) || null;
+      tr[t] = !!(leaders[t] && mem[leaders[t]] && mem[leaders[t]].ready === true);      /* 代表者が準備OKならチーム準備完了(全員揃っていなくてよい) */
+    });
+  } else {
+    ["home", "away"].forEach(function (t) {
+      tr[t] = seats[t].length === N && seats[t].every(function (u) { return mem[u] && mem[u].ready === true; });
+    });
+  }
   var turns = buildTurns(cfg);
   var cur = S.phase === "draft" ? turns[S.turn] || null : null;
-  var actor = cur ? seats[cur.team][cur.slot] : null;
-  return { cfg: cfg, N: N, turns: turns, seats: seats, teamReady: tr, cur: cur, actor: actor, all: seats.home.concat(seats.away) };
+  var actorAt = function (tn) { return !tn ? null : (cfg.leader ? leaders[tn.team] : seats[tn.team][tn.slot]); };
+  return { cfg: cfg, N: N, turns: turns, seats: seats, teamReady: tr, leaders: leaders, cur: cur, actorAt: actorAt, actor: actorAt(cur), all: seats.home.concat(seats.away) };
 }
 function taken(S, h) {
   if (S.cfg.fixedBans.indexOf(h) >= 0) return true;
@@ -95,10 +106,10 @@ function advance(S, hero, auto, by) {
   S.pendingHero = ""; S.pendingTurn = -1; S.turn++;
   S.cands = S.cands || {};
   Object.keys(S.cands).forEach(function (k) { if (hero && S.cands[k] === hero) delete S.cands[k]; });
-  if (S.turn >= D.turns.length) { S.phase = "done"; S.deadline = 0; S.cands = {}; S.pausedAt = 0; }
+  if (S.turn >= D.turns.length) { S.phase = "done"; S.deadline = 0; S.cands = {}; S.pausedAt = 0; S.leaders = S.leaders || null; }
   else {
     S.deadline = clock(S) + S.cfg.timer * 1000;      /* 一時停止中は、再開するまで時間が進まない */
-    var nt = D.turns[S.turn]; delete S.cands[D.seats[nt.team][nt.slot]];
+    var nt = D.turns[S.turn]; delete S.cands[D.actorAt(nt)];
   }
 }
 function clock(S) { return S.pausedAt || Date.now(); }      /* 一時停止中は止まった時刻 */
@@ -120,10 +131,17 @@ function handle(S, uid, m, body) {
     me.left = false; me.spec = seated ? false : !!body.spec;
     changed = true;
   }
-  var msg = null;
+  var msg = null, LD = !!S.cfg.leader;
+  if (body.hello && LD && !me.spec) { var wl = !!body.leader; if (!me.team && me.wantLeader !== wl) { me.wantLeader = wl; changed = true; } }
+  var takeLeader = function (team) {      /* 代表者として着席。すでにいれば一般参加者として着席 */
+    if (LD && me.wantLeader) {
+      var cur = D.leaders[team];
+      if (!cur || cur === uid) me.leader = true; else { me.leader = false; msg = "そのチームにはすでに代表者がいます(一般の参加者として入りました)"; }
+    } else me.leader = false;
+  };
   if (body.hello && (body.team === "home" || body.team === "away") && ph === "lobby" && !me.spec && !me.team) {
     if (D.seats[body.team].length >= D.N) msg = "そのチームは満席です";
-    else { me.team = body.team; me.t = now; me.ready = false; changed = true; }      /* チーム別の参加リンクから入った人は、そのまま着席 */
+    else { me.team = body.team; me.t = now; me.ready = false; me.locked = true; takeLeader(body.team); changed = true; }      /* チーム別の参加リンクから入った人は、そのまま着席(席を離れられない) */
   }
   if (!m || typeof m.a !== "string") return { changed: changed, msg: msg };
   switch (m.a) {
@@ -131,25 +149,31 @@ function handle(S, uid, m, body) {
       if (ph !== "lobby" || me.spec || (m.team !== "home" && m.team !== "away")) break;
       if (me.team === m.team) break;
       if (D.seats[m.team].length >= D.N) { msg = "満席です"; break; }
-      me.team = m.team; me.t = now; me.ready = false; changed = true; break;
+      me.team = m.team; me.t = now; me.ready = false; takeLeader(m.team); changed = true; break;
     case "stand":
-      if (ph !== "lobby") break;
-      me.team = ""; me.ready = false; changed = true; break;
+      if (ph !== "lobby" || me.locked) break;
+      me.team = ""; me.ready = false; me.leader = false; changed = true; break;
+    case "role":      /* 自分のロール/色の意思表示(任意) */
+      if (!seated) break;
+      var RL = S.cfg.size === 3 ? ROLES3 : ROLES5;
+      if ((m.r !== "" && RL.indexOf(m.r) < 0) || ["", "red", "blue", "yellow"].indexOf(m.c) < 0) break;
+      me.role = m.r; me.color = m.c; changed = true; break;
     case "ready":
       if ((ph !== "lobby" && ph !== "countdown") || !seated) break;
+      if (LD && !me.leader) break;
       me.ready = !me.ready; changed = true; break;
     case "leave":
       me.left = true;
       if (ph === "lobby" || ph === "countdown") me.ready = false;
-      if (ph === "lobby") me.team = "";
+      if (ph === "lobby") { me.team = ""; me.leader = false; me.locked = false; }
       changed = true; break;
     case "kick":
       if (!isHost || ph !== "lobby" || typeof m.u !== "string" || !mem[m.u] || m.u === uid) break;
-      mem[m.u].team = ""; mem[m.u].ready = false; changed = true; break;
+      mem[m.u].team = ""; mem[m.u].ready = false; mem[m.u].leader = false; mem[m.u].locked = false; changed = true; break;
     case "reset":
       if (!isHost || ph !== "done") break;
       S.phase = "lobby"; S.turn = 0; S.deadline = 0; S.startsAt = 0; S.pendingHero = ""; S.pendingTurn = -1; S.resetT = -1; S.pausedAt = 0;
-      S.cands = {}; S.log = {}; S.seats = { home: [], away: [] }; S.pool = { home: 0, away: 0 };
+      S.cands = {}; S.log = {}; S.leaders = null; S.seats = { home: [], away: [] }; S.pool = { home: 0, away: 0 };
       Object.keys(mem).forEach(function (k) { mem[k].ready = false; });
       changed = true; break;
     case "cand":      /* 手番でない人の候補。同じチームの人にだけ配信される */
@@ -191,7 +215,7 @@ function step(S, seen, selfUid) {
   }
   var D = derive(S), both = D.teamReady.home && D.teamReady.away;
   if (S.phase === "lobby") {
-    if (both) { S.phase = "countdown"; S.startsAt = now + 5000; S.seats = { home: D.seats.home.slice(), away: D.seats.away.slice() }; ch = true; }
+    if (both) { S.phase = "countdown"; S.startsAt = now + 5000; S.seats = { home: D.seats.home.slice(), away: D.seats.away.slice() }; S.leaders = { home: D.leaders.home, away: D.leaders.away }; ch = true; }
   } else if (S.phase === "countdown") {
     if (!both) { S.phase = "lobby"; S.startsAt = 0; ch = true; }
     else if (now >= S.startsAt) {
@@ -246,7 +270,7 @@ function validCfg(c) {
   var pool = Math.round(+c.pool);
   if (ext === "pool" && !(pool >= 10 && pool <= 600)) return null;
   if (ext !== "pool") pool = 0;
-  return { size: size, timer: timer, rows: rows, fixedBans: fx, heroes: hs.slice(), ext: ext, pool: pool };
+  return { size: size, timer: timer, rows: rows, fixedBans: fx, heroes: hs.slice(), ext: ext, pool: pool, leader: c.leader === true };
 }
 var okUid = function (u) { return typeof u === "string" && /^[A-Za-z0-9]{3,40}$/.test(u); };
 var okTok = function (t) { return typeof t === "string" && t.length >= 8 && t.length <= 64; };
@@ -344,7 +368,16 @@ module.exports = async function (req, res) {
   if (!b || typeof b !== "object") return send(res, 400, { err: "bad" });
   try {
     if (b.op === "auth") { var st = await checkHost(req, b); return st === "ok" ? send(res, 200, { ok: true }) : hostFail(res, st); }
-    if (b.op === "create") { var st2 = await checkHost(req, b); if (st2 !== "ok") return hostFail(res, st2); return await opCreate(b, res); }
+    if (b.op === "create") {
+      if (b.free === true) {      /* free.html: ログイン不要。同じIPから FREE_LIMIT 回まで */
+        if (!validCfg(b.cfg)) return send(res, 400, { err: "cfg" });
+        var ip = String((req.headers && (req.headers["x-forwarded-for"] || req.headers["x-real-ip"])) || "ip").split(",")[0].trim().slice(0, 64), fk = "vgd:c:" + ip;
+        var n = (await redis([["INCR", fk]]))[0];
+        if (n === 1) await redis([["EXPIRE", fk, String(FREE_WINDOW)]]);
+        if (n > FREE_LIMIT) return send(res, 429, { err: "freelimit" });
+      } else { var st2 = await checkHost(req, b); if (st2 !== "ok") return hostFail(res, st2); }
+      return await opCreate(b, res);
+    }
     if (b.op === "sync") return await opSync(b, res);
     return send(res, 400, { err: "op" });
   } catch (e) {
