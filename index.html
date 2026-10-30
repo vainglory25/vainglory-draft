@@ -135,7 +135,8 @@ details.fx[open] summary{margin-bottom:10px}
 .seat.me{border-color:var(--gold)}
 .seat .sn{font-family:var(--f-disp);color:var(--muted);font-size:12px}
 .seat .who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rtag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;font-size:10px;color:var(--muted);font-weight:600}
+.cell .own{min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rtag{flex:none;display:inline-flex;align-items:center;gap:3px;margin-left:auto;padding:0 6px;border-radius:999px;border:1px solid var(--line);font-size:10px;color:var(--muted);font-weight:600}
 .rtag i{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--line)}
 .rtag i.red,.rb-c.red i{background:#ef5350}.rtag i.blue,.rb-c.blue i{background:#42a5f5}.rtag i.yellow,.rb-c.yellow i{background:#fdd835}
 .rolebar{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin:0 0 12px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
@@ -190,7 +191,7 @@ details.fx[open] summary{margin-bottom:10px}
 .cell .tx{min-width:0}
 .cell .hn{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cell.B .hn{text-decoration:line-through;text-decoration-color:var(--away);font-weight:500}
-.cell .ow{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cell .ow{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cell.cur.home{border-color:var(--home);box-shadow:0 0 18px -4px var(--home)}
 .cell.cur.away{border-color:var(--away);box-shadow:0 0 18px -4px var(--away)}
 .cell.cur .ph,.cell.cur .mono{outline:2px dashed var(--gold);outline-offset:1px}
@@ -513,7 +514,7 @@ function derive(){
 function rtag(m){
   if(!m||(!m.role&&!m.color))return "";
   var cn={red:"赤",blue:"青",yellow:"黄"}[m.color]||"";
-  return '<span class="rtag">'+(m.color?'<i class="'+m.color+'" title="'+cn+'"></i>':'')+esc(m.role||"")+'</span>';
+  return '<span class="rtag" title="'+esc((m.role||"")+(cn?" "+cn:""))+'">'+(m.color?'<i class="'+m.color+'"></i>':'')+esc((m.role||"").slice(0,1))+'</span>';
 }
 function renderRolebar(){
   var el=$("#rolebar"),me=(S.members||{})[myUid];
@@ -809,8 +810,8 @@ function renderLobby(){
       var u=seats[i];
       if(!u){rows+='<div class="seat empty"><span class="sn num">'+(i+1)+'</span><span class="who">空席</span><span></span></div>';continue}
       var m=mem[u]||{},mine=u===myUid;
-      rows+='<div class="seat'+(mine?" me":"")+'"><span class="sn num">'+(i+1)+'</span><span class="who">'+esc(m.name||"")+(S.cfg.leader&&m.leader?'<small>代表</small>':'')+rtag(m)+(mine?'<small>あなた</small>':'')+(u===S.host?'<small>ホスト</small>':'')+(m.on===false?'<small>切断中</small>':'')+'</span>'+
-        '<span style="display:flex;align-items:center;gap:6px">'+((S.cfg.leader&&!m.leader)?'':'<span class="rd'+(m.ready?" on":"")+'" role="img" title="'+(m.ready?"準備完了":"未準備")+'" aria-label="'+(m.ready?"準備完了":"未準備")+'"><i></i></span>')+
+      rows+='<div class="seat'+(mine?" me":"")+'"><span class="sn num">'+(i+1)+'</span><span class="who">'+esc(m.name||"")+(S.cfg.leader&&m.leader?'<small>代表</small>':'')+(mine?'<small>あなた</small>':'')+(u===S.host?'<small>ホスト</small>':'')+(m.on===false?'<small>切断中</small>':'')+'</span>'+
+        '<span style="display:flex;align-items:center;gap:6px">'+rtag(m)+((S.cfg.leader&&!m.leader)?'':'<span class="rd'+(m.ready?" on":"")+'" role="img" title="'+(m.ready?"準備完了":"未準備")+'" aria-label="'+(m.ready?"準備完了":"未準備")+'"><i></i></span>')+
         (isHost&&!mine&&S.phase==="lobby"?'<button class="kick" type="button" data-kick="'+esc(u)+'" aria-label="席から外す">×</button>':'')+'</span></div>';
     }
     var acts="";
@@ -891,7 +892,7 @@ function cellHTML(t,r){
     var ph=S.pendingTurn===ti&&S.pendingHero;
     if(ph){inner=monoHTML(ph);hn=ph}else{inner='<span class="ph">…</span>';hn="選択中"}
   }else{inner='<span class="ph">'+(type==="B"?"BAN":"PICK")+'</span>'}
-  return '<div class="cell '+type+(cur?" cur "+t:"")+(au===myUid?" me":"")+'"><span class="rn num">'+(ti+1)+'</span>'+inner+'<span class="tx"><div class="hn">'+esc(hn)+'</div><div class="ow">'+esc(ow)+(au?rtag((S.members||{})[au]||{}):"")+'</div></span></div>';
+  return '<div class="cell '+type+(cur?" cur "+t:"")+(au===myUid?" me":"")+'"><span class="rn num">'+(ti+1)+'</span>'+inner+'<span class="tx"><div class="hn">'+esc(hn)+'</div><div class="ow"><span class="own">'+esc(ow)+'</span>'+(au?rtag((S.members||{})[au]||{}):"")+'</div></span></div>';
 }
 function renderBoard(){
   ["home","away"].forEach(function(t){
