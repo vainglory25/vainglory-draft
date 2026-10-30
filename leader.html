@@ -1,0 +1,1012 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>VainGlory カスタムドラフト(代表者版)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Cinzel:wght@600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* Layout: 中央にヒーロープール、左右にホーム(青)/アウェイ(赤)の行ボード。狭い画面ではボードを2列、プールを下に回す。
+   ドラフト画面らしい夜の配色の単一テーマ。全ての色をトークンで定義する。 */
+:root{
+  --bg:#0b0d1a; --panel:#131730; --panel2:#1a1f3d; --line:#2b335f;
+  --fg:#e9ecf9; --muted:#8f96bd;
+  --home:#5aaaff; --home-d:#14315a; --away:#ff7062; --away-d:#5a1e1a;
+  --gold:#e8c46c; --ok:#5fd6a0; --warn:#ff9f5a;
+  --f-disp:'Chakra Petch','Noto Sans JP',system-ui,sans-serif;
+  --f-body:'Noto Sans JP',system-ui,-apple-system,'Hiragino Kaku Gothic ProN',Meiryo,sans-serif;
+  --f-mark:'Cinzel',Georgia,serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.55}
+.wrap{max-width:1280px;margin:0 auto;padding-block:16px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.num{font-family:var(--f-disp);font-variant-numeric:tabular-nums}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:16px}
+.logo{display:flex;align-items:baseline;gap:10px;min-width:0}
+.logo b{font-family:var(--f-mark);font-weight:600;font-size:22px;letter-spacing:.18em;color:var(--gold)}
+.logo span{font-family:var(--f-disp);font-size:12px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+.topr{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip-id{display:flex;align-items:center;gap:8px;padding:4px 6px 4px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel)}
+.chip-id small{color:var(--muted);font-size:11px;letter-spacing:.12em}
+.chip-id code{font-family:var(--f-disp);font-weight:700;font-size:18px;letter-spacing:.18em;user-select:all}
+
+.btn{border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:8px 14px;font-weight:500}
+.btn:hover:not(:disabled){border-color:var(--muted)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.pri{background:var(--gold);border-color:var(--gold);color:#241b05;font-weight:700}
+.btn.pri:hover:not(:disabled){filter:brightness(1.08)}
+.btn.home{background:var(--home-d);border-color:var(--home);color:#dcecff}
+.btn.away{background:var(--away-d);border-color:var(--away);color:#ffe0dc}
+.btn.sm{padding:4px 10px;font-size:12px;border-radius:999px}
+.btn.ghost{background:transparent}
+
+.banner{padding:10px 14px;border:1px solid var(--warn);border-radius:8px;background:rgba(255,159,90,.08);color:#ffd9bb;margin-bottom:14px}
+
+/* entry */
+.hero-h{margin:4px 0 16px}
+.hero-h h1{font-family:var(--f-disp);font-size:clamp(26px,4.5vw,40px);line-height:1.15;margin:0 0 4px;letter-spacing:.02em;text-wrap:balance}
+.hero-h p{margin:0;color:var(--muted);max-width:60ch}
+.namebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.namebar label{color:var(--muted);font-size:12px;letter-spacing:.1em}
+.field{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 12px;min-width:0}
+.cols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:start}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;min-width:0}
+.card h2{font-family:var(--f-disp);font-size:16px;letter-spacing:.12em;margin:0 0 14px;text-transform:uppercase;color:var(--gold)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.row>label,.lab{color:var(--muted);font-size:12px;letter-spacing:.08em}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:7px 14px;border-right:1px solid var(--line);font-family:var(--f-disp);font-weight:500}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--gold);color:#241b05;font-weight:700}
+.hint{color:var(--muted);font-size:12px;margin:6px 0 0}
+.msg{color:var(--warn);min-height:1.5em;margin:10px 0 0;font-size:13px}
+.sum{font-family:var(--f-disp);color:var(--muted);font-size:13px;margin:12px 0}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+
+.strip{display:flex;gap:6px;flex-wrap:wrap}
+.rchip{min-width:48px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);text-align:center;font-family:var(--f-disp);line-height:1.2}
+.rchip small{display:block;font-size:10px;letter-spacing:.14em;opacity:.8}
+.rchip b{font-size:15px}
+.rchip.B{border-color:var(--away);background:var(--away-d);color:#ffe0dc}
+.rchip.P{color:var(--muted)}
+.rlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.ritem{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);text-align:left}
+.ritem .rn{font-family:var(--f-disp);font-weight:700;font-size:18px;min-width:1.2em}
+.ritem .rt{font-family:var(--f-disp);font-weight:700;letter-spacing:.14em;font-size:14px}
+.ritem small{margin-left:auto;font-size:11px;opacity:.75}
+.ritem.B{border-color:var(--away);background:var(--away-d);color:#ffe0dc}
+.ritem.P{color:var(--fg)}
+button.ritem:disabled{cursor:default;opacity:1}
+button.ritem:not(:disabled):hover{border-color:var(--gold)}
+
+.fixed-list{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.fchip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 4px;border-radius:999px;border:1px solid var(--away);background:var(--away-d);font-size:12px}
+.fchip .mono{width:22px;height:22px;font-size:9px;border-radius:50%}
+details.fx{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:6px}
+details.fx summary{cursor:pointer;color:var(--muted);font-size:12px;letter-spacing:.08em}
+details.fx[open] summary{margin-bottom:10px}
+
+/* hero tiles */
+.pool{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(74px,calc((100% - 24px) / 5)),1fr));gap:6px}
+.tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 3px 5px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);min-width:0}
+.tile .nm{font-size:11px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile:hover:not(:disabled){border-color:var(--muted)}
+.tile:disabled{cursor:default}
+.mono{display:grid;place-items:center;width:46px;height:46px;border-radius:8px;font-family:var(--f-disp);font-weight:700;font-size:15px;letter-spacing:.04em;color:#fff;
+  background:linear-gradient(145deg,hsl(var(--h) 52% 40%),hsl(calc(var(--h) + 32) 55% 22%))}
+.tile.ban .mono,.tile.fixed .mono{filter:grayscale(1) brightness(.5)}
+.tile.ban::after,.tile.fixed::after{content:"";position:absolute;top:6px;left:50%;width:46px;height:46px;margin-left:-23px;pointer-events:none;
+  background:linear-gradient(to top right,transparent calc(50% - 1.5px),var(--away) calc(50% - 1.5px),var(--away) calc(50% + 1.5px),transparent calc(50% + 1.5px))}
+.tile.fixed{border-style:dashed}
+.tile.pick-home{border-color:var(--home);opacity:.55}
+.tile.pick-away{border-color:var(--away);opacity:.55}
+.tile.sel{outline:2px dashed var(--gold);outline-offset:1px}
+.tile.mine{outline:2px dashed var(--muted);outline-offset:1px}
+
+/* room */
+.meta{display:flex;gap:8px 14px;flex-wrap:wrap;align-items:center;margin-bottom:14px;color:var(--muted);font-size:13px}
+.badge{padding:2px 10px;border-radius:999px;border:1px solid var(--line);font-family:var(--f-disp);font-size:12px;letter-spacing:.1em}
+.badge.home{border-color:var(--home);color:var(--home)}
+.badge.away{border-color:var(--away);color:var(--away)}
+.badge.spec{color:var(--muted)}
+.badge.gold{border-color:var(--gold);color:var(--gold)}
+
+.teams{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.team{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
+.team.home{border-top:3px solid var(--home)}
+.team.away{border-top:3px solid var(--away)}
+.team h3{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 10px;font-family:var(--f-disp);letter-spacing:.14em;font-size:15px}
+.team.home h3{color:var(--home)}
+.team.away h3{color:var(--away)}
+.tr{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);letter-spacing:.08em}
+.tr.ok{border-color:var(--ok);color:var(--ok);background:rgba(95,214,160,.1)}
+.seat{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--panel2);min-height:44px}
+.seat.empty{border-style:dashed;background:transparent;color:var(--muted)}
+.seat.me{border-color:var(--gold)}
+.seat .sn{font-family:var(--f-disp);color:var(--muted);font-size:12px}
+.seat .who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rtag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;font-size:10px;color:var(--muted);font-weight:600}
+.rtag i{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--line)}
+.rtag i.red,.rb-c.red i{background:#ef5350}.rtag i.blue,.rb-c.blue i{background:#42a5f5}.rtag i.yellow,.rb-c.yellow i{background:#fdd835}
+.rolebar{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin:0 0 12px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.rolebar .lab{font-size:11px}
+.rolebar .grp{display:flex;gap:4px;flex-wrap:wrap}
+.rolebar button{font:inherit;font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer}
+.rolebar button.on{background:var(--gold);color:#241b05;border-color:var(--gold);font-weight:700}
+.rb-c i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.pn-me{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;border:1px solid var(--gold);background:rgba(255,200,60,.12);font-size:13px}
+.pn-me b{font-size:16px}
+.seat .who small{color:var(--muted);margin-left:6px}
+.rd{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.rd i{width:12px;height:12px;border-radius:50%;background:var(--line);display:inline-block}
+.rd.on{color:var(--ok)}
+.rd.on i{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.kick{border:0;background:transparent;color:var(--muted);padding:0 4px;font-size:16px;line-height:1}
+.kick:hover{color:var(--away)}
+.team .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.readybar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0}
+
+/* draft */
+.turnbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 18px;align-items:center;padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top,0px));background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;position:sticky;top:0;z-index:20;overflow:hidden;box-shadow:0 8px 18px -10px #000}
+.turnbar.home{border-color:var(--home)}
+.turnbar.away{border-color:var(--away)}
+.turnbar.mine{box-shadow:0 0 0 1px var(--gold),0 0 24px -6px var(--gold),0 8px 18px -10px #000}
+.tb-l .k{font-family:var(--f-disp);font-size:12px;letter-spacing:.16em;color:var(--muted)}
+.tb-l .v{font-size:18px;font-weight:700;margin-top:2px}
+.tb-l .v em{font-style:normal;color:var(--gold)}
+.tb-act{margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.tb-r{font-family:var(--f-disp);font-weight:700;font-size:44px;line-height:1;text-align:right;font-variant-numeric:tabular-nums}
+.tb-r.ot{color:var(--gold)}
+.tb-r.low{color:var(--away)}
+.tbar{grid-column:1/-1;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.tbar i{display:block;height:100%;background:var(--gold);width:100%}
+.turnbar.home .tbar i{background:var(--home)}
+.turnbar.away .tbar i{background:var(--away)}
+.fixed-wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.stage{display:grid;gap:12px;grid-template-columns:minmax(220px,1fr) minmax(0,2.2fr) minmax(220px,1fr);grid-template-areas:"home pool away"}
+#colHome{grid-area:home}
+#colAway{grid-area:away}
+#colPool{grid-area:pool;min-width:0}
+.colh{font-family:var(--f-disp);letter-spacing:.16em;font-size:13px;margin:0 0 8px;display:flex;justify-content:space-between}
+#colHome .colh{color:var(--home)}
+#colAway .colh{color:var(--away)}
+.cell{display:grid;grid-template-columns:20px 44px minmax(0,1fr);align-items:center;gap:8px;min-height:62px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);margin-bottom:6px}
+.cell.B{min-height:46px;background:rgba(255,112,98,.07)}
+.cell .rn{font-family:var(--f-disp);font-size:12px;color:var(--muted)}
+.cell .mono{width:40px;height:40px;font-size:13px}
+.cell.B .mono{width:30px;height:30px;font-size:11px;border-radius:6px;filter:grayscale(1) brightness(.55)}
+.cell .ph{width:40px;height:40px;border-radius:8px;border:1px dashed var(--line);display:grid;place-items:center;font-family:var(--f-disp);font-size:10px;letter-spacing:.1em;color:var(--muted)}
+.cell.B .ph{width:30px;height:30px;font-size:9px}
+.cell .tx{min-width:0}
+.cell .hn{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cell.B .hn{text-decoration:line-through;text-decoration-color:var(--away);font-weight:500}
+.cell .ow{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cell.cur.home{border-color:var(--home);box-shadow:0 0 18px -4px var(--home)}
+.cell.cur.away{border-color:var(--away);box-shadow:0 0 18px -4px var(--away)}
+.cell.cur .ph,.cell.cur .mono{outline:2px dashed var(--gold);outline-offset:1px}
+.cell.cur{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{background:var(--panel2)}}
+.cell.me{border-color:var(--gold)}
+.searchrow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.searchrow .field{flex:1}
+.actbar{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;z-index:2;padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
+.actbar .t{min-width:0;flex:1 1 220px}
+.actbar .t b{color:var(--gold)}
+.actbar .t small{display:block;color:var(--muted);font-size:12px}
+.pool-scroll{max-height:56vh;overflow-y:auto;padding:2px}
+
+/* 確定ボタン(右下に固定) */
+.fab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:30;min-width:156px;padding:12px 22px;border-radius:14px;border:0;background:var(--gold);color:#241b05;font-weight:700;font-size:16px;line-height:1.3;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.6)}
+.fab small{display:block;font-weight:500;font-size:11px;opacity:.8;max-width:140px;margin:0 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fab:disabled{background:var(--panel2);color:var(--muted);border:1px solid var(--line);box-shadow:none;cursor:not-allowed}
+body.has-fab .wrap{padding-bottom:110px}
+/* チーム内で共有される候補 */
+.tile .cb{position:absolute;top:2px;left:2px;right:2px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;font-style:normal;pointer-events:none}
+.tile .cb b{display:block;max-width:100%;font-family:var(--f-disp);font-weight:700;font-size:9px;line-height:1.25;padding:1px 5px;border-radius:6px;background:var(--gold);color:#241b05;white-space:normal;word-break:break-all;overflow-wrap:anywhere}
+.tile.cand-home{outline:2px dotted var(--home);outline-offset:1px}
+.tile.cand-away{outline:2px dotted var(--away);outline-offset:1px}
+
+/* ---- ロール別グループ ---- */
+.grp{margin-bottom:12px}
+.gh{display:flex;align-items:baseline;gap:10px;margin:10px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--line);font-family:var(--f-disp);font-size:13px;font-weight:700;letter-spacing:.14em;color:var(--gold)}
+.gh small{color:var(--muted);letter-spacing:.2em;font-size:10px;font-weight:500}
+#colPool .pool-scroll{max-height:none;overflow:visible}
+@media (min-width:901px){#colPool .pool-scroll{max-height:64vh;overflow-y:auto}}
+/* ---- ヒーロー画像(一覧は画像いっぱいのタイルに名前を重ねる) ---- */
+.mono.hv{background-size:cover;background-position:center;background-repeat:no-repeat;font-size:0;color:transparent}
+.tile{display:block;padding:0;aspect-ratio:1/1;overflow:hidden;border-radius:8px}
+.tile .mono{position:absolute;inset:0;width:100%;height:100%;border-radius:0;font-size:22px}
+.tile .mono.hv{font-size:0}
+.tile .nm{position:absolute;left:0;right:0;bottom:0;z-index:1;max-width:none;padding:18px 2px 3px;text-align:center;font-size:11px;font-weight:700;line-height:1.15;color:#fff;text-shadow:0 1px 3px #000;background:linear-gradient(to top,rgba(6,7,18,.94),rgba(6,7,18,0))}
+.tile .nm.lg{font-size:10px}
+.tile .nm.xl{font-size:9px;letter-spacing:-.02em}
+.tile.ban::after,.tile.fixed::after{inset:0;width:auto;height:auto;margin:0;z-index:2}
+.tile .cb{z-index:3}
+body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%),hsl(calc(var(--h) + 32) 55% 22%))!important;font-size:15px!important;color:#fff!important}
+/* countdown */
+.cd{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(7,8,18,.86);text-align:center}
+.cd p{margin:0;font-family:var(--f-disp);letter-spacing:.3em;color:var(--muted);font-size:14px}
+.cd .big{font-family:var(--f-disp);font-weight:700;font-size:clamp(110px,28vw,240px);line-height:1;color:var(--gold);font-variant-numeric:tabular-nums}
+.toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--panel2);border:1px solid var(--gold);padding:8px 16px;border-radius:999px;z-index:60;font-size:13px;max-width:90vw}
+
+@media (max-width:900px){
+  .stage{grid-template-columns:1fr 1fr;grid-template-areas:"home away" "pool pool"}
+  .cols{grid-template-columns:1fr}
+}
+@media (max-width:560px){
+  .cell{grid-template-columns:16px 34px minmax(0,1fr);gap:6px;padding:5px 6px}
+  .cell .mono,.cell .ph{width:34px;height:34px}
+  .tb-r{font-size:32px}
+  .logo b{font-size:18px}
+  .turnbar{padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top,0px));gap:4px 12px;border-radius:0 0 12px 12px}
+  .tb-l .v{font-size:15px}
+  .tb-act .note{display:none}
+}
+@media (max-width:420px){.teams{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.cell.cur{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo"><b>VAINGLORY</b><span>Custom Draft</span></div>
+    <div class="topr" id="topr" hidden>
+      <div class="chip-id"><small>ROOM</small><code id="roomCode"></code><button class="btn sm" id="maskBtn" type="button" aria-pressed="true">表示</button><button class="btn sm" id="copyId" type="button">IDコピー</button></div>
+      <button class="btn sm" id="copyHome" type="button">ホーム参加リンク</button>
+      <button class="btn sm" id="copyAway" type="button">アウェイ参加リンク</button>
+      <button class="btn sm" id="copyWatch" type="button">観戦リンク</button>
+      <button class="btn sm ghost" id="leaveBtn" type="button">退出</button>
+    </div>
+  </header>
+
+  <div class="banner" id="netBanner" hidden></div>
+  <div class="banner" id="imgBanner" hidden>ヒーロー画像を読み込めませんでした。index.html と同じ場所の images フォルダに、hero-captain.png / hero-jungler.png / hero-laner-1.png / hero-laner-2.png を置いてください。画像なしでもイニシャル表示で使えます。</div>
+
+  <!-- ENTRY -->
+  <section id="vEntry">
+    <div class="hero-h">
+      <h1>3v3 / 5v5 のBAN&amp;ピックを、ルームIDで共有する</h1>
+      <p>ホーム(左)とアウェイ(右)に分かれ、全員が準備完了になると5秒後に開始します。参加者と観戦者は、ルームIDか招待リンクで入室します。</p>
+    </div>
+    <div class="namebar" id="nameBar" hidden>
+      <label for="myName">表示名</label>
+      <input class="field" id="myName" maxlength="14" placeholder="あなたの名前" autocomplete="off">
+    </div>
+    <div class="cols">
+      <div class="card" id="gateCard" hidden>
+        <h2>ホストログイン</h2>
+        <p class="hint">ルームを作成できるのはホストだけです。参加・観戦する人は、ホストから届いた <b>ルーム付きのリンク</b> を開いてください。</p>
+        <div class="row" style="margin-bottom:6px"><label for="gateUser" class="lab">ユーザー名</label></div>
+        <input class="field" id="gateUser" autocomplete="username" autocapitalize="off" style="width:100%">
+        <div class="row" style="margin:10px 0 6px"><label for="gatePass" class="lab">パスワード</label></div>
+        <input class="field" id="gatePass" type="password" autocomplete="current-password" style="width:100%">
+        <div class="btns" style="margin-top:14px"><button class="btn pri" id="gateBtn" type="button">ログイン</button></div>
+        <p class="msg" id="gateMsg" role="status"></p>
+      </div>
+      <div class="card" id="createCard" hidden>
+        <h2>ルームを作成 <button class="btn sm ghost" id="gateOut" type="button" style="float:right">ログアウト</button></h2>
+        <div class="row"><span class="lab">形式</span><div class="seg" id="segSize" role="group" aria-label="形式"><button type="button" data-v="3">3v3</button><button type="button" data-v="5">5v5</button></div></div>
+        <div class="row"><span class="lab">1手番の制限時間</span><div class="seg" id="segTimer" role="group" aria-label="制限時間"><button type="button" data-v="15">15秒</button><button type="button" data-v="30">30秒</button><button type="button" data-v="45">45秒</button><button type="button" data-v="60">60秒</button></div></div>
+        <div class="row"><span class="lab">タイマー延長</span><div class="seg" id="segExt" role="group" aria-label="タイマー延長"><button type="button" data-v="pool">時間プール</button><button type="button" data-v="reset">リセット</button><button type="button" data-v="half">半分追加</button></div></div>
+        <div class="row" id="poolRow"><label class="lab" for="poolSec">チームの時間プール(秒)</label><input class="field num" id="poolSec" type="number" inputmode="numeric" min="10" max="600" step="5" style="width:110px"></div>
+        <p class="hint" id="extHint"></p>
+        <div class="row"><span class="lab">BANの人数(各チーム)</span><div class="seg" id="segBans" role="group" aria-label="BANの人数"><button type="button" data-v="1">1人</button><button type="button" data-v="2">2人</button><button type="button" data-v="3">3人</button><button type="button" data-v="4">4人</button><button type="button" data-v="5">5人</button></div></div>
+        <div class="lab" style="margin-bottom:6px">進行順</div>
+        <div class="rlist" id="cStrip"></div>
+        <p class="hint" id="stripHint"></p>
+        <div class="lab" style="margin-top:14px">固定BAN(最初からBANするヒーロー) <span id="fixedCount"></span></div>
+        <div class="fixed-list" id="fixedList"></div>
+        <details class="fx" id="fixedDet">
+          <summary>固定BANを変更する(タップで追加・解除)</summary>
+          <div class="searchrow"><input class="field" id="fq" placeholder="ヒーロー名で絞り込み" autocomplete="off"></div>
+          <div class="pool-scroll" style="max-height:320px"><div id="fPool"></div></div>
+        </details>
+        <div class="sum" id="cSum"></div>
+        <button class="btn pri" id="createBtn" type="button" disabled>ルームを作成して入室</button>
+        <p class="hint">作った人がホストです(「ロビーに戻す」や席の入れ替えができます)。進行はサーバーが行うので、タブを閉じても再読み込みしても続けられます。</p>
+        <p class="msg" id="createMsg" role="status"></p>
+      </div>
+      <div class="card" id="joinCard" hidden>
+        <h2>ルームに入室</h2>
+        <div class="row" style="margin-bottom:8px"><label for="joinId" class="lab">ルームID</label></div>
+        <input class="field num" id="joinId" maxlength="10" placeholder="例: K7M2QX" autocomplete="off" style="width:100%;font-size:22px;letter-spacing:.2em;text-transform:uppercase">
+        <p class="hint">参加者は入室後にロビーで席に座ります。観戦で入ると閲覧だけで、座ること・選ぶことはできません。</p>
+        <div class="btns" style="margin-top:14px">
+          <button class="btn pri" id="joinBtn" type="button" disabled>参加者として入室</button>
+          <button class="btn pri" id="joinLeaderBtn" type="button" disabled hidden>参戦者(代表者)として入室</button>
+          <button class="btn" id="watchBtn" type="button" disabled>観戦で入室</button>
+        </div>
+        <p class="msg" id="joinMsg" role="status"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROOM -->
+  <section id="vRoom" hidden>
+    <div class="meta" id="roomMeta"></div>
+    <div class="rolebar" id="rolebar" hidden></div>
+    <div id="fixedWrap" class="fixed-wrap" hidden></div>
+
+    <div id="lobby" hidden>
+      <div class="teams" id="teams"></div>
+      <div class="readybar" id="readybar"></div>
+      <div class="lab" style="margin-bottom:6px">進行順</div>
+      <div class="strip" id="rStrip"></div>
+    </div>
+
+    <div id="draft" hidden>
+      <div class="turnbar" id="turnbar"></div>
+      <div class="stage">
+        <div id="colHome"></div>
+        <div id="colPool">
+          <div class="searchrow"><input class="field" id="q" placeholder="ヒーロー名で絞り込み" autocomplete="off"></div>
+          <div class="pool-scroll"><div id="poolGrid"></div></div>
+          <div class="actbar" id="actbar"></div>
+        </div>
+        <div id="colAway"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="cd" id="cd" hidden role="status"><div><p>ドラフト開始まで</p><div class="big" id="cdNum">5</div><button class="btn" id="cdCancel" type="button" hidden>準備を解除して中止</button></div></div>
+<button class="fab" id="fab" type="button" hidden></button>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+"use strict";
+var VG_MODE="leader";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) */
+var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
+var COLORS=[["red","赤"],["blue","青"],["yellow","黄"]];
+
+/* ---------------------------------------------------------------
+   仕組み: Vercel の API 関数(api/room.js)+ Upstash Redis がルームの状態を持ち、
+   進行(時間切れ・開始)と全ての操作の検証もサーバー側で行います。
+   参加者・観戦者・ホストはみな同じサーバーを 1秒ちょっと毎に読むだけなので、
+   ネットワークが違っても、ホストがタブを閉じても続きます。
+   --------------------------------------------------------------- */
+
+/* ヒーロー一覧とグループ(キャプテン/ジャングラー/レーナー)。追加・削除・移動はここを編集します。分類は目安です。 */
+var ROLES=[
+  {k:"captain",ja:"キャプテン",en:"CAPTAIN",list:["アダージオ","アーダン","キャサリン","チャーンウォーカー","フリッカー","フォートレス","グレース","ランス","ローレライ","ライラ","フィン","ヴィオラ","イェーツ"]},
+  {k:"jungler",ja:"ジャングラー",en:"JUNGLER",list:["アルファ","グレイヴ","グランプジョー","イナラ","ジュール","コシュカ","クラル","オゾ","ペタル","ライム","ロナ","シン","タカ","トニー","イルバ"]},
+  {k:"laner",ja:"レーナー",en:"LANER",list:["アマエル","アンカ","バティスト","バロン","ブラックフェザー","ケイン","セレス","グウェン","イドリス","イシュター","カラス","剣聖","ケストレル","キネティック","レオ","マグナス","マレン","ミホ","レザ","リンゴ","サムエル","サンポウ","ソー","シルバーネイル","スカーフ","スカイ","ヴァーリア","ヴォックス","ウォーホーク"]}
+];
+var HEROES=[];ROLES.forEach(function(g){g.list.forEach(function(h){HEROES.push(h)})});
+/* ヒーロー画像: images フォルダの4枚のスクリーンショットを、CSSで1人ずつ切り出して使います。
+   SHEETS: file=画像ファイル / w,h=画像の大きさ(px) / x,y=1人目のタイルの左上(px)
+   HERO_POS: ヒーロー名 → [何枚目, 列, 行](0始まり、1行5人)。ヒーローを足すときはここに位置を書きます。 */
+var SHEETS=[
+  {file:"images/hero-captain.png",w:1220,h:733,x:4,y:6},
+  {file:"images/hero-jungler.png",w:1219,h:735,x:6,y:8},
+  {file:"images/hero-laner-1.png",w:1220,h:737,x:8,y:7},
+  {file:"images/hero-laner-2.png",w:1215,h:736,x:5,y:7}
+];
+var HERO_POS={"アダージオ":[0,0,0],"アーダン":[0,1,0],"キャサリン":[0,2,0],"チャーンウォーカー":[0,3,0],"フリッカー":[0,4,0],"フォートレス":[0,0,1],"グレース":[0,1,1],"ランス":[0,2,1],"ローレライ":[0,3,1],"ライラ":[0,4,1],"フィン":[0,0,2],"ヴィオラ":[0,1,2],"イェーツ":[0,2,2],"アルファ":[1,0,0],"グレイヴ":[1,1,0],"グランプジョー":[1,2,0],"イナラ":[1,3,0],"ジュール":[1,4,0],"コシュカ":[1,0,1],"クラル":[1,1,1],"オゾ":[1,2,1],"ペタル":[1,3,1],"ライム":[1,4,1],"ロナ":[1,0,2],"シン":[1,1,2],"タカ":[1,2,2],"トニー":[1,3,2],"イルバ":[1,4,2],"アマエル":[2,0,0],"アンカ":[2,1,0],"バティスト":[2,2,0],"バロン":[2,3,0],"ブラックフェザー":[2,4,0],"ケイン":[2,0,1],"セレス":[2,1,1],"グウェン":[2,2,1],"イドリス":[2,3,1],"イシュター":[2,4,1],"カラス":[2,0,2],"剣聖":[2,1,2],"ケストレル":[2,2,2],"キネティック":[2,3,2],"レオ":[2,4,2],"マグナス":[3,0,0],"マレン":[3,1,0],"ミホ":[3,2,0],"レザ":[3,3,0],"リンゴ":[3,4,0],"サムエル":[3,0,1],"サンポウ":[3,1,1],"ソー":[3,2,1],"シルバーネイル":[3,3,1],"スカーフ":[3,4,1],"スカイ":[3,0,2],"ヴァーリア":[3,1,2],"ヴォックス":[3,2,2],"ウォーホーク":[3,3,2]};
+
+var $=function(s){return document.querySelector(s)};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function lsDel(k){try{localStorage.removeItem(k)}catch(e){}}
+function rnd(n){var s="";while(s.length<n)s+=Math.random().toString(36).slice(2);return s.slice(0,n)}
+function hash(s){var h=0;for(var i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))>>>0}return h}
+function mono(n){var w=n.split(" ");return (w.length>1?w[0][0]+w[1][0]:n.slice(0,2)).toUpperCase()}
+var HIDX={};HEROES.forEach(function(h,i){HIDX[h]=i});
+function monoHTML(n){
+  var im=HERO_POS[n]&&HIDX[n]>=0;
+  return '<span aria-hidden="true" class="mono'+(im?' hv hi'+HIDX[n]:'')+'" style="--h:'+(hash(n)%360)+'">'+esc(mono(n))+'</span>';
+}
+/* 画像の拡大率と位置をパーセントで指定して、1人分(正方形)だけを見せる。どの大きさの枠でも同じ切り出しになる */
+function buildHeroCss(){
+  var css="",CROP=168,OX=27,OY=5,PX=243.3,PY=243.5;
+  HEROES.forEach(function(h,i){
+    var p=HERO_POS[h],sh=p&&SHEETS[p[0]];if(!sh)return;
+    var cx=Math.round(sh.x+PX*p[1])+OX,cy=Math.round(sh.y+PY*p[2])+OY;
+    css+=".mono.hv.hi"+i+"{background-image:url("+sh.file+");background-size:"+(sh.w/CROP*100).toFixed(3)+"% "+(sh.h/CROP*100).toFixed(3)+"%;background-position:"+(cx/(sh.w-CROP)*100).toFixed(3)+"% "+(cy/(sh.h-CROP)*100).toFixed(3)+"%}";
+  });
+  var st=document.createElement("style");st.id="heroCss";st.textContent=css;document.head.appendChild(st);
+  /* 画像を読み込めないときは、イニシャル表示に戻して案内を出す */
+  var miss=false;
+  SHEETS.forEach(function(sh){var im=new Image();im.onerror=function(){if(miss)return;miss=true;document.body.classList.add("img-missing");$("#imgBanner").hidden=false};im.src=sh.file});
+}
+function nmCls(h){return "nm"+(h.length>=7?" xl":(h.length>=6?" lg":""))}
+function teamJa(t){return t==="home"?"ホーム":"アウェイ"}
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
+
+/* ---------- identity (この端末だけの識別子) ---------- */
+var myUid=lsGet("vgd_uid");
+if(!myUid){myUid="u"+rnd(12);lsSet("vgd_uid",myUid)}
+var myTok=lsGet("vgd_tok");
+if(!myTok){myTok=rnd(24);lsSet("vgd_tok",myTok)}
+var myName=lsGet("vgd_name")||"";
+
+/* ---------- state ---------- */
+var S=null,D=null;                    /* S: ルームの状態(ホストが正)  D: Sから導いた値 */
+var roomId=null,isHost=false,inRoom=false,joining=false,joinSpec=false;
+var netGen=0,joinTeam="";
+var hostOK=false,entryRoom="",hostAuth=null,joinLeader=false;
+try{hostAuth=JSON.parse(lsGet("vgd_ha")||"null")}catch(e){hostAuth=null}
+/* 入口画面の出し分け: ホストログイン前(ルームの指定なし)=ログインだけ / ルーム指定のリンク=入室だけ / ログイン済みのホスト=作成+入室 */
+function refreshEntry(){
+  var mode=VG_MODE==="free"?(entryRoom?"join":"host"):(hostOK?"host":(entryRoom?"join":"gate"));
+  $("#gateCard").hidden=mode!=="gate";
+  $("#createCard").hidden=mode!=="host";
+  $("#joinCard").hidden=!(mode==="host"||mode==="join");
+  $("#nameBar").hidden=mode==="gate";
+}
+async function hostLogin(u,p,silent){
+  var r=await apiCall({op:"auth",hu:u,hp:p});
+  if(r.status===200){hostOK=true;hostAuth={u:u,p:p};lsSet("vgd_ha",JSON.stringify(hostAuth));refreshEntry();return true}
+  if(r.status===401||r.status===403){hostAuth=null;lsDel("vgd_ha")}
+  if(!silent){
+    $("#gateMsg").textContent=r.status===401?"ユーザー名またはパスワードが違います。":r.status===429?"試行回数が多すぎます。しばらく待ってからもう一度お試しください。":(r.status===500&&r.data&&r.data.err==="nopw")?"サーバーにホストのパスワードが設定されていません(Vercel の環境変数 HOST_USER / HOST_PASSWORD を設定して再デプロイしてください)。":"サーバーに接続できませんでした。";
+  }
+  return false;
+}
+var off=0,connected=false;
+var localSel="",q="";
+var cs={size:3,timer:30,bans:2,ext:"pool",pool:120,rows:[],fixed:["チャーンウォーカー","ヴィオラ"]};   /* 既定の固定BAN(作成画面で変更できます) */
+
+function nowS(){return Date.now()+off}
+function toast(t){var el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true},2600)}
+function getName(){var n=($("#myName").value||"").trim().slice(0,14);if(!n){n="Player"+(10+Math.floor(Math.random()*90))}$("#myName").value=n;myName=n;lsSet("vgd_name",n);return n}
+
+/* ---------- draft model ---------- */
+function buildTurns(cfg){
+  /* ジグザグ順: BANとPICKを別々に数え、その種類の1行目・3行目…はホーム→アウェイ、2行目・4行目…はアウェイ→ホームの順に手番が進む */
+  var N=cfg.size,turns=[],p=0,b=0;
+  for(var r=0;r<cfg.rows.length;r++){
+    var type=cfg.rows[r],k=type==="P"?p++:b++;
+    var slot=type==="P"?k:(k%N),order=k%2===0?["home","away"]:["away","home"];
+    turns.push({r:r,team:order[0],type:type,slot:slot});
+    turns.push({r:r,team:order[1],type:type,slot:slot});
+  }
+  return turns;
+}
+function defaultRows(size,k){
+  /* 1行目から1行おきにBAN(例: 3v3でBAN2人 → BAN,PICK,BAN,PICK,PICK) */
+  var R=size+k,pos=[],i;
+  for(i=0;pos.length<k&&i<=R-2;i+=2)pos.push(i);
+  for(i=1;pos.length<k&&i<=R-2;i++)if(pos.indexOf(i)<0)pos.push(i);
+  var rows=[];
+  for(i=0;i<R;i++)rows.push(pos.indexOf(i)>=0?"B":"P");
+  return rows.join("");
+}
+function rankOf(team){
+  var mem=S.members||{};
+  var ld=S.cfg&&S.cfg.leader;
+  return Object.keys(mem).filter(function(k){return mem[k].team===team}).sort(function(a,b){return ((ld&&mem[b].leader?1:0)-(ld&&mem[a].leader?1:0))||(mem[a].t-mem[b].t)||(a<b?-1:1)});
+}
+function derive(){
+  var cfg=S.cfg,N=cfg.size,mem=S.members||{},seats;
+  if(S.phase==="lobby"){seats={home:rankOf("home").slice(0,N),away:rankOf("away").slice(0,N)}}
+  else seats={home:(S.seats&&S.seats.home)||[],away:(S.seats&&S.seats.away)||[]};
+  var tr={},leaders={home:null,away:null};
+  if(cfg.leader){
+    ["home","away"].forEach(function(t){
+      if(S.phase==="lobby"){seats[t].forEach(function(u){if(mem[u]&&mem[u].leader)leaders[t]=u})}
+      else leaders[t]=(S.leaders&&S.leaders[t])||null;
+      tr[t]=!!(leaders[t]&&mem[leaders[t]]&&mem[leaders[t]].ready===true);
+    });
+  }else ["home","away"].forEach(function(t){tr[t]=seats[t].length===N&&seats[t].every(function(u){return mem[u]&&mem[u].ready===true})});
+  var turns=buildTurns(cfg),tix={};
+  turns.forEach(function(t,i){tix[t.r+t.team]=i});      /* (行,チーム) → 手番番号 */
+  var cur=S.phase==="draft"?turns[S.turn]||null:null;
+  var actorAt=function(tn){return !tn?null:(cfg.leader?leaders[tn.team]:seats[tn.team][tn.slot])};
+  var actor=actorAt(cur);
+  var myTeam=seats.home.indexOf(myUid)>=0?"home":(seats.away.indexOf(myUid)>=0?"away":"");
+  return {cfg:cfg,N:N,turns:turns,tix:tix,seats:seats,teamReady:tr,leaders:leaders,actorAt:actorAt,cur:cur,actor:actor,myTeam:myTeam,host:isHost,all:seats.home.concat(seats.away)};
+}
+function rtag(m){
+  if(!m||(!m.role&&!m.color))return "";
+  var cn={red:"赤",blue:"青",yellow:"黄"}[m.color]||"";
+  return '<span class="rtag">'+(m.color?'<i class="'+m.color+'" title="'+cn+'"></i>':'')+esc(m.role||"")+'</span>';
+}
+function renderRolebar(){
+  var el=$("#rolebar"),me=(S.members||{})[myUid];
+  if(!D.myTeam||!me){el.hidden=true;el.innerHTML="";return}
+  var RL=S.cfg.size===3?ROLES3:ROLES5;
+  el.hidden=false;
+  el.innerHTML='<span class="lab">あなたのロール</span><span class="grp">'+RL.map(function(r){return '<button type="button" data-role="'+esc(r)+'"'+(me.role===r?' class="on"':'')+'>'+esc(r)+'</button>'}).join("")+'</span>'+
+    '<span class="lab">色</span><span class="grp">'+COLORS.map(function(c){return '<button type="button" class="rb-c '+c[0]+(me.color===c[0]?' on':'')+'" data-color="'+c[0]+'"><i></i>'+c[1]+'</button>'}).join("")+'</span>';
+}
+function nameOf(u){var m=S.members&&S.members[u];return m&&m.name?m.name:"(不在)"}
+function isActor(){return !!(D&&D.cur&&D.actor===myUid)}
+/* 自分のチームの候補 {ヒーロー: [名前…]}(自分の分は含めない)。ホストの画面でも相手チームの分は使わない */
+var idMasked=true;      /* 既定は隠す(配信・画面共有での荒らし対策) */
+function isSpectator(){var m=S&&S.members&&S.members[myUid];return !!(m&&m.spec&&!(D&&D.myTeam))}
+function renderRoomCode(){
+  var sp=isSpectator();                                  /* 観戦者には ROOM ID と招待リンクを出さない(観戦リンクと退出だけ) */
+  var mt=D&&D.myTeam;
+  $(".chip-id").hidden=sp;
+  $("#copyHome").hidden=sp||!(isHost||mt==="home");        /* 自分のチームの参加リンクだけ(ホストは両方) */
+  $("#copyAway").hidden=sp||!(isHost||mt==="away");
+  $("#roomCode").textContent=idMasked?"\u2022\u2022\u2022\u2022\u2022\u2022":(roomId||"");
+  var b=$("#maskBtn");b.textContent=idMasked?"表示":"隠す";b.setAttribute("aria-pressed",idMasked?"true":"false");
+}
+function mateCands(){
+  var out={};
+  if(!D.myTeam)return out;
+  var c=S.cands||{};
+  Object.keys(c).forEach(function(u){
+    if(u===myUid||D.seats[D.myTeam].indexOf(u)<0)return;
+    (out[c[u]]=out[c[u]]||[]).push(nameOf(u));
+  });
+  return out;
+}
+function taken(h){
+  if(S.cfg.fixedBans.indexOf(h)>=0)return true;
+  var lg=S.log||{};
+  for(var k in lg){if(lg[k].hero===h)return true}
+  return false;
+}
+function statusOf(h){
+  if(S.cfg.fixedBans.indexOf(h)>=0)return {k:"fixed"};
+  var lg=S.log||{};
+  for(var k in lg){
+    if(lg[k].hero===h){var t=D.turns[+k];return t.type==="B"?{k:"ban",team:t.team}:{k:"pick",team:t.team}}
+  }
+  return null;
+}
+
+/* =========================================================
+   サーバー通信(Vercel の /api/room)
+   進行・検証は全てサーバー側。この画面は 1秒ちょっと毎に状態を取得し、操作は同じ経路で送ります。
+   ========================================================= */
+var API="/api/room",POLL_MS=1300,outq=[],wake=null;
+function apiCall(body,keep){
+  var ctl=typeof AbortController!=="undefined"?new AbortController():null,to=setTimeout(function(){if(ctl)ctl.abort()},9000);
+  return fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),cache:"no-store",keepalive:!!keep,signal:ctl?ctl.signal:undefined})
+    .then(function(r){clearTimeout(to);return r.json().catch(function(){return {}}).then(function(j){return {status:r.status,data:j||{}}})})
+    .catch(function(){clearTimeout(to);return {status:0,data:{}}});
+}
+function syncBody(a,hello){return {op:"sync",id:roomId,uid:myUid,tok:myTok,name:myName,spec:!!joinSpec,hello:!!hello,team:hello&&!joinSpec?joinTeam:"",leader:hello&&!joinSpec&&joinLeader,a:a||null}}
+function applySnap(d){
+  off=d.now-Date.now();connected=true;S=d.s;isHost=S.host===myUid;D=derive();setBanner();onState();
+  if(d.msg)toast(d.msg);
+}
+async function pump(gen){
+  while(inRoom&&gen===netGen){
+    var m=outq.shift();
+    var r=await apiCall(syncBody(m,false));
+    if(!(inRoom&&gen===netGen))return;
+    if(r.status===200&&r.data.s){applySnap(r.data)}
+    else if(r.status===404){leaveRoom(true,"ルームが終了したか、期限切れです");return}
+    else if(r.status===403){leaveRoom(true,"この名前の参加者はすでに別の端末で入室しています。");return}
+    else{connected=false;setBanner();if(m&&m.a!=="cand")toast("送信できませんでした。再接続しています…")}
+    if(!outq.length)await new Promise(function(res){wake=res;setTimeout(res,connected?POLL_MS:2500)});
+    wake=null;
+  }
+}
+function startLoop(){var gen=netGen;pump(gen)}
+function enterRoom(id,d){
+  netGen++;outq=[];
+  roomId=id;entryRoom=id;inRoom=true;joining=false;idMasked=true;
+  lsSet("vgd_room",JSON.stringify({id:id,spec:!!joinSpec,ld:!!joinLeader}));
+  showView("room");
+  applySnap(d);
+  setBusy(false);$("#joinMsg").textContent="";
+  startLoop();
+}
+function failText(r,kind){
+  if(r.status===429&&r.data&&r.data.err==="freelimit")return "無料版で作れる部屋は、同じ回線から24時間に3回までです。";
+  if(r.status===429)return "試行回数が多すぎます。しばらく待ってからお試しください。";
+  if(r.status===404)return "そのIDのルームは見つかりません。IDを確認してください(終了または期限切れの可能性もあります)。";
+  if(r.status===403)return "この名前の参加者はすでに別の端末で入室しています。";
+  if(r.status===500&&r.data.err==="nodb")return "サーバーのデータベースが設定されていません。Vercel で Upstash Redis を接続してください。";
+  if(r.status===503)return "サーバーが混み合っています。もう一度お試しください。";
+  if(r.status===400&&r.data.err==="cfg")return "ルーム設定が正しくありません。";
+  if(r.data&&r.data.msg)return r.data.msg;
+  return "サーバーに接続できませんでした。ネットワークを確認してもう一度お試しください。";
+}
+async function createRoom(){
+  var msg=$("#createMsg"),btn=$("#createBtn");
+  getName();btn.disabled=true;msg.textContent="ルームを作成中…";
+  var cfg={leader:VG_MODE==="leader",size:cs.size,timer:cs.timer,ext:cs.ext,pool:cs.ext==="pool"?cs.pool:0,rows:cs.rows.join(""),fixedBans:cs.fixed.slice(),heroes:HEROES.slice()};
+  joinSpec=false;
+  var r=await apiCall({op:"create",uid:myUid,tok:myTok,name:myName,cfg:cfg,free:VG_MODE==="free",hu:hostAuth&&hostAuth.u,hp:hostAuth&&hostAuth.p});
+  btn.disabled=false;
+  if(r.status===200&&r.data.s){msg.textContent="";enterRoom(r.data.id,r.data);return}
+  if(r.status===429&&r.data&&r.data.err==="freelimit"){msg.textContent="無料版で作れる部屋は、同じ回線から24時間に3回までです。";renderCreate();return}
+  if(VG_MODE!=="free"&&(r.status===401||r.status===403)){hostOK=false;hostAuth=null;lsDel("vgd_ha");refreshEntry();$("#gateMsg").textContent="ホストのログインが必要です。もう一度ログインしてください。";msg.textContent="";return}
+  msg.textContent=failText(r);renderCreate();
+}
+async function joinRoom(raw,spec,leader){
+  var id=String(raw||"").trim().toUpperCase(),jm=$("#joinMsg");
+  if(!/^[A-Z0-9]{4,10}$/.test(id)){jm.textContent="ルームIDは英数字で入力してください。";return}
+  getName();
+  joining=true;setBusy(true);jm.textContent="接続中…";
+  roomId=id;joinSpec=!!spec;joinLeader=!!leader&&!spec;
+  var r=await apiCall(syncBody(null,true));
+  if(!joining)return;
+  if(r.status===200&&r.data.s){enterRoom(id,r.data);return}
+  joining=false;roomId=null;setBusy(false);
+  if(r.status===404)lsDel("vgd_room");
+  jm.textContent=failText(r);
+}
+function setBusy(b){
+  $("#joinBtn").disabled=b;$("#watchBtn").disabled=b;$("#joinLeaderBtn").disabled=b;
+  renderCreateBtn();
+}
+function leaveRoom(silent,msg){
+  if(!inRoom&&!joining)return;
+  if(inRoom&&!silent&&roomId)apiCall(syncBody({a:"leave"},false),true);
+  netGen++;outq=[];if(wake)wake();
+  inRoom=false;joining=false;isHost=false;connected=false;S=null;D=null;roomId=null;
+  lsDel("vgd_room");
+  $("#cd").hidden=true;$("#fab").hidden=true;document.body.classList.remove("has-fab");
+  showView("entry");setBanner();setBusy(false);
+  toast(msg||"退出しました");
+}
+
+/* ---------- アクション(送信) ---------- */
+function act(m){
+  if(!S||!inRoom)return;
+  if(!connected){toast("サーバーに接続されていません");return}
+  outq.push(m);if(wake)wake();
+}
+
+function chooseHero(h){
+  if(!D||S.phase!=="draft"||taken(h)||!D.myTeam)return;       /* 観戦者・未着席は操作不可 */
+  if(isActor()){act({a:"pick",h:h})}
+  else{                                                        /* 手番でない人の候補: 自分の画面と、同じチームの人にだけ見える */
+    localSel=localSel===h?"":h;
+    act({a:"cand",h:localSel});
+    renderPool();renderAct();
+  }
+}
+function confirmTurn(){if(isActor())act({a:"confirm"})}
+function extendTime(){if(isActor()&&S.resetT!==S.turn&&(S.pausedAt||nowS())<S.deadline)act({a:"extend"})}
+
+/* ---------- 作成フォーム ---------- */
+function genId(){var a="ABCDEFGHJKMNPQRSTUVWXYZ23456789",s="";for(var i=0;i<6;i++)s+=a[Math.floor(Math.random()*a.length)];return s}
+function setRows(){cs.rows=defaultRows(cs.size,cs.bans).split("")}
+function renderCreateBtn(){
+  var cnt=cs.rows.filter(function(x){return x==="B"}).length;
+  $("#createBtn").disabled=!(cnt===cs.bans&&!joining);
+}
+function renderCreate(){
+  $$("#segSize button").forEach(function(b){b.classList.toggle("on",+b.dataset.v===cs.size)});
+  $$("#segTimer button").forEach(function(b){b.classList.toggle("on",+b.dataset.v===cs.timer)});
+  $$("#segBans button").forEach(function(b){b.classList.toggle("on",+b.dataset.v===cs.bans)});
+  $$("#segExt button").forEach(function(b){b.classList.toggle("on",b.dataset.v===cs.ext)});
+  $("#poolRow").hidden=cs.ext!=="pool";
+  if(document.activeElement!==$("#poolSec"))$("#poolSec").value=cs.pool;
+  var half=Math.round(cs.timer/2);
+  $("#extHint").textContent=cs.ext==="pool"?"制限時間を過ぎた分だけ、そのチームの時間プールから減っていきます(使った分は戻りません)。プールが0になると、ピックはランダム、BANは選択なしで次の手番へ進みます。延長ボタンはありません。":cs.ext==="reset"?"手番ごとに1回、残り時間を制限時間("+cs.timer+"秒)いっぱいに戻せます。時間切れは、ピックはランダム、BANは選択なしで次へ進みます。":"手番ごとに1回、残り時間に制限時間の約半分(+"+half+"秒)を追加できます。時間切れは、ピックはランダム、BANは選択なしで次へ進みます。";
+  var target=cs.bans;
+  $("#cStrip").innerHTML=cs.rows.map(function(t,i){
+    var dis=i===0||i===cs.rows.length-1;
+    return '<button type="button" class="ritem '+t+'" data-r="'+i+'"'+(dis?" disabled":"")+'><span class="rn num">'+(i+1)+'</span><span class="rt">'+(t==="B"?"BAN":"PICK")+'</span>'+(i===0?'<small>固定</small>':'')+'</button>';
+  }).join("");
+  $("#stripHint").textContent="各チーム"+target+"人BAN、"+cs.size+"人ピックで全"+cs.rows.length+"行です。1行目はBAN固定です。"+(target>1?"BANにしたい行をタップすると、いちばん近いBANがその行に移動します。":"BANは1行目だけです。")+" 手番は、BAN・PICKそれぞれ1行目がホーム→アウェイ、2行目がアウェイ→ホーム…と交互(ジグザグ)に進みます。";
+  $("#fixedCount").textContent=cs.fixed.length?"("+cs.fixed.length+"人)":"";
+  $("#fixedList").innerHTML=cs.fixed.map(function(h){return '<span class="fchip">'+monoHTML(h)+esc(h)+'</span>'}).join("");
+  renderFixedPool();
+  $("#cSum").textContent=cs.size+"v"+cs.size+" / 各手番 "+cs.timer+"秒("+(cs.ext==="pool"?"チーム時間プール "+cs.pool+"秒":cs.ext==="reset"?"リセット":"半分追加")+") / BAN 各チーム"+cs.bans+"人(計"+cs.bans*2+"人) + 固定BAN "+cs.fixed.length+"人 / 全 "+cs.rows.length+" 行";
+  renderCreateBtn();
+}
+function groupsHTML(filter,tileFn){
+  var f=String(filter||"").trim().toLowerCase(),out="";
+  ROLES.forEach(function(g){
+    var tiles=g.list.filter(function(h){return !f||h.toLowerCase().indexOf(f)>=0}).map(tileFn).join("");
+    if(tiles)out+='<section class="grp"><h4 class="gh"><span>'+g.ja+'</span><small>'+g.en+'</small></h4><div class="pool">'+tiles+'</div></section>';
+  });
+  return out||'<p class="hint">該当するヒーローがいません。</p>';
+}
+function renderFixedPool(){
+  $("#fPool").innerHTML=groupsHTML($("#fq").value,function(h){
+    var on=cs.fixed.indexOf(h)>=0;
+    return '<button type="button" class="tile'+(on?" fixed":"")+'" data-h="'+esc(h)+'">'+monoHTML(h)+'<span class="'+nmCls(h)+'">'+esc(h)+'</span></button>';
+  });
+}
+function wireCreate(){
+  $("#segSize").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.size=+b.dataset.v;setRows();renderCreate()});
+  $("#segExt").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.ext=b.dataset.v;renderCreate()});
+  $("#poolSec").addEventListener("input",function(){var v=Math.round(+$("#poolSec").value);if(v>=10&&v<=600)cs.pool=v;renderCreate()});
+  $("#poolSec").addEventListener("change",function(){var v=Math.round(+$("#poolSec").value);cs.pool=v>=10?Math.min(600,v):10;$("#poolSec").value=cs.pool;renderCreate()});
+  $("#segTimer").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.timer=+b.dataset.v;renderCreate()});
+  $("#segBans").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.bans=+b.dataset.v;setRows();renderCreate()});
+  $("#cStrip").addEventListener("click",function(e){
+    var b=e.target.closest("button");if(!b||b.disabled)return;
+    var i=+b.dataset.r;
+    if(cs.rows[i]==="B")return;
+    var best=-1;
+    for(var j=1;j<cs.rows.length;j++){
+      if(cs.rows[j]==="B"&&(best<0||Math.abs(j-i)<Math.abs(best-i)))best=j;
+    }
+    if(best<0){$("#createMsg").textContent="BANが1人のときは1行目のみがBANです。";return}
+    cs.rows[best]="P";cs.rows[i]="B";
+    $("#createMsg").textContent="";renderCreate();
+  });
+  $("#fPool").addEventListener("click",function(e){
+    var b=e.target.closest("button");if(!b)return;
+    var h=b.dataset.h,i=cs.fixed.indexOf(h);
+    if(i>=0)cs.fixed.splice(i,1);else cs.fixed.push(h);
+    renderCreate();
+  });
+  $("#fq").addEventListener("input",renderFixedPool);
+  $("#createBtn").addEventListener("click",createRoom);
+  $("#gateBtn").addEventListener("click",function(){$("#gateMsg").textContent="確認中…";hostLogin($("#gateUser").value.trim(),$("#gatePass").value,false).then(function(ok){if(ok){$("#gateMsg").textContent="";$("#gatePass").value=""}})});
+  $("#gatePass").addEventListener("keydown",function(e){if(e.key==="Enter")$("#gateBtn").click()});
+  $("#gateOut").addEventListener("click",function(){hostOK=false;hostAuth=null;lsDel("vgd_ha");refreshEntry()});
+  $("#joinBtn").addEventListener("click",function(){joinRoom($("#joinId").value,false,false)});
+  $("#joinLeaderBtn").addEventListener("click",function(){joinRoom($("#joinId").value,false,true)});
+  $("#watchBtn").addEventListener("click",function(){joinRoom($("#joinId").value,true)});
+  $("#joinId").addEventListener("keydown",function(e){if(e.key==="Enter")joinRoom($("#joinId").value,false)});
+  $("#myName").addEventListener("change",getName);
+}
+
+/* ---------- render ---------- */
+function showView(v){
+  if(v==="entry")refreshEntry();
+  $("#vEntry").hidden=v!=="entry";
+  $("#vRoom").hidden=v!=="room";
+  $("#topr").hidden=v!=="room";
+  if(v==="room"){renderRoomCode();try{history.replaceState(null,"",location.pathname)}catch(e){}}   /* 招待リンクのIDをアドレスバーに残さない */
+}
+function setBanner(){
+  var b=$("#netBanner"),msg="";
+  if(inRoom&&!connected)msg="サーバーとの接続が切れました。再接続しています…";
+  b.hidden=!msg;b.textContent=msg;
+}
+function onState(){
+  if(!S)return;
+  D=derive();renderRoomCode();
+  if(localSel&&(taken(localSel)||isActor()))localSel="";
+  renderAll();
+}
+function renderAll(){
+  if(!S||!D)return;
+  renderMeta();renderRolebar();renderFixed();
+  var ph=S.phase;
+  $("#lobby").hidden=!(ph==="lobby"||ph==="countdown");
+  $("#draft").hidden=!(ph==="draft"||ph==="done");
+  $("#cd").hidden=ph!=="countdown";
+  $("#cdCancel").hidden=!D.myTeam||!!(S.cfg.leader&&!(S.members[myUid]&&S.members[myUid].leader));
+  if(ph!=="draft"){$("#fab").hidden=true;document.body.classList.remove("has-fab")}
+  if(ph==="lobby"||ph==="countdown")renderLobby();
+  else{renderTurn();renderBoard();renderPool();renderAct()}
+  tick();
+}
+function stripHTML(rows){
+  return rows.split("").map(function(t,i){return '<span class="rchip '+t+'"><small>'+(t==="B"?"BAN":"PICK")+'</small><b class="num">'+(i+1)+'</b></span>'}).join("");
+}
+function renderMeta(){
+  var cfg=S.cfg,mem=S.members||{},me=mem[myUid],spec=0;
+  Object.keys(mem).forEach(function(k){var m=mem[k];if(!m.left&&m.on!==false&&D.all.indexOf(k)<0)spec++});
+  var role=D.myTeam?'<span class="badge '+D.myTeam+'">'+teamJa(D.myTeam)+'で参加中</span>':(me&&me.spec?'<span class="badge spec">観戦</span>':'<span class="badge spec">未着席</span>');
+  var bans=cfg.rows.split("").filter(function(x){return x==="B"}).length;
+  var phase={lobby:"ロビー",countdown:"開始カウントダウン",draft:"ドラフト中",done:"ドラフト完了"}[S.phase];
+  $("#roomMeta").innerHTML=role+(isHost?'<span class="badge gold">ホスト</span>':'')+'<span class="badge gold">'+esc(phase)+'</span><span class="num">'+cfg.size+'v'+cfg.size+' / '+cfg.timer+'秒 / BAN 各チーム'+bans+'人 / '+cfg.rows.length+'行</span><span>観戦 '+spec+'人</span>';
+}
+function renderFixed(){
+  var el=$("#fixedWrap"),f=S.cfg.fixedBans;
+  el.hidden=!f.length;
+  if(f.length)el.innerHTML='<span class="lab">固定BAN</span>'+f.map(function(h){return '<span class="fchip">'+monoHTML(h)+esc(h)+'</span>'}).join("");
+}
+function renderLobby(){
+  var N=D.N,mem=S.members||{},me=mem[myUid]||{};
+  var canSit=S.phase==="lobby"&&!me.spec;
+  var html="";
+  ["home","away"].forEach(function(t){
+    var seats=D.seats[t],rc=seats.filter(function(u){return mem[u]&&mem[u].ready}).length;
+    var rows="";
+    for(var i=0;i<N;i++){
+      var u=seats[i];
+      if(!u){rows+='<div class="seat empty"><span class="sn num">'+(i+1)+'</span><span class="who">空席</span><span></span></div>';continue}
+      var m=mem[u]||{},mine=u===myUid;
+      rows+='<div class="seat'+(mine?" me":"")+'"><span class="sn num">'+(i+1)+'</span><span class="who">'+esc(m.name||"")+(S.cfg.leader&&m.leader?'<small>代表</small>':'')+rtag(m)+(mine?'<small>あなた</small>':'')+(u===S.host?'<small>ホスト</small>':'')+(m.on===false?'<small>切断中</small>':'')+'</span>'+
+        '<span style="display:flex;align-items:center;gap:6px">'+((S.cfg.leader&&!m.leader)?'':'<span class="rd'+(m.ready?" on":"")+'" role="img" title="'+(m.ready?"準備完了":"未準備")+'" aria-label="'+(m.ready?"準備完了":"未準備")+'"><i></i></span>')+
+        (isHost&&!mine&&S.phase==="lobby"?'<button class="kick" type="button" data-kick="'+esc(u)+'" aria-label="席から外す">×</button>':'')+'</span></div>';
+    }
+    var acts="";
+    if(canSit){
+      if(D.myTeam===t)acts=me.locked?"":'<button class="btn sm" type="button" data-stand="1">席を離れる</button>';
+      else acts='<button class="btn sm '+t+'" type="button" data-sit="'+t+'"'+(seats.length>=N?" disabled":"")+'>'+teamJa(t)+'に参加</button>';
+    }
+    html+='<div class="team '+t+'"><h3><span>'+(t==="home"?"HOME":"AWAY")+'</span><span class="tr'+(D.teamReady[t]?" ok":"")+'">'+(D.teamReady[t]?"チーム準備完了":(S.cfg.leader?(D.leaders[t]?"代表者 未準備":"代表者なし"):"準備 "+rc+"/"+N))+'</span></h3>'+rows+'<div class="acts">'+acts+'</div></div>';
+  });
+  $("#teams").innerHTML=html;
+  var rb="";
+  if(D.myTeam&&S.cfg.leader&&!me.leader){
+    rb='<span class="lab">あなたは代表者ではありません。代表者が準備OKにすると、チームの準備が完了します。ドラフト中は、仮ピックをチームに共有できます。</span>';
+  }else if(D.myTeam){
+    var rdy=!!(mem[myUid]&&mem[myUid].ready);
+    rb='<button class="btn pri" type="button" data-ready="1">'+(rdy?"準備を解除":"準備完了にする")+'</button><span class="lab">'+(S.cfg.leader?"両チームの代表者が準備完了になると5秒後に開始します(全員が揃っていなくても始められます)。":"全員が準備完了になると5秒後に開始します。")+'</span>';
+  }else if(me.spec)rb='<span class="lab">観戦で入室しています。閲覧のみで、操作はできません。</span>';
+  else rb='<span class="lab">まだ席に座っていません。参加するには、ホームかアウェイの「参加」を押してください。</span>';
+  $("#readybar").innerHTML=rb;
+  $("#rStrip").innerHTML=stripHTML(S.cfg.rows);
+}
+function extOf(){return (S&&S.cfg&&S.cfg.ext)||"reset"}
+function poolLeft(t,now){                      /* チームの時間プールの残り(ミリ秒)。今の手番のチームは超過分を引いて表示 */
+  var p=(S.pool&&S.pool[t])||0;
+  if(S.phase==="draft"&&D.cur&&D.cur.team===t)p-=Math.max(0,now-S.deadline);
+  return Math.max(0,p);
+}
+function tick(){
+  if(!S||!D)return;
+  var now=nowS();
+  if(S.phase==="countdown"){
+    var n=Math.ceil((S.startsAt-now)/1000);
+    $("#cdNum").textContent=n>0?n:"GO";
+  }
+  if(S.phase==="draft"){
+    if(S.pausedAt)now=S.pausedAt;                      /* 一時停止中は止まった時刻で表示 */
+    var left=Math.max(0,S.deadline-now),el=$("#tbNum"),bar=$("#tbBar"),ot=extOf()==="pool"&&now>S.deadline;
+    if(ot&&D.cur){left=poolLeft(D.cur.team,now)}          /* 制限時間を過ぎたら時間プールのカウントダウン */
+    if(el){el.textContent=Math.ceil(left/1000);el.classList.toggle("low",left<=5000);el.classList.toggle("ot",ot)}
+    if(bar)bar.style.width=ot?Math.min(100,left/(Math.max(1,S.cfg.pool)*10))+"%":Math.min(100,left/(S.cfg.timer*10))+"%";
+    var pn=$("#poolNote");
+    if(pn&&extOf()==="pool"){
+      var hs=Math.ceil(poolLeft("home",now)/1000),as=Math.ceil(poolLeft("away",now)/1000),mt=D.myTeam;
+      pn.innerHTML=(ot?'<b>延長中 </b>':'')+(mt?'<span class="pn-me">あなたのチーム 残り<b>'+(mt==="home"?hs:as)+'</b>秒</span> ':'')+'<span class="pn-o">ホーム '+hs+'秒 / アウェイ '+as+'秒</span>';
+    }
+  }
+}
+function extUI(mine,used,c){
+  var pz=(isHost?'<button class="btn sm'+(S.pausedAt?' pri':'')+'" type="button" data-pause="1">'+(S.pausedAt?'▶ 再開':'⏸ 一時停止')+'</button>':'')+(S.pausedAt?'<span class="note"><b>一時停止中</b></span>':'');
+  var e=extOf(),fail=c.type==="B"?"時間切れはBANなしで次へ":"時間切れはランダムで確定";
+  if(e==="pool")return pz+'<span class="note" id="poolNote"></span><span class="note">'+fail+'</span>';
+  var half=Math.round(S.cfg.timer/2),lab=e==="half"?"+"+half+"秒を追加(1回)":"時間をリセット(1回)",done=e==="half"?"追加済み":"リセット済み";
+  return pz+(mine?'<button class="btn sm" type="button" data-extend="1"'+(used?" disabled":"")+'>'+(used?done:lab)+'</button>':(used?'<span>この手番は'+done+'</span>':''))+'<span class="note">'+fail+'</span>';
+}
+function renderTurn(){
+  var tb=$("#turnbar");
+  if(S.phase==="done"){
+    tb.className="turnbar";
+    tb.innerHTML='<div class="tb-l"><div class="k">DRAFT</div><div class="v">ドラフト完了</div></div>'+(isHost?'<div><button class="btn" type="button" data-reset="1">ロビーに戻す</button></div>':'');
+    return;
+  }
+  var c=D.cur,mine=isActor(),verb=c.type==="B"?"BAN":"PICK",used=S.resetT===S.turn;
+  tb.className="turnbar "+c.team+(mine?" mine":"");
+  tb.innerHTML='<div class="tb-l"><div class="k num">手番 '+(S.turn+1)+' / '+D.turns.length+' · '+verb+'</div>'+
+    '<div class="v">'+(mine?'<em>あなたの番です</em>':esc(teamJa(c.team))+' '+esc(nameOf(D.actor))+' の'+verb)+'</div>'+
+    '<div class="tb-act">'+extUI(mine,used,c)+'</div></div>'+
+    '<div class="tb-r num" id="tbNum">0</div><div class="tbar"><i id="tbBar"></i></div>';
+}
+function cellHTML(t,r){
+  var type=S.cfg.rows[r],ti=D.tix[r+t],turn=D.turns[ti],en=(S.log||{})[ti];
+  var cur=S.phase==="draft"&&S.turn===ti,au=D.actorAt(turn);
+  var inner,hn="",ow=(type==="B"&&!en?"BAN担当 ":"")+(au?nameOf(au):"");
+  if(en){
+    if(en.hero){inner=monoHTML(en.hero);hn=en.hero}
+    else{inner='<span class="ph">SKIP</span>';hn="スキップ"}
+    if(en.auto)ow+=en.hero?" (時間切れ・ランダム)":" (時間切れ・BANなし)";
+  }else if(cur){
+    var ph=S.pendingTurn===ti&&S.pendingHero;
+    if(ph){inner=monoHTML(ph);hn=ph}else{inner='<span class="ph">…</span>';hn="選択中"}
+  }else{inner='<span class="ph">'+(type==="B"?"BAN":"PICK")+'</span>'}
+  return '<div class="cell '+type+(cur?" cur "+t:"")+(au===myUid?" me":"")+'"><span class="rn num">'+(ti+1)+'</span>'+inner+'<span class="tx"><div class="hn">'+esc(hn)+'</div><div class="ow">'+esc(ow)+(au?rtag((S.members||{})[au]||{}):"")+'</div></span></div>';
+}
+function renderBoard(){
+  ["home","away"].forEach(function(t){
+    var h='<div class="colh"><span>'+(t==="home"?"HOME":"AWAY")+'</span></div>';
+    for(var r=0;r<S.cfg.rows.length;r++)h+=cellHTML(t,r);
+    $(t==="home"?"#colHome":"#colAway").innerHTML=h;
+  });
+}
+function renderPool(){
+  var can=S.phase==="draft"&&!!D.myTeam;
+  var shared=S.pendingTurn===S.turn&&S.pendingHero?S.pendingHero:"";
+  var mates=mateCands();
+  $("#poolGrid").innerHTML=groupsHTML(q,function(h){
+    var st=statusOf(h),cls="tile",badge="";
+    if(st)cls+=st.k==="pick"?" pick-"+st.team:" "+st.k;
+    else if(h===shared&&S.phase==="draft")cls+=" sel";
+    else if(h===localSel)cls+=" mine";
+    else if(mates[h]){
+      cls+=" cand-"+D.myTeam;
+      var nm=mates[h];
+      badge='<i class="cb">'+nm.map(function(n){return '<b>'+esc(n)+'</b>'}).join("")+'</i>';
+    }
+    return '<button type="button" class="'+cls+'" data-h="'+esc(h)+'"'+(st||!can?" disabled":"")+'>'+badge+monoHTML(h)+'<span class="'+nmCls(h)+'">'+esc(h)+'</span></button>';
+  });
+}
+function setFab(show,label,sub,disabled){
+  var fab=$("#fab");
+  fab.hidden=!show;
+  if(show){fab.disabled=!!disabled;fab.innerHTML=esc(label)+'<small>'+esc(sub)+'</small>'}
+  document.body.classList.toggle("has-fab",show);
+}
+function renderAct(){
+  var el=$("#actbar");
+  setFab(false);
+  if(S.phase==="done"){el.innerHTML='<div class="t"><b>ドラフト完了</b><small>お疲れさまでした。</small></div>';return}
+  if(!D.myTeam){el.innerHTML='<div class="t"><b>観戦中</b><small>観戦者は閲覧のみで、選択や確定はできません。</small></div>';return}
+  var c=D.cur;
+  if(isActor()){
+    var p=S.pendingTurn===S.turn?S.pendingHero:"",verb=c.type==="B"?"BAN":"ピック";
+    el.innerHTML='<div class="t">'+(p?'選択中: <b>'+esc(p)+'</b>':'<b>ヒーローをタップして選んでください</b>')+'<small>手番の間、選択中のヒーローは相手チームにも表示されます。右下のボタンで確定します。</small></div>';
+    setFab(true,verb+"を確定",p||"ヒーローを選択",!p);
+  }else{
+    var mates=mateCands(),mt=Object.keys(mates).map(function(h){return h+"("+mates[h].join("・")+")"}).join(" / ");
+    el.innerHTML='<div class="t">'+(localSel?'あなたの候補: <b>'+esc(localSel)+'</b>':'<b>'+esc(teamJa(c.team))+' '+esc(nameOf(D.actor))+' が選択中です</b>')+
+      (mt?'<small>チームの候補: '+esc(mt)+'</small>':'')+
+      '<small>手番ではないので、タップした候補は自分のチームの人にだけ見えます(相手チームと観戦者には見えません)。</small></div>';
+  }
+}
+
+/* ---------- wiring ---------- */
+function baseUrl(){return location.origin+location.pathname}
+function copyText(txt,okMsg){
+  var fail=function(){toast("コピーできませんでした。手動で選択してください")};
+  try{navigator.clipboard.writeText(txt).then(function(){toast(okMsg)},fail)}catch(e){fail()}
+}
+function wireRoom(){
+  $("#teams").addEventListener("click",function(e){
+    var b=e.target.closest("button");if(!b||b.disabled)return;
+    if(b.dataset.sit)act({a:"sit",team:b.dataset.sit});
+    else if(b.dataset.stand)act({a:"stand"});
+    else if(b.dataset.kick)act({a:"kick",u:b.dataset.kick});
+  });
+  $("#readybar").addEventListener("click",function(e){if(e.target.closest("[data-ready]"))act({a:"ready"})});
+  $("#rolebar").addEventListener("click",function(e){
+    var me=(S&&S.members||{})[myUid];if(!me)return;
+    var rb=e.target.closest("[data-role]"),cb=e.target.closest("[data-color]");
+    if(rb){var r=rb.dataset.role;act({a:"role",r:me.role===r?"":r,c:me.color||""})}
+    else if(cb){var c=cb.dataset.color;act({a:"role",r:me.role||"",c:me.color===c?"":c})}
+  });
+  $("#cdCancel").addEventListener("click",function(){act({a:"ready"})});
+  $("#poolGrid").addEventListener("click",function(e){var b=e.target.closest("button");if(b&&!b.disabled)chooseHero(b.dataset.h)});
+  $("#fab").addEventListener("click",function(){if(!$("#fab").disabled)confirmTurn()});
+  $("#turnbar").addEventListener("click",function(e){
+    if(e.target.closest("[data-reset]"))act({a:"reset"});
+    else if(e.target.closest("[data-pause]")&&isHost)act({a:"pause"});
+    else{var b=e.target.closest("[data-extend]");if(b&&!b.disabled)extendTime()}
+  });
+  $("#q").addEventListener("input",function(){q=$("#q").value;if(S&&D&&S.phase!=="lobby")renderPool()});
+  $("#leaveBtn").addEventListener("click",function(){
+    leaveRoom(false);
+  });
+  $("#copyId").addEventListener("click",function(){copyText(roomId,"ルームIDをコピーしました")});
+  $("#maskBtn").addEventListener("click",function(){idMasked=!idMasked;renderRoomCode()});
+  $("#copyHome").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId+"&team=home","ホームの参加リンクをコピーしました")});
+  $("#copyAway").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId+"&team=away","アウェイの参加リンクをコピーしました")});
+  $("#copyWatch").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId+"&watch=1","観戦リンクをコピーしました")});
+}
+
+async function init(){
+  $("#myName").value=myName;
+  buildHeroCss();
+  setRows();wireCreate();wireRoom();renderCreate();
+  setInterval(tick,250);
+  document.addEventListener("visibilitychange",function(){if(!document.hidden&&wake)wake()});
+  var params=new URLSearchParams(location.search);
+  var qRoom=(params.get("room")||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,10);
+  var qWatch=params.get("watch")==="1",qTeam=params.get("team");
+  if(qRoom&&!qWatch&&(qTeam==="home"||qTeam==="away")){
+    joinTeam=qTeam;
+    if(VG_MODE==="leader")$("#joinMsg").textContent="名前(IGN)を入力して、参戦者か代表者として入室すると、"+teamJa(qTeam)+"の席に入ります。";
+    else{$("#joinBtn").textContent=teamJa(qTeam)+"として入室";$("#joinMsg").textContent="名前(IGN)を入力して「"+teamJa(qTeam)+"として入室」を押すと、"+teamJa(qTeam)+"の席に入ります。";}
+  }
+  if(qRoom){$("#joinId").value=qRoom;entryRoom=qRoom}
+  if(VG_MODE==="leader"){$("#joinBtn").textContent="参戦者として入室";$("#joinLeaderBtn").hidden=false}
+  if(VG_MODE==="free")$("#gateOut").hidden=true;
+  refreshEntry();
+  setBusy(false);setBanner();
+  if(VG_MODE!=="free"&&!qRoom&&hostAuth)hostLogin(hostAuth.u,hostAuth.p,true);        /* 保存済みのログイン情報を確認(失敗したらログイン画面のまま) */
+  var sr=null;
+  try{sr=JSON.parse(lsGet("vgd_room")||"null")}catch(e){sr=null}
+  if(sr&&sr.id&&!qRoom){$("#joinId").value=sr.id;joinRoom(sr.id,!!sr.spec,!!sr.ld);return}
+  if(qRoom&&qWatch){joinRoom(qRoom,true);return}
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
+})();
+</script>
+</body>
+</html>
