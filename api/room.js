@@ -149,6 +149,7 @@ function handle(S, uid, m, body) {
       if (ph !== "lobby" || me.spec || (m.team !== "home" && m.team !== "away")) break;
       if (me.team === m.team) break;
       if (D.seats[m.team].length >= D.N) { msg = "満席です"; break; }
+      if (LD && m.leader === true && isHost) me.wantLeader = true;      /* ホストは、ロビーのボタンから代表者として着席できる */
       me.team = m.team; me.t = now; me.ready = false; takeLeader(m.team); changed = true; break;
     case "stand":
       if (ph !== "lobby" || me.locked) break;
