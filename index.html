@@ -829,7 +829,7 @@ function renderLobby(){
     var acts="";
     if(canSit){
       if(D.myTeam===t)acts=me.locked?"":'<button class="btn sm" type="button" data-stand="1">席を離れる</button>';
-      else acts='<button class="btn sm '+t+'" type="button" data-sit="'+t+'"'+(seats.length>=N?" disabled":"")+'>'+teamJa(t)+'に参加</button>';
+      else acts='<button class="btn sm '+t+'" type="button" data-sit="'+t+'"'+(seats.length>=N?" disabled":"")+'>'+teamJa(t)+'に参加</button>'+(S.cfg.leader&&isHost?' <button class="btn sm pri" type="button" data-sit="'+t+'" data-lead="1"'+(seats.length>=N?" disabled":"")+'>'+teamJa(t)+'に参加(代表者)</button>':'');
     }
     html+='<div class="team '+t+'"><h3><span>'+(t==="home"?"HOME":"AWAY")+'</span><span class="tr'+(D.teamReady[t]?" ok":"")+'">'+(D.teamReady[t]?"チーム準備完了":(S.cfg.leader?(D.leaders[t]?"代表者 未準備":"代表者なし"):"準備 "+rc+"/"+N))+'</span></h3>'+rows+'<div class="acts">'+acts+'</div></div>';
   });
@@ -969,7 +969,7 @@ function copyText(txt,okMsg){
 function wireRoom(){
   $("#teams").addEventListener("click",function(e){
     var b=e.target.closest("button");if(!b||b.disabled)return;
-    if(b.dataset.sit)act({a:"sit",team:b.dataset.sit});
+    if(b.dataset.sit)act({a:"sit",team:b.dataset.sit,leader:!!b.dataset.lead});
     else if(b.dataset.stand)act({a:"stand"});
     else if(b.dataset.kick)act({a:"kick",u:b.dataset.kick});
   });
