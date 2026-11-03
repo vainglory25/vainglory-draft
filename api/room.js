@@ -91,7 +91,7 @@ function taken(S, h) {
   for (var k in lg) { if (lg[k].hero === h) return true; }
   return false;
 }
-function cleanName(n) { return String(n == null ? "" : n).replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, 14); }
+function cleanName(n) { return String(n == null ? "" : n).replace(/[\u0000-\u001f\u007f-\u009f\u00ad\u034f\u115f\u1160\u17b4\u17b5\u180e\u200b-\u200f\u202a-\u202e\u2060-\u206f\u3164\ufeff\uffa0<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 14); }
 function autoHero(S) {
   var free = S.cfg.heroes.filter(function (h) { return !taken(S, h); });
   return free.length ? free[Math.floor(Math.random() * free.length)] : "";
@@ -127,7 +127,7 @@ function handle(S, uid, m, body) {
     if (!me && Object.keys(mem).length >= MAX_MEMBERS) return { msg: "ルームが満員です" };
     if (!me) me = mem[uid] = { name: "", team: "", t: now, ready: false, left: false, spec: false };
     var nm = cleanName(body.name);
-    if (nm) me.name = nm; else if (!me.name) me.name = "Player";
+    if (nm) me.name = nm; else if (!me.name) me.name = "Player";      /* (名前なしは opSync / opCreate が先に弾く) */
     me.left = false; me.spec = seated ? false : !!body.spec;
     changed = true;
   }
@@ -312,6 +312,7 @@ async function opCreate(b, res) {
   if (!okUid(b.uid) || !okTok(b.tok)) return send(res, 400, { err: "bad" });
   var cfg = validCfg(b.cfg);
   if (!cfg) return send(res, 400, { err: "cfg" });
+  if (!cleanName(b.name)) return send(res, 400, { err: "name" });
   for (var k = 0; k < 8; k++) {
     var id = genId(), S = newState(cfg, b.uid);
     S.toks[b.uid] = b.tok;
@@ -335,6 +336,7 @@ async function opSync(b, res) {
   var S = JSON.parse(r[0]), seen = seenMap(r[2]);
   if (S.toks[uid] && S.toks[uid] !== tok) return send(res, 403, { err: "denied" });
 
+  if (b.hello && !b.spec && !cleanName(b.name) && !(S.members[uid] && S.members[uid].name && S.members[uid].name !== "Player")) return send(res, 400, { err: "name" });
   var need = !!m || !!b.hello || !S.toks[uid] || !S.members[uid];
   if (!need) {                 /* 変更がなさそうなら読み取りだけで返す。時間経過で状態が変わる場合だけ書き込む */
     var probe = JSON.parse(r[0]);
@@ -374,7 +376,8 @@ module.exports = async function (req, res) {
     if (b.op === "create") {
       if (b.free === true) {      /* free.html: ログイン不要。同じIPから FREE_LIMIT 回まで */
         if (!validCfg(b.cfg)) return send(res, 400, { err: "cfg" });
-        var ip = String((req.headers && (req.headers["x-forwarded-for"] || req.headers["x-real-ip"])) || "ip").split(",")[0].trim().slice(0, 64), fk = "vgd:c:" + ip;
+        if (!cleanName(b.name)) return send(res, 400, { err: "name" });
+        var ip = String((req.headers && (req.headers["x-forwarded-for"] || req.headers["x-real-ip"])) || "ip").split(",")[0].trim().slice(0, 64), fk = "vgd:c:" + (b.cfg && b.cfg.leader === true ? "L:" : "") + ip;      /* 通常版と代表者版は別々に数える */
         var n = (await redis([["INCR", fk]]))[0];
         if (n === 1) await redis([["EXPIRE", fk, String(FREE_WINDOW)]]);
         if (n > FREE_LIMIT) return send(res, 429, { err: "freelimit" });
