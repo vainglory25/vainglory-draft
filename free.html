@@ -185,29 +185,76 @@ details.fx[open] summary{margin-bottom:10px}
 .turnbar.home .tbar i{background:var(--home)}
 .turnbar.away .tbar i{background:var(--away)}
 .fixed-wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
-.stage{display:grid;gap:12px;grid-template-columns:minmax(220px,1fr) minmax(0,2.2fr) minmax(220px,1fr);grid-template-areas:"home pool away"}
-#colHome{grid-area:home}
-#colAway{grid-area:away}
-#colPool{grid-area:pool;min-width:0}
 .colh{font-family:var(--f-disp);letter-spacing:.16em;font-size:13px;margin:0 0 8px;display:flex;justify-content:space-between}
 #colHome .colh{color:var(--home)}
 #colAway .colh{color:var(--away)}
-.cell{display:grid;grid-template-columns:20px 44px minmax(0,1fr);align-items:center;gap:8px;min-height:62px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);margin-bottom:6px}
-.cell.B{min-height:46px;background:rgba(255,112,98,.07)}
-.cell .rn{font-family:var(--f-disp);font-size:12px;color:var(--muted)}
-.cell .mono{width:40px;height:40px;font-size:13px}
-.cell.B .mono{width:30px;height:30px;font-size:11px;border-radius:6px;filter:grayscale(1) brightness(.55)}
-.cell .ph{width:40px;height:40px;border-radius:8px;border:1px dashed var(--line);display:grid;place-items:center;font-family:var(--f-disp);font-size:10px;letter-spacing:.1em;color:var(--muted)}
-.cell.B .ph{width:30px;height:30px;font-size:9px}
-.cell .tx{min-width:0}
-.cell .hn{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cell.B .hn{text-decoration:line-through;text-decoration-color:var(--away);font-weight:500}
-.cell .ow{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cell.cur.home{border-color:var(--home);box-shadow:0 0 18px -4px var(--home)}
-.cell.cur.away{border-color:var(--away);box-shadow:0 0 18px -4px var(--away)}
-.cell.cur .ph,.cell.cur .mono{outline:2px dashed var(--gold);outline-offset:1px}
-.cell.cur{animation:pulse 1.6s ease-in-out infinite}
+#colPool{min-width:0}
+.laysw{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.laysw button{background:transparent;border:0;color:var(--muted);padding:4px 9px;cursor:pointer;display:grid;place-items:center}
+.laysw button.on{background:var(--gold);color:#000}
 @keyframes pulse{50%{background:var(--panel2)}}
+/* ===== 旧レイアウト(左右にチーム) ===== */
+.lay-old .stage{display:grid;gap:12px;grid-template-columns:minmax(220px,1fr) minmax(0,2.2fr) minmax(220px,1fr);grid-template-areas:"home pool away"}
+.lay-old #topfix{display:contents}
+.lay-old #boards,.lay-old .cmpbtn,.lay-old .now,.lay-old .sh{display:none}
+.lay-old #colHome{grid-area:home}
+.lay-old #colAway{grid-area:away}
+.lay-old #colPool{grid-area:pool}
+.lay-old .band{display:block}
+.lay-old .cell{display:grid;grid-template-columns:20px 44px minmax(0,1fr);align-items:center;gap:8px;min-height:62px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);margin-bottom:6px}
+.lay-old .cell.B{min-height:46px;background:rgba(255,112,98,.07)}
+.lay-old .cell .rn{font-family:var(--f-disp);font-size:12px;color:var(--muted)}
+.lay-old .cell .mono{width:40px;height:40px;font-size:13px}
+.lay-old .cell.B .mono{width:30px;height:30px;font-size:11px;border-radius:6px;filter:grayscale(1) brightness(.55)}
+.lay-old .cell .ph{width:40px;height:40px;border-radius:8px;border:1px dashed var(--line);display:grid;place-items:center;font-family:var(--f-disp);font-size:10px;letter-spacing:.1em;color:var(--muted)}
+.lay-old .cell.B .ph{width:30px;height:30px;font-size:9px}
+.lay-old .cell .tx{min-width:0}
+.lay-old .cell .hn{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lay-old .cell.B .hn{text-decoration:line-through;text-decoration-color:var(--away);font-weight:500}
+.lay-old .cell .ow{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lay-old .cell.cur.home{border-color:var(--home);box-shadow:0 0 18px -4px var(--home)}
+.lay-old .cell.cur.away{border-color:var(--away);box-shadow:0 0 18px -4px var(--away)}
+.lay-old .cell.cur .ph,.lay-old .cell.cur .mono{outline:2px dashed var(--gold);outline-offset:1px}
+.lay-old .cell.cur{animation:pulse 1.6s ease-in-out infinite}
+/* ===== 新レイアウト(上にチーム固定) ===== */
+.cell .lo,.cell .sh{font-style:normal}
+.lay-new .lo{display:none}
+.lay-new .stage{display:flex;flex-direction:column;gap:12px}
+.lay-new #colHome,.lay-new #colAway{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:8px 10px 10px}
+.lay-new #colHome{border-left:4px solid var(--home)}
+.lay-new #colAway{border-left:4px solid var(--away)}
+.lay-new .band{display:grid;gap:6px}
+.lay-new #topfix{position:sticky;top:0;z-index:20;background:var(--bg);padding-bottom:4px;margin-bottom:8px}
+.lay-new #topfix .turnbar{position:static;margin-bottom:8px}
+.lay-new #boards{display:flex;flex-direction:column;gap:6px}
+.lay-new .cmpbtn{display:block;margin:4px 0 0 auto;font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
+.lay-new .cell{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;padding:6px 3px 5px;border:1px solid var(--line);border-radius:10px;background:var(--bg,#0000)}
+.lay-new .cell.B{background:rgba(255,112,98,.07)}
+.lay-new .cell .rn{position:absolute;left:4px;top:3px;font-family:var(--f-disp);font-size:11px;line-height:1;color:var(--muted)}
+.lay-new .cell .mono,.lay-new .cell .ph{width:min(100%,56px);aspect-ratio:1;height:auto;font-size:13px;border-radius:10px}
+.lay-new .cell.B .mono{border-radius:50%;filter:grayscale(1) brightness(.55)}
+.lay-new .cell.B .mono,.lay-new .cell.B .ph{width:min(70%,34px)}
+.lay-new .cell .ph{border:1px dashed var(--line);display:grid;place-items:center;font-family:var(--f-disp);font-size:10px;letter-spacing:.1em;color:var(--muted)}
+.lay-new .cell.B .ph{border-radius:50%}
+.lay-new .cell .tx{min-width:0;width:100%;text-align:center}
+.lay-new .cell .hn{font-weight:700;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lay-new .cell.B .hn{text-decoration:line-through;text-decoration-color:var(--away);font-weight:500}
+.lay-new .cell .ow{display:flex;align-items:center;justify-content:center;gap:3px;font-size:10px;color:var(--muted);overflow:hidden;white-space:nowrap}
+.lay-new .cell .now{position:absolute;right:3px;top:2px;font-family:var(--f-disp);font-size:9px;letter-spacing:.08em;color:#000;background:var(--gold);border-radius:4px;padding:1px 4px}
+.lay-new .cell.cur.home{border-color:var(--home);box-shadow:0 0 18px -4px var(--home)}
+.lay-new .cell.cur.away{border-color:var(--away);box-shadow:0 0 18px -4px var(--away)}
+.lay-new .cell.cur .ph,.lay-new .cell.cur .mono{outline:2px dashed var(--gold);outline-offset:1px}
+.lay-new .cell.cur{animation:pulse 1.6s ease-in-out infinite;border-width:2px}
+.lay-new #topfix.compact #colHome,.lay-new #topfix.compact #colAway{padding:3px 8px 4px;display:flex;align-items:center;gap:6px}
+.lay-new #topfix.compact .colh{display:inline-block;margin:0 8px 0 0;font-size:11px;vertical-align:middle}
+.lay-new #topfix.compact .band{flex:1 1 auto;min-width:0;gap:3px}
+.lay-new #topfix.compact .cell{padding:2px 1px;gap:0;flex-direction:row;justify-content:center;border-radius:8px}
+.lay-new #topfix.compact .cell .tx{display:none}
+.lay-new #topfix.compact .cell .rn{position:static;font-size:9px;margin-right:2px}
+.lay-new #topfix.compact .cell .now{position:static;margin-left:2px}
+.lay-new #topfix.compact .cell .mono,.lay-new #topfix.compact .cell .ph{width:28px;aspect-ratio:1;font-size:9px}
+.lay-new #topfix.compact .cell.B .mono,.lay-new #topfix.compact .cell.B .ph{width:22px}
+.lay-new #topfix.compact .cell .ph{font-size:8px;letter-spacing:0}
 .cell.me{border-color:var(--gold)}
 .searchrow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
 .searchrow .field{flex:1}
@@ -262,12 +309,20 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 .toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--panel2);border:1px solid var(--gold);padding:8px 16px;border-radius:999px;z-index:60;font-size:13px;max-width:90vw}
 
 @media (max-width:900px){
-  .stage{grid-template-columns:1fr 1fr;grid-template-areas:"home away" "pool pool"}
   .cols{grid-template-columns:1fr}
+  .lay-old .stage{grid-template-columns:1fr 1fr;grid-template-areas:"home away" "pool pool"}
 }
 @media (max-width:560px){
-  .cell{grid-template-columns:16px 34px minmax(0,1fr);gap:6px;padding:5px 6px}
-  .cell .mono,.cell .ph{width:34px;height:34px}
+  .lay-old .cell{grid-template-columns:16px 34px minmax(0,1fr);gap:6px;padding:5px 6px}
+  .lay-old .cell .mono,.lay-old .cell .ph{width:34px;height:34px}
+  .lay-new #colHome,.lay-new #colAway{padding:6px 6px 8px}
+  .lay-new .band{gap:3px}
+  .lay-new .cell{padding:5px 1px 4px;border-radius:8px}
+  .lay-new .cell .hn{font-size:9px}
+  .lay-new .cell .ow{font-size:9px}
+  .lay-new .cell .rn{font-size:9px;left:3px}
+  .lay-new .cell .now{font-size:8px;padding:0 3px}
+  .laysw button{padding:3px 7px}
   .tb-r{font-size:32px}
   .logo b{font-size:18px}
   .turnbar{padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top,0px));gap:4px 12px;border-radius:0 0 12px 12px}
@@ -276,7 +331,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
   .poolrow .pl{display:none}.poolrow .pc{padding:2px 8px}.poolrow{gap:6px}
 }
 @media (max-width:420px){.teams{grid-template-columns:1fr}}
-@media (prefers-reduced-motion:reduce){.cell.cur{animation:none}}
+@media (prefers-reduced-motion:reduce){.cell.cur{animation:none!important}}
 </style>
 </head>
 <body>
@@ -288,6 +343,10 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
       <button class="btn sm" id="copyHome" type="button">ホーム参加リンク</button>
       <button class="btn sm" id="copyAway" type="button">アウェイ参加リンク</button>
       <button class="btn sm" id="copyWatch" type="button">観戦リンク</button>
+      <span class="laysw" id="laySw" role="group" aria-label="表示レイアウト">
+        <button type="button" id="layPC" title="PC向けレイアウト(左右にチーム)" aria-label="PCレイアウト"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/></svg></button>
+        <button type="button" id="layMob" title="スマホ向けレイアウト(上にチーム固定)" aria-label="スマホレイアウト"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/></svg></button>
+      </span>
       <button class="btn sm ghost" id="leaveBtn" type="button">退出</button>
     </div>
   </header>
@@ -368,15 +427,17 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
     </div>
 
     <div id="draft" hidden>
-      <div class="turnbar" id="turnbar"></div>
+      <div id="topfix">
+        <div class="turnbar" id="turnbar"></div>
+        <div id="boards"><div id="colHome"></div><div id="colAway"></div></div>
+        <button type="button" id="cmpBtn" class="cmpbtn" aria-label="HOME/AWAYの表示を小さくする">▲ 小さく</button>
+      </div>
       <div class="stage">
-        <div id="colHome"></div>
         <div id="colPool">
           <div class="searchrow"><input class="field" id="q" placeholder="ヒーロー名で絞り込み" autocomplete="off"></div>
           <div class="pool-scroll"><div id="poolGrid"></div></div>
           <div class="actbar" id="actbar"></div>
         </div>
-        <div id="colAway"></div>
       </div>
     </div>
   </section>
@@ -392,7 +453,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261104-2";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261105-1";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="free";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free"||VG_MODE==="leader-free",IS_LEADER=VG_MODE==="leader"||VG_MODE==="leader-free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -890,7 +951,7 @@ function renderLobby(){
     }
     var acts="";
     if(canSit){
-      if(D.myTeam===t)acts=(me.locked||IS_FREE)?"":'<button class="btn sm" type="button" data-stand="1">席を離れる</button>';
+      if(D.myTeam===t)acts=me.locked?"":'<button class="btn sm" type="button" data-stand="1">席を離れる</button>';
       else if(me.locked)acts="";
       else acts='<button class="btn sm '+t+'" type="button" data-sit="'+t+'"'+(seats.length>=N?" disabled":"")+'>'+teamJa(t)+'に参加</button>'+(S.cfg.leader&&isHost?' <button class="btn sm pri" type="button" data-sit="'+t+'" data-lead="1"'+(seats.length>=N?" disabled":"")+'>'+teamJa(t)+'に参加(代表者)</button>':'');
     }
@@ -965,21 +1026,21 @@ function renderTurn(){
 function cellHTML(t,r){
   var type=S.cfg.rows[r],ti=D.tix[r+t],turn=D.turns[ti],en=(S.log||{})[ti];
   var cur=S.phase==="draft"&&S.turn===ti,au=D.actorAt(turn);
-  var inner,hn="",ow=(type==="B"&&!en?"BAN担当 ":"")+(au?nameOf(au):"");
+  var inner,hn="",aut=en&&en.auto,ow="";
   if(en){
     if(en.hero){inner=monoHTML(en.hero);hn=en.hero}
     else{inner='<span class="ph">SKIP</span>';hn="スキップ"}
-    if(en.auto)ow+=en.hero?" (時間切れ・ランダム)":" (時間切れ・BANなし)";
   }else if(cur){
     var ph=S.pendingTurn===ti&&S.pendingHero;
     if(ph){inner=monoHTML(ph);hn=ph}else{inner='<span class="ph">…</span>';hn="選択中"}
   }else{inner='<span class="ph">'+(type==="B"?"BAN":"PICK")+'</span>'}
-  return '<div class="cell '+type+(cur?" cur "+t:"")+(au===myUid?" me":"")+'"><span class="rn num">'+(ti+1)+'</span>'+inner+'<span class="tx"><div class="hn">'+esc(hn)+'</div><div class="ow"><span class="own">'+esc(ow)+'</span>'+(au?rtag((S.members||{})[au]||{}):"")+'</div></span></div>';
+  return '<div class="cell '+type+(cur?" cur "+t:"")+(au===myUid?" me":"")+'"><span class="rn num">'+(ti+1)+'</span>'+(cur?'<span class="now">NOW</span>':'')+inner+'<span class="tx"><div class="hn">'+esc(hn)+'</div><div class="ow"><span class="own">'+(type==="B"&&!en?'<i class="lo">BAN担当 </i>':'')+(aut?'<i class="sh">⏱</i>':'')+esc(au?nameOf(au):"")+(aut?'<i class="lo">'+(en.hero?" (時間切れ・ランダム)":" (時間切れ・BANなし)")+'</i>':'')+'</span>'+(au?rtag((S.members||{})[au]||{}):"")+'</div></span></div>';
 }
 function renderBoard(){
   ["home","away"].forEach(function(t){
-    var n=S.cfg.rows.length,h='<div class="colh"><span>'+(t==="home"?"HOME":"AWAY")+'</span></div>';
+    var n=S.cfg.rows.length,h='<div class="colh"><span>'+(t==="home"?"HOME":"AWAY")+'</span></div><div class="band" style="grid-template-columns:repeat('+n+',minmax(0,1fr))">';
     for(var r=0;r<n;r++)h+=cellHTML(t,r);
+    h+='</div>';
     $(t==="home"?"#colHome":"#colAway").innerHTML=h;
   });
 }
@@ -1056,7 +1117,32 @@ function wireRoom(){
     else{var b=e.target.closest("[data-extend]");if(b&&!b.disabled)extendTime()}
   });
   $("#q").addEventListener("input",function(){q=$("#q").value;if(S&&D&&S.phase!=="lobby")renderPool()});
+  (function(){
+    var tf=document.getElementById("topfix"),bt=document.getElementById("cmpBtn"),
+        hm=document.getElementById("colHome"),aw=document.getElementById("colAway"),
+        bd=document.getElementById("boards"),st=document.querySelector(".stage"),pl=document.getElementById("colPool");
+    if(!tf||!bt||!st)return;
+    var on=(lsGet("vgd_cmp")||"1")==="1",cur=null;
+    function ap(){tf.classList.toggle("compact",on);bt.textContent=on?"▼ 大きく":"▲ 小さく"}
+    function auto(){return window.innerWidth<=900?"new":"old"}
+    function setLay(m){
+      if(m===cur)return;cur=m;
+      document.body.classList.toggle("lay-old",m==="old");document.body.classList.toggle("lay-new",m==="new");
+      if(m==="old"){st.insertBefore(hm,pl);st.appendChild(aw)}else{bd.appendChild(hm);bd.appendChild(aw)}
+      $("#layPC").classList.toggle("on",m==="old");$("#layMob").classList.toggle("on",m==="new");
+      $("#layPC").setAttribute("aria-pressed",m==="old");$("#layMob").setAttribute("aria-pressed",m==="new");
+    }
+    function pick(){var v=lsGet("vgd_lay");return v==="old"||v==="new"?v:auto()}
+    bt.addEventListener("click",function(){on=!on;lsSet("vgd_cmp",on?"1":"0");ap()});
+    $("#layPC").addEventListener("click",function(){lsSet("vgd_lay","old");setLay("old")});
+    $("#layMob").addEventListener("click",function(){lsSet("vgd_lay","new");setLay("new")});
+    window.addEventListener("resize",function(){if(!lsGet("vgd_lay"))setLay(auto())});
+    ap();setLay(pick());
+  })();
   $("#leaveBtn").addEventListener("click",function(){
+    var m="ルームから退出して、最初の画面に戻ります。よろしいですか?";
+    if(isHost)m+="\n\n※ホストが退出しても部屋は残りますが、同じ端末でリンクから入り直さない限りホストの操作はできなくなります。";
+    if(!window.confirm(m))return;
     leaveRoom(false);
   });
   $("#copyId").addEventListener("click",function(){copyText(roomId,"ルームIDをコピーしました")});
