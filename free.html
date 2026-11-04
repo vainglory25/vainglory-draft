@@ -379,6 +379,8 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
       <div class="card" id="createCard" hidden>
         <h2>ルームを作成 <button class="btn sm ghost" id="gateOut" type="button" style="float:right">ログアウト</button></h2>
         <div class="row"><span class="lab">形式</span><div class="seg" id="segSize" role="group" aria-label="形式"><button type="button" data-v="3">3v3</button><button type="button" data-v="5">5v5</button></div></div>
+        <div class="row"><span class="lab">代表者モード</span><label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="leaderChk"> 各チームの代表者1人だけが操作する</label></div>
+        <p class="hint" id="leaderHint">オフ:チーム全員が順番に操作します / オン:各チームの代表者だけがBAN・ピックします(代表者は入室時に選びます)。部屋を作ったあとは変更できません。</p>
         <div class="row"><span class="lab">1手番の制限時間</span><div class="seg" id="segTimer" role="group" aria-label="制限時間"><button type="button" data-v="15">15秒</button><button type="button" data-v="30">30秒</button><button type="button" data-v="45">45秒</button><button type="button" data-v="60">60秒</button></div></div>
         <div class="row"><span class="lab">タイマー延長</span><div class="seg" id="segExt" role="group" aria-label="タイマー延長"><button type="button" data-v="pool">時間プール</button><button type="button" data-v="reset">リセット</button><button type="button" data-v="half">半分追加</button></div></div>
         <div class="row" id="poolRow"><label class="lab" for="poolSec">チームの時間プール(秒)</label><input class="field num" id="poolSec" type="number" inputmode="numeric" min="10" max="600" step="5" style="width:110px"></div>
@@ -453,9 +455,9 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261105-1";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261105-2";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="free";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
-var IS_FREE=VG_MODE==="free"||VG_MODE==="leader-free",IS_LEADER=VG_MODE==="leader"||VG_MODE==="leader-free";      /* leader-free = 代表者版の無料版 */
+var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
 var COLORS=[["red","赤"],["blue","青"],["yellow","黄"]];
 
@@ -547,7 +549,7 @@ async function hostLogin(u,p,silent){
 }
 var off=0,connected=false;
 var localSel="",q="";
-var cs={size:3,timer:30,bans:2,ext:"pool",pool:120,rows:[],fixed:["チャーンウォーカー","ヴィオラ"]};   /* 既定の固定BAN(作成画面で変更できます) */
+var cs={leader:false,size:3,timer:30,bans:2,ext:"pool",pool:120,rows:[],fixed:["チャーンウォーカー","ヴィオラ"]};   /* 既定の固定BAN(作成画面で変更できます) */
 
 function nowS(){return Date.now()+off}
 function toast(t){var el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true},2600)}
@@ -734,7 +736,7 @@ async function createRoom(){
   var msg=$("#createMsg"),btn=$("#createBtn");
   if(!needName(msg))return;
   btn.disabled=true;msg.textContent="ルームを作成中…";
-  var cfg={leader:IS_LEADER,size:cs.size,timer:cs.timer,ext:cs.ext,pool:cs.ext==="pool"?cs.pool:0,rows:cs.rows.join(""),fixedBans:cs.fixed.slice(),heroes:HEROES.slice()};
+  var cfg={leader:!!cs.leader,size:cs.size,timer:cs.timer,ext:cs.ext,pool:cs.ext==="pool"?cs.pool:0,rows:cs.rows.join(""),fixedBans:cs.fixed.slice(),heroes:HEROES.slice()};
   joinSpec=false;
   var r=await apiCall({op:"create",uid:myUid,tok:myTok,name:myName,cfg:cfg,free:IS_FREE,hu:hostAuth&&hostAuth.u,hp:hostAuth&&hostAuth.p});
   btn.disabled=false;
@@ -1087,6 +1089,7 @@ function renderAct(){
 
 /* ---------- wiring ---------- */
 function baseUrl(){return location.origin+location.pathname}
+function ldq(){return S&&S.cfg&&S.cfg.leader?"&ld=1":""}      /* 代表者モードの部屋の参加リンクには ld=1 を付け、入室画面に「代表者として入室」を出す */
 function copyText(txt,okMsg){
   var fail=function(){toast("コピーできませんでした。手動で選択してください")};
   try{navigator.clipboard.writeText(txt).then(function(){toast(okMsg)},fail)}catch(e){fail()}
@@ -1147,8 +1150,8 @@ function wireRoom(){
   });
   $("#copyId").addEventListener("click",function(){copyText(roomId,"ルームIDをコピーしました")});
   $("#maskBtn").addEventListener("click",function(){idMasked=!idMasked;renderRoomCode()});
-  $("#copyHome").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId+"&team=home","ホームの参加リンクをコピーしました")});
-  $("#copyAway").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId+"&team=away","アウェイの参加リンクをコピーしました")});
+  $("#copyHome").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId+"&team=home"+ldq(),"ホームの参加リンクをコピーしました")});
+  $("#copyAway").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId+"&team=away"+ldq(),"アウェイの参加リンクをコピーしました")});
   $("#copyWatch").addEventListener("click",function(){copyText(baseUrl()+"?room="+roomId+"&watch=1","観戦リンクをコピーしました")});
 }
 
@@ -1177,19 +1180,20 @@ async function init(){
   checkUpdate();
   $("#myName").value=myName;
   buildHeroCss();
+  $("#leaderChk").addEventListener("change",function(){cs.leader=this.checked});
   setRows();wireCreate();wireRoom();renderCreate();
   setInterval(tick,250);
   document.addEventListener("visibilitychange",function(){if(!document.hidden&&wake)wake()});
   var params=new URLSearchParams(location.search);
   var qRoom=(params.get("room")||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,10);
-  var qWatch=params.get("watch")==="1",qTeam=params.get("team");
+  var qWatch=params.get("watch")==="1",qTeam=params.get("team"),qLd=params.get("ld")==="1";
   if(qRoom&&!qWatch&&(qTeam==="home"||qTeam==="away")){
     joinTeam=qTeam;
-    if(IS_LEADER)$("#joinMsg").textContent="名前(IGN)を入力して、参戦者か代表者として入室すると、"+teamJa(qTeam)+"の席に入ります。";
+    if(qLd)$("#joinMsg").textContent="名前(IGN)を入力して、参戦者か代表者として入室すると、"+teamJa(qTeam)+"の席に入ります。";
     else{$("#joinBtn").textContent=teamJa(qTeam)+"として入室";$("#joinMsg").textContent="名前(IGN)を入力して「"+teamJa(qTeam)+"として入室」を押すと、"+teamJa(qTeam)+"の席に入ります。";}
   }
   if(qRoom){$("#joinId").value=qRoom;entryRoom=qRoom}
-  if(IS_LEADER){$("#joinBtn").textContent="参戦者として入室";$("#joinLeaderBtn").hidden=false}
+  if(qLd){$("#joinBtn").textContent="参戦者として入室";$("#joinLeaderBtn").hidden=false}
   if(IS_FREE){$("#gateOut").hidden=true;$("#freeNote").hidden=false}
   refreshEntry();
   setBusy(false);setBanner();

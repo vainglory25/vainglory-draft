@@ -2,8 +2,11 @@
 
 ## フォルダ構成
 ```
-index.html
+index.html          ホストログイン版(通常)
+free.html           無料版(ログイン不要・部屋作成は同じ回線から24時間に3回まで。通常と代表者モードを合算して数える)
+                    ※代表者モードは、部屋の作成画面の「代表者モード」チェックで選びます(leader.html / leader-free.html は廃止)
 package.json
+vercel.json
 api/room.js
 images/hero-captain.png  hero-jungler.png  hero-laner-1.png  hero-laner-2.png
 ```
@@ -13,7 +16,7 @@ images/hero-captain.png  hero-jungler.png  hero-laner-1.png  hero-laner-2.png
 2. Vercel のプロジェクト画面 → **Storage**(または Marketplace)→ **Upstash Redis** を作成して、このプロジェクトに接続する。
    - 環境変数 `KV_REST_API_URL` / `KV_REST_API_TOKEN`(または `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`)が自動で入ります。コードの変更は不要です。
 3. 環境変数を入れたあとに **再デプロイ** する(これをしないと「データベースが設定されていません」と出ます)。
-4. 別々のネットワークの2台で、ルーム作成 → ID入室 → ドラフトを試す。
+4. 別々のネットワークの2台で、ルーム作成 → 招待リンクで入室 → ドラフトを試す。
 
 ## ホストログイン(ルームを作れるのはホストだけ)
 Vercel のプロジェクト → Settings → Environment Variables に次の2つを追加し、再デプロイします。
