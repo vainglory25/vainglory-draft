@@ -377,7 +377,7 @@ module.exports = async function (req, res) {
       if (b.free === true) {      /* free.html: ログイン不要。同じIPから FREE_LIMIT 回まで */
         if (!validCfg(b.cfg)) return send(res, 400, { err: "cfg" });
         if (!cleanName(b.name)) return send(res, 400, { err: "name" });
-        var ip = String((req.headers && (req.headers["x-forwarded-for"] || req.headers["x-real-ip"])) || "ip").split(",")[0].trim().slice(0, 64), fk = "vgd:c:" + (b.cfg && b.cfg.leader === true ? "L:" : "") + ip;      /* 通常版と代表者版は別々に数える */
+        var ip = String((req.headers && (req.headers["x-forwarded-for"] || req.headers["x-real-ip"])) || "ip").split(",")[0].trim().slice(0, 64), fk = "vgd:c:" + ip;      /* 通常・代表者モードを合算して数える */
         var n = (await redis([["INCR", fk]]))[0];
         if (n === 1) await redis([["EXPIRE", fk, String(FREE_WINDOW)]]);
         if (n > FREE_LIMIT) return send(res, 429, { err: "freelimit" });
