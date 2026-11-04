@@ -191,6 +191,22 @@ details.fx[open] summary{margin-bottom:10px}
 #colAway{border-left:4px solid var(--away)}
 #colPool{min-width:0}
 .band{display:grid;gap:6px}
+#topfix{position:sticky;top:0;z-index:20;background:var(--bg);padding-bottom:4px;margin-bottom:8px}
+#topfix .turnbar{position:static;margin-bottom:8px}
+#boards{display:flex;flex-direction:column;gap:6px}
+.cmpbtn{display:block;margin:4px 0 0 auto;font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
+#topfix.compact #colHome,#topfix.compact #colAway{padding:3px 8px 4px}
+#topfix.compact .colh{display:inline-block;margin:0 8px 0 0;font-size:11px;vertical-align:middle}
+#topfix.compact #colHome,#topfix.compact #colAway{display:flex;align-items:center;gap:6px}
+#topfix.compact .band{flex:1 1 auto;min-width:0;gap:3px}
+#topfix.compact .cell{padding:2px 1px;gap:0;flex-direction:row;justify-content:center;border-radius:8px}
+#topfix.compact .cell .tx{display:none}
+#topfix.compact .cell .rn{position:static;font-size:9px;margin-right:2px}
+#topfix.compact .cell .now{position:static;margin-left:2px}
+#topfix.compact .cell .mono,#topfix.compact .cell .ph{width:28px;aspect-ratio:1;font-size:9px}
+#topfix.compact .cell.B .mono,#topfix.compact .cell.B .ph{width:22px!important}
+#topfix.compact .cell .ph{font-size:8px;letter-spacing:0}
+.cell.B .mono,.cell.B .ph{width:min(70%,34px)!important}
 .colh{font-family:var(--f-disp);letter-spacing:.16em;font-size:13px;margin:0 0 8px;display:flex;justify-content:space-between}
 #colHome .colh{color:var(--home)}
 #colAway .colh{color:var(--away)}
@@ -376,10 +392,12 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
     </div>
 
     <div id="draft" hidden>
-      <div class="turnbar" id="turnbar"></div>
+      <div id="topfix">
+        <div class="turnbar" id="turnbar"></div>
+        <div id="boards"><div id="colHome"></div><div id="colAway"></div></div>
+        <button type="button" id="cmpBtn" class="cmpbtn" aria-label="HOME/AWAYの表示を小さくする">▲ 小さく</button>
+      </div>
       <div class="stage">
-        <div id="colHome"></div>
-        <div id="colAway"></div>
         <div id="colPool">
           <div class="searchrow"><input class="field" id="q" placeholder="ヒーロー名で絞り込み" autocomplete="off"></div>
           <div class="pool-scroll"><div id="poolGrid"></div></div>
@@ -400,7 +418,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261104-2";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261104-4";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="host";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free"||VG_MODE==="leader-free",IS_LEADER=VG_MODE==="leader"||VG_MODE==="leader-free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -898,7 +916,7 @@ function renderLobby(){
     }
     var acts="";
     if(canSit){
-      if(D.myTeam===t)acts=(me.locked||IS_FREE)?"":'<button class="btn sm" type="button" data-stand="1">席を離れる</button>';
+      if(D.myTeam===t)acts=me.locked?"":'<button class="btn sm" type="button" data-stand="1">席を離れる</button>';
       else if(me.locked)acts="";
       else acts='<button class="btn sm '+t+'" type="button" data-sit="'+t+'"'+(seats.length>=N?" disabled":"")+'>'+teamJa(t)+'に参加</button>'+(S.cfg.leader&&isHost?' <button class="btn sm pri" type="button" data-sit="'+t+'" data-lead="1"'+(seats.length>=N?" disabled":"")+'>'+teamJa(t)+'に参加(代表者)</button>':'');
     }
@@ -1065,6 +1083,14 @@ function wireRoom(){
     else{var b=e.target.closest("[data-extend]");if(b&&!b.disabled)extendTime()}
   });
   $("#q").addEventListener("input",function(){q=$("#q").value;if(S&&D&&S.phase!=="lobby")renderPool()});
+
+(function(){
+  var tf=document.getElementById("topfix"),bt=document.getElementById("cmpBtn");if(!tf||!bt)return;
+  var v=lsGet("vgd_cmp");var on=v===null?true:v==="1";
+  function ap(){tf.classList.toggle("compact",on);bt.textContent=on?"▼ 大きく":"▲ 小さく"}
+  bt.addEventListener("click",function(){on=!on;lsSet("vgd_cmp",on?"1":"0");ap()});ap();
+})();
+  if(IS_FREE)$("#leaveBtn").style.display="none";   /* 無料版は「退出」ボタンを出さない */
   $("#leaveBtn").addEventListener("click",function(){
     leaveRoom(false);
   });
