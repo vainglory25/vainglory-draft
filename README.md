@@ -22,6 +22,7 @@ images/hero-captain.png  hero-jungler.png  hero-laner-1.png  hero-laner-2.png
 Vercel のプロジェクト → Settings → Environment Variables に次の2つを追加し、再デプロイします。
 - `HOST_USER` : ホストのユーザー名(好きな文字列)
 - `HOST_PASSWORD` : ホストのパスワード(長めで推測されにくいもの)
+- `HOST_USERS` : (任意)ホストを複数にしたいとき。`ユーザー名:パスワード` をカンマでつなげます。例: `taro:pass1,hanako:pass2`(パスワードにカンマは使えません)。`HOST_USER`/`HOST_PASSWORD` と併用でき、どれか1組が合えばログインできます。追加・削除は、環境変数を書き換えて再デプロイします
 
 URL ごとの動き:
 - `https://…vercel.app` : ホストログインだけ表示。ログインするとルーム作成と入室が出る。
