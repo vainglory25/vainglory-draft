@@ -111,6 +111,10 @@ details.fx[open] summary{margin-bottom:10px}
 .tile.ban::after,.tile.fixed::after{content:"";position:absolute;top:6px;left:50%;width:46px;height:46px;margin-left:-23px;pointer-events:none;
   background:linear-gradient(to top right,transparent calc(50% - 1.5px),var(--away) calc(50% - 1.5px),var(--away) calc(50% + 1.5px),transparent calc(50% + 1.5px))}
 .tile.fixed{border-style:dashed}
+.tile.used{opacity:.75;border-style:dotted}
+.tile.used .mono{filter:grayscale(1) brightness(.5)}
+.tile .ub{position:absolute;top:2px;left:2px;z-index:3;font-style:normal;font-size:9px;line-height:1;padding:2px 4px;border-radius:4px;background:#000a;color:var(--muted);pointer-events:none}
+#lobbyNote{margin:0 0 10px}
 .tile.pick-home{border-color:var(--home);opacity:.55}
 .tile.pick-away{border-color:var(--away);opacity:.55}
 .tile.sel{outline:2px dashed var(--gold);outline-offset:1px}
@@ -366,7 +370,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
       <h1>3v3 / 5v5 のBAN&amp;PICK</h1>
       <p>ホーム(左)とアウェイ(右)に分かれ、全員が準備完了になると5秒後に開始します。参加者と観戦者は、ホストから届いた招待リンクで入室します。</p>
     </div>
-    <div class="banner" id="freeNote" hidden><b>無料版のご利用について</b><br>・ルームを作成できるのは、同じ回線(IP)から24時間に<b>3回まで</b>です。<br>・サーバーのメンテナンスや入れ替え(更新)などにより、<b>ドラフトが途中で続けられなくなることがあります</b>。その場合、進行中のドラフトはやり直しになります。<br>あらかじめご了承のうえ、ご利用ください。</div>
+    <div class="banner" id="freeNote" hidden><b>無料版のご利用について</b><br>・同じ回線(IP)から、24時間にできるのは、ルームの作成が<b>3回まで</b>、ドラフトの開始が<b>3回まで</b>です(ロビーに戻してやり直した場合や、フィアレスの次の試合も、1回と数えます)。<br>・サーバーのメンテナンスや入れ替え(更新)などにより、<b>ドラフトが途中で続けられなくなることがあります</b>。その場合、進行中のドラフトはやり直しになります。<br>あらかじめご了承のうえ、ご利用ください。</div>
     <div class="namebar" id="nameBar" hidden>
       <label for="myName">表示名<b style="color:var(--away);margin-left:4px">*必須</b></label>
       <input class="field" id="myName" maxlength="14" placeholder="あなたの名前" autocomplete="off">
@@ -387,6 +391,9 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
         <div class="row"><span class="lab">形式</span><div class="seg" id="segSize" role="group" aria-label="形式"><button type="button" data-v="3">3v3</button><button type="button" data-v="5">5v5</button></div></div>
         <div class="row"><span class="lab">代表者モード</span><label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="leaderChk"> 各チームの代表者1人だけが操作する</label></div>
         <p class="hint" id="leaderHint">オフ:チーム全員が順番に操作します / オン:各チームの代表者だけがBAN・ピックします(代表者は入室時に選びます)。部屋を作ったあとは変更できません。</p>
+        <div class="row"><span class="lab">フィアレス</span><label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="fearlessChk"> 一度ピックしたヒーローは、次の試合で使えない</label></div>
+        <div class="row" id="fbanRow" hidden><span class="lab"></span><label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="fbanChk"> BANしたヒーローも次の試合で使えない</label></div>
+        <p class="hint">フィアレスの部屋では、ドラフト完了後にホストが「次の試合へ」を押すと、使用済みを引き継いでロビーに戻ります。部屋を作ったあとは変更できません。</p>
         <div class="row"><span class="lab">1手番の制限時間</span><div class="seg" id="segTimer" role="group" aria-label="制限時間"><button type="button" data-v="15">15秒</button><button type="button" data-v="30">30秒</button><button type="button" data-v="45">45秒</button><button type="button" data-v="60">60秒</button></div></div>
         <div class="row"><span class="lab">タイマー延長</span><div class="seg" id="segExt" role="group" aria-label="タイマー延長"><button type="button" data-v="pool">時間プール</button><button type="button" data-v="reset">リセット</button><button type="button" data-v="half">半分追加</button></div></div>
         <div class="row" id="poolRow"><label class="lab" for="poolSec">チームの時間プール(秒)</label><input class="field num" id="poolSec" type="number" inputmode="numeric" min="10" max="600" step="5" style="width:110px"></div>
@@ -428,6 +435,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
     <div id="fixedWrap" class="fixed-wrap" hidden></div>
 
     <div id="lobby" hidden>
+      <div class="banner" id="lobbyNote" hidden></div>
       <div class="teams" id="teams"></div>
       <div class="readybar" id="readybar"></div>
       <div class="lab" style="margin-bottom:6px">進行順</div>
@@ -465,7 +473,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261105-7";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261106-1";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="host";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -559,7 +567,7 @@ async function hostLogin(u,p,silent){
 }
 var off=0,connected=false;
 var localSel="",q="";
-var cs={leader:false,size:3,timer:30,bans:2,ext:"pool",pool:120,rows:[],fixed:["チャーンウォーカー","ヴィオラ"]};   /* 既定の固定BAN(作成画面で変更できます) */
+var cs={leader:false,fearless:false,fbans:false,size:3,timer:30,bans:2,ext:"pool",pool:120,rows:[],fixed:["チャーンウォーカー","ヴィオラ"]};   /* 既定の固定BAN(作成画面で変更できます) */
 
 function nowS(){return Date.now()+off}
 function toast(t){var el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true},2600)}
@@ -652,14 +660,16 @@ function mateCands(){
   });
   return out;
 }
+function isUsed(h){return (S.used||[]).indexOf(h)>=0}      /* フィアレス: 前の試合で使用済み */
 function taken(h){
-  if(S.cfg.fixedBans.indexOf(h)>=0)return true;
+  if(S.cfg.fixedBans.indexOf(h)>=0||isUsed(h))return true;
   var lg=S.log||{};
   for(var k in lg){if(lg[k].hero===h)return true}
   return false;
 }
 function statusOf(h){
   if(S.cfg.fixedBans.indexOf(h)>=0)return {k:"fixed"};
+  if(isUsed(h))return {k:"used"};
   var lg=S.log||{};
   for(var k in lg){
     if(lg[k].hero===h){var t=D.turns[+k];return t.type==="B"?{k:"ban",team:t.team}:{k:"pick",team:t.team}}
@@ -746,7 +756,7 @@ async function createRoom(){
   var msg=$("#createMsg"),btn=$("#createBtn");
   if(!needName(msg))return;
   btn.disabled=true;msg.textContent="ルームを作成中…";
-  var cfg={leader:!!cs.leader,size:cs.size,timer:cs.timer,ext:cs.ext,pool:cs.ext==="pool"?cs.pool:0,rows:cs.rows.join(""),fixedBans:cs.fixed.slice(),heroes:HEROES.slice()};
+  var cfg={leader:!!cs.leader,size:cs.size,timer:cs.timer,ext:cs.ext,pool:cs.ext==="pool"?cs.pool:0,rows:cs.rows.join(""),fixedBans:cs.fixed.slice(),heroes:HEROES.slice(),fearless:!!cs.fearless,fearlessBan:!!(cs.fearless&&cs.fbans)};
   joinSpec=false;
   var r=await apiCall({op:"create",uid:myUid,tok:myTok,name:myName,cfg:cfg,free:IS_FREE,hu:hostAuth&&hostAuth.u,hp:hostAuth&&hostAuth.p});
   btn.disabled=false;
@@ -828,7 +838,7 @@ function renderCreate(){
   $("#fixedCount").textContent=cs.fixed.length?"("+cs.fixed.length+"人)":"";
   $("#fixedList").innerHTML=cs.fixed.map(function(h){return '<span class="fchip">'+monoHTML(h)+esc(h)+'</span>'}).join("");
   renderFixedPool();
-  $("#cSum").textContent=cs.size+"v"+cs.size+" / 各手番 "+cs.timer+"秒("+(cs.ext==="pool"?"チーム時間プール "+cs.pool+"秒":cs.ext==="reset"?"リセット":"半分追加")+") / BAN 各チーム"+cs.bans+"人(計"+cs.bans*2+"人) + 固定BAN "+cs.fixed.length+"人 / 全 "+cs.rows.length+" 行";
+  $("#cSum").textContent=cs.size+"v"+cs.size+" / 各手番 "+cs.timer+"秒("+(cs.ext==="pool"?"チーム時間プール "+cs.pool+"秒":cs.ext==="reset"?"リセット":"半分追加")+") / BAN 各チーム"+cs.bans+"人(計"+cs.bans*2+"人) + 固定BAN "+cs.fixed.length+"人 / 全 "+cs.rows.length+" 行"+(cs.leader?" / 代表者モード":"")+(cs.fearless?" / フィアレス"+(cs.fbans?"(BAN含む)":""):"");
   renderCreateBtn();
 }
 function groupsHTML(filter,tileFn){
@@ -943,21 +953,25 @@ function renderMeta(){
 }
 function renderFixed(){
   var el=$("#fixedWrap"),f=S.cfg.fixedBans;
-  el.hidden=!f.length;
-  if(f.length)el.innerHTML='<span class="lab">固定BAN</span>'+f.map(function(h){return '<span class="fchip">'+monoHTML(h)+esc(h)+'</span>'}).join("");
+  var fl=S.cfg.fearless;
+  el.hidden=!f.length&&!fl;
+  el.innerHTML=(fl?'<span class="badge gold">フィアレス 第'+(S.game||1)+'試合</span><span class="lab">使用済み '+(S.used||[]).length+'体'+(S.cfg.fearlessBan?'(BAN含む)':'')+'</span>':'')+(f.length?'<span class="lab">固定BAN</span>'+f.map(function(h){return '<span class="fchip">'+monoHTML(h)+esc(h)+'</span>'}).join(""):"");
 }
 var lhSig="";
 function renderLobbyHeroes(){      /* 表示専用。固定BANだけ暗くする。固定BANが変わらない限り描き直さない */
-  var sig=S.cfg.fixedBans.join("|");
+  var sig=S.cfg.fixedBans.join("|")+"#"+(S.used||[]).join("|");
   if(sig===lhSig&&$("#lhGrid").firstChild)return;
   lhSig=sig;
   $("#lhGrid").innerHTML=groupsHTML("",function(h){
-    var fx=S.cfg.fixedBans.indexOf(h)>=0;
-    return '<div class="tile'+(fx?" fixed":"")+'">'+monoHTML(h)+'<span class="'+nmCls(h)+'">'+esc(h)+'</span></div>';
+    var fx=S.cfg.fixedBans.indexOf(h)>=0,us=!fx&&isUsed(h);
+    return '<div class="tile'+(fx?" fixed":us?" used":"")+'">'+(us?'<i class="ub">使用済</i>':'')+monoHTML(h)+'<span class="'+nmCls(h)+'">'+esc(h)+'</span></div>';
   });
 }
 function renderLobby(){
   renderLobbyHeroes();
+  var ln=$("#lobbyNote"),lt="";
+  if(S.blocked==="freedraft")lt="無料版のドラフトは、同じ回線から24時間に3回までです。上限に達したため、開始できません。";
+  ln.hidden=!lt;ln.textContent=lt;
   var N=D.N,mem=S.members||{},me=mem[myUid]||{};
   var canSit=S.phase==="lobby"&&!me.spec;
   var html="";
@@ -991,6 +1005,14 @@ function renderLobby(){
   else rb='<span class="lab">まだ席に座っていません。参加するには、ホームかアウェイの「参加」を押してください。</span>';
   $("#readybar").innerHTML=rb;
   $("#rStrip").innerHTML=stripHTML(S.cfg.rows);
+}
+function nextGame(){      /* フィアレス: 確認してから、今の試合のピックを使用済みにしてロビーへ */
+  var ps=[],bs=[];
+  Object.keys(S.log||{}).forEach(function(k){var t=D.turns[+k],h=S.log[k].hero;if(!t||!h)return;(t.type==="P"?ps:bs).push(h)});
+  var m="次の試合へ進みます。\n\n次の試合から使えなくなるヒーロー:\n"+(ps.length?ps.join("、"):"(なし)");
+  if(S.cfg.fearlessBan)m+="\n\nBANされたヒーローも使えなくなります:\n"+(bs.length?bs.join("、"):"(なし)");
+  m+="\n\nロビーに戻ります。全員が準備完了を押すと、次の試合が始まります。";
+  if(window.confirm(m))act({a:"next"});
 }
 function extOf(){return (S&&S.cfg&&S.cfg.ext)||"reset"}
 function poolLeft(t,now){                      /* チームの時間プールの残り(ミリ秒)。今の手番のチームは超過分を引いて表示 */
@@ -1036,7 +1058,7 @@ function renderTurn(){
   var tb=$("#turnbar");
   if(S.phase==="done"){
     tb.className="turnbar";
-    tb.innerHTML='<div class="tb-l"><div class="k">DRAFT</div><div class="v">ドラフト完了</div>'+codeHTML()+'</div>'+(isHost&&!IS_FREE?'<div><button class="btn" type="button" data-reset="1">ロビーに戻す</button></div>':'');
+    tb.innerHTML='<div class="tb-l"><div class="k">DRAFT</div><div class="v">ドラフト完了</div>'+codeHTML()+'</div>'+(isHost?(S.cfg.fearless?'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-next="1">次の試合へ</button><button class="btn ghost" type="button" data-reset="1">最初から</button></div>':'<div><button class="btn" type="button" data-reset="1">ロビーに戻す</button></div>'):'');
     return;
   }
   var c=D.cur,mine=isActor(),verb=c.type==="B"?"BAN":"PICK",used=S.resetT===S.turn;
@@ -1073,6 +1095,7 @@ function renderPool(){
   var mates=mateCands();
   $("#poolGrid").innerHTML=groupsHTML(q,function(h){
     var st=statusOf(h),cls="tile",badge="";
+    if(st&&st.k==="used")badge='<i class="ub">使用済</i>';
     if(st)cls+=st.k==="pick"?" pick-"+st.team:" "+st.k;
     else if(h===shared&&S.phase==="draft")cls+=" sel";
     else if(h===localSel)cls+=" mine";
@@ -1136,7 +1159,11 @@ function wireRoom(){
   $("#turnbar").addEventListener("click",function(e){
     var cc=e.target.closest("[data-copycode]");
     if(cc)copyText(cc.dataset.copycode,"コピーしました");
-    else if(e.target.closest("[data-reset]"))act({a:"reset"});
+    else if(e.target.closest("[data-next]"))nextGame();
+    else if(e.target.closest("[data-reset]")){
+      if(S.cfg.fearless&&!window.confirm("使用済みヒーローをすべてリセットして、第1試合からやり直します。よろしいですか?"))return;
+      act({a:"reset"});
+    }
     else if(e.target.closest("[data-pause]")&&isHost)act({a:"pause"});
     else{var b=e.target.closest("[data-extend]");if(b&&!b.disabled)extendTime()}
   });
@@ -1202,6 +1229,8 @@ async function init(){
   $("#myName").value=myName;
   buildHeroCss();
   $("#leaderChk").addEventListener("change",function(){cs.leader=this.checked});
+  $("#fearlessChk").addEventListener("change",function(){cs.fearless=this.checked;$("#fbanRow").hidden=!cs.fearless;if(!cs.fearless){cs.fbans=false;$("#fbanChk").checked=false}renderCreate()});
+  $("#fbanChk").addEventListener("change",function(){cs.fbans=this.checked;renderCreate()});
   setRows();wireCreate();wireRoom();renderCreate();
   setInterval(tick,250);
   document.addEventListener("visibilitychange",function(){if(!document.hidden&&wake)wake()});
