@@ -474,7 +474,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261106-2";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261106-3";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="free";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -737,6 +737,7 @@ function enterRoom(id,d){
   roomId=id;entryRoom=id;inRoom=true;joining=false;idMasked=true;
   lsSet("vgd_room",JSON.stringify({id:id,spec:!!joinSpec,ld:!!joinLeader}));
   showView("room");
+  try{window.scrollTo(0,0)}catch(e){}      /* 作成画面で下までスクロールしていても、ロビーは一番上から表示する */
   applySnap(d);
   setBusy(false);$("#joinMsg").textContent="";
   startLoop();
