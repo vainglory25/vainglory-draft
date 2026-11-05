@@ -115,6 +115,7 @@ details.fx[open] summary{margin-bottom:10px}
 .tile.used .mono{filter:grayscale(1) brightness(.5)}
 .tile .ub{position:absolute;top:2px;left:2px;z-index:3;font-style:normal;font-size:9px;line-height:1;padding:2px 4px;border-radius:4px;background:#000a;color:var(--muted);pointer-events:none}
 #lobbyNote{margin:0 0 10px}
+vercel-live-feedback{display:none!important}      /* Vercel のツールバー(プレビュー版などで出る)を隠す */
 .tile.pick-home{border-color:var(--home);opacity:.55}
 .tile.pick-away{border-color:var(--away);opacity:.55}
 .tile.sel{outline:2px dashed var(--gold);outline-offset:1px}
@@ -391,7 +392,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
         <div class="row"><span class="lab">形式</span><div class="seg" id="segSize" role="group" aria-label="形式"><button type="button" data-v="3">3v3</button><button type="button" data-v="5">5v5</button></div></div>
         <div class="row"><span class="lab">代表者モード</span><label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="leaderChk"> 各チームの代表者1人だけが操作する</label></div>
         <p class="hint" id="leaderHint">オフ:チーム全員が順番に操作します / オン:各チームの代表者だけがBAN・ピックします(代表者は入室時に選びます)。部屋を作ったあとは変更できません。</p>
-        <div class="row"><span class="lab">フィアレス</span><label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="fearlessChk"> 一度ピックしたヒーローは、次の試合で使えない</label></div>
+        <div class="row"><span class="lab">フィアレス</span><label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="fearlessChk"> フィアレス(一度ピックしたヒーローは次の試合で使えない)</label></div>
         <div class="row" id="fbanRow" hidden><span class="lab"></span><label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="fbanChk"> BANしたヒーローも次の試合で使えない</label></div>
         <p class="hint">フィアレスの部屋では、ドラフト完了後にホストが「次の試合へ」を押すと、使用済みを引き継いでロビーに戻ります。部屋を作ったあとは変更できません。</p>
         <div class="row"><span class="lab">1手番の制限時間</span><div class="seg" id="segTimer" role="group" aria-label="制限時間"><button type="button" data-v="15">15秒</button><button type="button" data-v="30">30秒</button><button type="button" data-v="45">45秒</button><button type="button" data-v="60">60秒</button></div></div>
@@ -473,7 +474,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261106-1";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261106-2";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="host";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
