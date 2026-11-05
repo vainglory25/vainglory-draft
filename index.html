@@ -406,10 +406,11 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
           <p class="hint">フィアレスの部屋では、ドラフト完了後にホストが「次の試合へ」を押すと、使用済みを引き継いでロビーに戻ります。部屋を作ったあとは変更できません。</p>
         </div>
         <div class="row"><span class="lab">1手番の制限時間</span><div class="seg" id="segTimer" role="group" aria-label="制限時間"><button type="button" data-v="15">15秒</button><button type="button" data-v="30">30秒</button><button type="button" data-v="45">45秒</button><button type="button" data-v="60">60秒</button></div></div>
-        <div class="row"><span class="lab">タイマー延長</span><div class="seg" id="segExt" role="group" aria-label="タイマー延長"><button type="button" data-v="pool">時間プール</button><button type="button" data-v="reset">リセット</button><button type="button" data-v="half">半分追加</button></div></div>
+        <div class="row" id="tmRow"><label class="optt" style="margin:0"><input type="checkbox" id="tmCustom"><b>指定時間入力</b>(5秒〜120秒)</label><span><input class="field num" id="tmSec" type="number" inputmode="numeric" min="5" max="120" step="1" value="30" style="width:90px" disabled> 秒</span></div>
+        <div class="row"><span class="lab">タイマー延長</span><div class="seg" id="segExt" role="group" aria-label="タイマー延長"><button type="button" data-v="pool">時間プール</button><button type="button" data-v="reset">リセット</button><button type="button" data-v="half">半分追加</button><button type="button" data-v="none">なし</button></div></div>
         <div class="row" id="poolRow"><label class="lab" for="poolSec">チームの時間プール(秒)</label><input class="field num" id="poolSec" type="number" inputmode="numeric" min="10" max="600" step="5" style="width:110px"></div>
         <p class="hint" id="extHint"></p>
-        <div class="row"><span class="lab">BANの人数(各チーム)</span><div class="seg" id="segBans" role="group" aria-label="BANの人数"><button type="button" data-v="1">1人</button><button type="button" data-v="2">2人</button><button type="button" data-v="3">3人</button><button type="button" data-v="4">4人</button><button type="button" data-v="5">5人</button></div></div>
+        <div class="row" style="margin-top:40px"><span class="lab">BANの人数(各チーム)</span><div class="seg" id="segBans" role="group" aria-label="BANの人数"><button type="button" data-v="1">1人</button><button type="button" data-v="2">2人</button><button type="button" data-v="3">3人</button><button type="button" data-v="4">4人</button><button type="button" data-v="5">5人</button></div></div>
         <div class="lab" style="margin-bottom:6px">進行順</div>
         <div class="rlist" id="cStrip"></div>
         <p class="hint" id="stripHint"></p>
@@ -484,7 +485,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261106-4";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261106-8";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="host";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -578,7 +579,7 @@ async function hostLogin(u,p,silent){
 }
 var off=0,connected=false;
 var localSel="",q="";
-var cs={leader:false,fearless:false,fbans:false,size:3,timer:30,bans:2,ext:"pool",pool:120,rows:[],fixed:["チャーンウォーカー","ヴィオラ"]};   /* 既定の固定BAN(作成画面で変更できます) */
+var cs={custom:false,leader:false,fearless:false,fbans:false,size:3,timer:30,bans:2,ext:"pool",pool:120,rows:[],fixed:["チャーンウォーカー","ヴィオラ"]};   /* 既定の固定BAN(作成画面で変更できます) */
 
 function nowS(){return Date.now()+off}
 function toast(t){var el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true},2600)}
@@ -834,13 +835,15 @@ function renderCreateBtn(){
 }
 function renderCreate(){
   $$("#segSize button").forEach(function(b){b.classList.toggle("on",+b.dataset.v===cs.size)});
-  $$("#segTimer button").forEach(function(b){b.classList.toggle("on",+b.dataset.v===cs.timer)});
+  $$("#segTimer button").forEach(function(b){b.classList.toggle("on",!cs.custom&&+b.dataset.v===cs.timer);b.disabled=!!cs.custom;b.style.opacity=cs.custom?".4":""});
+  $("#tmCustom").checked=!!cs.custom;$("#tmSec").disabled=!cs.custom;
+  if(cs.custom&&document.activeElement!==$("#tmSec"))$("#tmSec").value=cs.timer;
   $$("#segBans button").forEach(function(b){b.classList.toggle("on",+b.dataset.v===cs.bans)});
   $$("#segExt button").forEach(function(b){b.classList.toggle("on",b.dataset.v===cs.ext)});
   $("#poolRow").hidden=cs.ext!=="pool";
   if(document.activeElement!==$("#poolSec"))$("#poolSec").value=cs.pool;
   var half=Math.round(cs.timer/2);
-  $("#extHint").textContent=cs.ext==="pool"?"制限時間を過ぎた分だけ、そのチームの時間プールから減っていきます(使った分は戻りません)。プールが0になると、ピックはランダム、BANは選択なしで次の手番へ進みます。延長ボタンはありません。":cs.ext==="reset"?"手番ごとに1回、残り時間を制限時間("+cs.timer+"秒)いっぱいに戻せます。時間切れは、ピックはランダム、BANは選択なしで次へ進みます。":"手番ごとに1回、残り時間に制限時間の約半分(+"+half+"秒)を追加できます。時間切れは、ピックはランダム、BANは選択なしで次へ進みます。";
+  $("#extHint").textContent=cs.ext==="none"?"延長はありません。制限時間("+cs.timer+"秒)を過ぎると、ピックはランダム、BANは選択なしで、すぐ次の手番へ進みます。":cs.ext==="pool"?"制限時間を過ぎた分だけ、そのチームの時間プールから減っていきます(使った分は戻りません)。プールが0になると、ピックはランダム、BANは選択なしで次の手番へ進みます。延長ボタンはありません。":cs.ext==="reset"?"手番ごとに1回、残り時間を制限時間("+cs.timer+"秒)いっぱいに戻せます。時間切れは、ピックはランダム、BANは選択なしで次へ進みます。":"手番ごとに1回、残り時間に制限時間の約半分(+"+half+"秒)を追加できます。時間切れは、ピックはランダム、BANは選択なしで次へ進みます。";
   var target=cs.bans;
   $("#cStrip").innerHTML=cs.rows.map(function(t,i){
     var dis=i===0||i===cs.rows.length-1;
@@ -850,7 +853,7 @@ function renderCreate(){
   $("#fixedCount").textContent=cs.fixed.length?"("+cs.fixed.length+"人)":"";
   $("#fixedList").innerHTML=cs.fixed.map(function(h){return '<span class="fchip">'+monoHTML(h)+esc(h)+'</span>'}).join("");
   renderFixedPool();
-  $("#cSum").textContent=cs.size+"v"+cs.size+" / 各手番 "+cs.timer+"秒("+(cs.ext==="pool"?"チーム時間プール "+cs.pool+"秒":cs.ext==="reset"?"リセット":"半分追加")+") / BAN 各チーム"+cs.bans+"人(計"+cs.bans*2+"人) + 固定BAN "+cs.fixed.length+"人 / 全 "+cs.rows.length+" 行"+(cs.leader?" / 代表者モード":"")+(cs.fearless?" / フィアレス"+(cs.fbans?"(BAN含む)":""):"");
+  $("#cSum").textContent=cs.size+"v"+cs.size+" / 各手番 "+cs.timer+"秒("+(cs.ext==="pool"?"チーム時間プール "+cs.pool+"秒":cs.ext==="reset"?"リセット":cs.ext==="none"?"延長なし":"半分追加")+") / BAN 各チーム"+cs.bans+"人(計"+cs.bans*2+"人) + 固定BAN "+cs.fixed.length+"人 / 全 "+cs.rows.length+" 行"+(cs.leader?" / 代表者モード":"")+(cs.fearless?" / フィアレス"+(cs.fbans?"(BAN含む)":""):"");
   renderCreateBtn();
 }
 function groupsHTML(filter,tileFn){
@@ -872,7 +875,11 @@ function wireCreate(){
   $("#segExt").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.ext=b.dataset.v;renderCreate()});
   $("#poolSec").addEventListener("input",function(){var v=Math.round(+$("#poolSec").value);if(v>=10&&v<=600)cs.pool=v;renderCreate()});
   $("#poolSec").addEventListener("change",function(){var v=Math.round(+$("#poolSec").value);cs.pool=v>=10?Math.min(600,v):10;$("#poolSec").value=cs.pool;renderCreate()});
-  $("#segTimer").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.timer=+b.dataset.v;renderCreate()});
+  $("#segTimer").addEventListener("click",function(e){var b=e.target.closest("button");if(!b||cs.custom)return;cs.timer=+b.dataset.v;renderCreate()});
+  function normTm(v){v=Math.round(+v||0);return Math.max(5,Math.min(120,v))}      /* 指定時間: 5秒〜120秒(1秒単位) */
+  $("#tmCustom").addEventListener("change",function(){cs.custom=this.checked;if(!cs.custom&&[15,30,45,60].indexOf(cs.timer)<0)cs.timer=30;renderCreate()});
+  $("#tmSec").addEventListener("input",function(){var v=+this.value;if(v>=5&&v<=120&&v===Math.round(v)){cs.timer=v;renderCreate()}});
+  $("#tmSec").addEventListener("change",function(){cs.timer=normTm(this.value);this.value=cs.timer;renderCreate()});
   $("#segBans").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.bans=+b.dataset.v;setRows();renderCreate()});
   $("#cStrip").addEventListener("click",function(e){
     var b=e.target.closest("button");if(!b||b.disabled)return;
@@ -1057,7 +1064,7 @@ function tick(){
 function extUI(mine,used,c){
   var pz=(isHost?'<button class="btn sm'+(S.pausedAt?' pri':'')+'" type="button" data-pause="1">'+(S.pausedAt?'▶ 再開':'⏸ 一時停止')+'</button>':'')+(S.pausedAt?'<span class="note"><b>一時停止中</b></span>':'');
   var e=extOf(),fail=c.type==="B"?"時間切れはBANなしで次へ":"時間切れはランダムで確定";
-  if(e==="pool")return pz+'<span class="note">'+fail+'</span>';
+  if(e==="pool"||e==="none")return pz+'<span class="note">'+fail+'</span>';
   var half=Math.round(S.cfg.timer/2),lab=e==="half"?"+"+half+"秒を追加(1回)":"時間をリセット(1回)",done=e==="half"?"追加済み":"リセット済み";
   return pz+(mine?'<button class="btn sm" type="button" data-extend="1"'+(used?" disabled":"")+'>'+(used?done:lab)+'</button>':(used?'<span>この手番は'+done+'</span>':''))+'<span class="note">'+fail+'</span>';
 }
