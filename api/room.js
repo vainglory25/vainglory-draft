@@ -211,7 +211,7 @@ function handle(S, uid, m, body) {
       changed = true; break;
     case "extend":
       if (ph !== "draft" || D.actor !== uid || S.resetT === S.turn || clock(S) >= S.deadline) break;
-      if (extMode(S) === "pool") break;                              /* 時間プール方式では延長ボタンはない */
+      if (extMode(S) === "pool" || extMode(S) === "none") break;      /* 時間プール方式と「なし」では延長ボタンはない */
       if (extMode(S) === "half") S.deadline += Math.round(S.cfg.timer / 2) * 1000;   /* 半分(四捨五入)を残り時間に追加 */
       else S.deadline = clock(S) + S.cfg.timer * 1000;               /* リセット: 制限時間いっぱいに戻す */
       S.resetT = S.turn; changed = true; break;
@@ -269,7 +269,7 @@ function validCfg(c) {
   if (!c || typeof c !== "object") return null;
   var size = +c.size, timer = +c.timer, rows = String(c.rows || "");
   if (size !== 3 && size !== 5) return null;
-  if ([15, 30, 45, 60].indexOf(timer) < 0) return null;
+  if (!(timer >= 5 && timer <= 120 && timer === Math.floor(timer))) return null;      /* 5秒〜120秒(1秒単位) */
   if (!/^[BP]+$/.test(rows) || rows.length > 20) return null;
   var bans = rows.split("").filter(function (x) { return x === "B"; }).length;
   if (bans < 1 || bans > 5 || rows.length - bans !== size) return null;
@@ -284,7 +284,7 @@ function validCfg(c) {
   var fx = Array.isArray(c.fixedBans) ? c.fixedBans.filter(function (h, i, a) { return hs.indexOf(h) >= 0 && a.indexOf(h) === i; }) : [];
   if (hs.length - fx.length < size * 2 + bans * 2) return null;       /* ヒーローが足りない */
   var ext = c.ext === undefined ? "pool" : String(c.ext);
-  if (["pool", "reset", "half"].indexOf(ext) < 0) return null;
+  if (["pool", "reset", "half", "none"].indexOf(ext) < 0) return null;      /* none = 延長なし */
   var pool = Math.round(+c.pool);
   if (ext === "pool" && !(pool >= 10 && pool <= 600)) return null;
   if (ext !== "pool") pool = 0;
