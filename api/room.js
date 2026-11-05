@@ -8,7 +8,7 @@ var DB_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
 var DB_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 
 var ROLES3 = ["ローム", "ジャングル", "レーン"], ROLES5 = ["ローム", "ジャングル", "トップ", "ミッド", "ボット"];
-var FREE_LIMIT = 3, FREE_WINDOW = 24 * 3600;      /* free.html: 同じIPから作れる部屋の数 / 期間(秒) */
+var FREE_LIMIT = 3, FREE_DRAFTS = 3, FREE_WINDOW = 24 * 3600;      /* free.html: 同じIPから作れる部屋の数 / 始められるドラフトの数 / 期間(秒) */
 var HOST_USER = process.env.HOST_USER || "";
 var HOST_PASSWORD = process.env.HOST_PASSWORD || "";
 var TTL = 6 * 3600;          /* ルームは最後の更新から6時間で消えます */
@@ -87,6 +87,7 @@ function derive(S) {
 }
 function taken(S, h) {
   if (S.cfg.fixedBans.indexOf(h) >= 0) return true;
+  if ((S.used || []).indexOf(h) >= 0) return true;      /* フィアレス: 前の試合で使用済み */
   var lg = S.log || {};
   for (var k in lg) { if (lg[k].hero === h) return true; }
   return false;
@@ -116,7 +117,7 @@ function clock(S) { return S.pausedAt || Date.now(); }      /* 一時停止中�
 function extMode(S) { return (S.cfg && S.cfg.ext) || "reset"; }
 function newState(cfg, host) {
   return { cfg: cfg, host: host, created: Date.now(), v: 0, phase: "lobby", turn: 0, deadline: 0, startsAt: 0,
-    pendingHero: "", pendingTurn: -1, resetT: -1, pausedAt: 0, pool: { home: 0, away: 0 }, cands: {}, log: {}, seats: { home: [], away: [] }, members: {}, toks: {} };
+    pendingHero: "", pendingTurn: -1, resetT: -1, pausedAt: 0, pool: { home: 0, away: 0 }, cands: {}, log: {}, seats: { home: [], away: [] }, members: {}, toks: {}, used: [], game: 1 };
 }
 
 /* 送信者 uid の操作 m を検証して反映する。変化したら changed:true、メッセージは msg */
@@ -171,8 +172,21 @@ function handle(S, uid, m, body) {
     case "kick":
       if (!isHost || ph !== "lobby" || typeof m.u !== "string" || !mem[m.u] || m.u === uid) break;
       mem[m.u].team = ""; mem[m.u].ready = false; mem[m.u].leader = false; mem[m.u].locked = false; changed = true; break;
+    case "next":      /* フィアレス: 今の試合のピック(と、設定ならBAN)を使用済みにして、ロビーへ */
     case "reset":
       if (!isHost || ph !== "done") break;
+      if (m.a === "next" && !S.cfg.fearless) break;
+      if (m.a === "next") {
+        var nu = (S.used || []).slice(), nb = S.cfg.rows.split("").filter(function (x) { return x === "B"; }).length;
+        Object.keys(S.log || {}).forEach(function (k) {
+          var tn = D.turns[+k], hh = S.log[k].hero;
+          if (!tn || !hh || nu.indexOf(hh) >= 0) return;
+          if (tn.type === "P" || S.cfg.fearlessBan) nu.push(hh);
+        });
+        var left = S.cfg.heroes.filter(function (h) { return S.cfg.fixedBans.indexOf(h) < 0 && nu.indexOf(h) < 0; }).length;
+        if (left < S.cfg.size * 2 + nb * 2) { msg = "使えるヒーローが足りなくなるため、次の試合へは進めません。「最初から」で使用済みをリセットしてください"; break; }
+        S.used = nu; S.game = (S.game || 1) + 1;
+      } else if (S.cfg.fearless) { S.used = []; S.game = 1; }      /* フィアレスの「最初から」: 使用済みを全部戻す */
       S.phase = "lobby"; S.turn = 0; S.deadline = 0; S.startsAt = 0; S.pendingHero = ""; S.pendingTurn = -1; S.resetT = -1; S.pausedAt = 0;
       S.cands = {}; S.log = {}; S.leaders = null; S.code = 0; S.seats = { home: [], away: [] }; S.pool = { home: 0, away: 0 };
       Object.keys(mem).forEach(function (k) { mem[k].ready = false; });
@@ -206,7 +220,7 @@ function handle(S, uid, m, body) {
 }
 
 /* 時間経過で進む状態遷移 + 切断した人の準備解除。変化したら true */
-function step(S, seen, selfUid) {
+function step(S, seen, selfUid, ev) {
   var now = Date.now(), ch = false;
   if (S.phase === "lobby" || S.phase === "countdown") {
     Object.keys(S.members).forEach(function (u) {
@@ -216,10 +230,11 @@ function step(S, seen, selfUid) {
   }
   var D = derive(S), both = D.teamReady.home && D.teamReady.away;
   if (S.phase === "lobby") {
-    if (both) { S.phase = "countdown"; S.startsAt = now + 5000; S.seats = { home: D.seats.home.slice(), away: D.seats.away.slice() }; S.leaders = { home: D.leaders.home, away: D.leaders.away }; ch = true; }
+    if (both) { if (ev) ev.cd = true; S.phase = "countdown"; S.startsAt = now + 5000; S.seats = { home: D.seats.home.slice(), away: D.seats.away.slice() }; S.leaders = { home: D.leaders.home, away: D.leaders.away }; ch = true; }
   } else if (S.phase === "countdown") {
     if (!both) { S.phase = "lobby"; S.startsAt = 0; ch = true; }
     else if (now >= S.startsAt) {
+      if (ev) ev.started = true;
       S.phase = "draft"; S.turn = 0; S.deadline = now + S.cfg.timer * 1000; S.pendingHero = ""; S.pendingTurn = -1; S.resetT = -1; S.pausedAt = 0; S.cands = {}; ch = true;
       var pm = (S.cfg.pool || 0) * 1000; S.pool = { home: pm, away: pm };
     }
@@ -235,7 +250,7 @@ function viewFor(S, uid, seen, now) {
   var teamOf = function (u) { return D.seats.home.indexOf(u) >= 0 ? "home" : (D.seats.away.indexOf(u) >= 0 ? "away" : ""); };
   var t = teamOf(uid), c = {}, src = S.cands || {}, v = {};
   Object.keys(src).forEach(function (k) { if (k === uid || (t && teamOf(k) === t)) c[k] = src[k]; });
-  for (var k in S) { if (k !== "toks") v[k] = S[k]; }
+  for (var k in S) { if (k !== "toks" && k !== "fip") v[k] = S[k]; }
   v.cands = c;
   if (!t) delete v.code;      /* ランダム数字は着席した参加者にだけ送る(ホスト・観戦者には送らない) */
   v.members = {};
@@ -273,7 +288,8 @@ function validCfg(c) {
   var pool = Math.round(+c.pool);
   if (ext === "pool" && !(pool >= 10 && pool <= 600)) return null;
   if (ext !== "pool") pool = 0;
-  return { size: size, timer: timer, rows: rows, fixedBans: fx, heroes: hs.slice(), ext: ext, pool: pool, leader: c.leader === true };
+  var fl = c.fearless === true;
+  return { size: size, timer: timer, rows: rows, fixedBans: fx, heroes: hs.slice(), ext: ext, pool: pool, leader: c.leader === true, fearless: fl, fearlessBan: fl && c.fearlessBan === true };
 }
 var okUid = function (u) { return typeof u === "string" && /^[A-Za-z0-9]{3,40}$/.test(u); };
 var okTok = function (t) { return typeof t === "string" && t.length >= 8 && t.length <= 64; };
@@ -308,7 +324,7 @@ function hostFail(res, st) {
 /* ---------- ハンドラ ---------- */
 function send(res, code, obj) { res.status(code).json(obj); }
 
-async function opCreate(b, res) {
+async function opCreate(b, res, extra) {
   if (!okUid(b.uid) || !okTok(b.tok)) return send(res, 400, { err: "bad" });
   var cfg = validCfg(b.cfg);
   if (!cfg) return send(res, 400, { err: "cfg" });
@@ -316,6 +332,7 @@ async function opCreate(b, res) {
   for (var k = 0; k < 8; k++) {
     var id = genId(), S = newState(cfg, b.uid);
     S.toks[b.uid] = b.tok;
+    if (extra && extra.free) { S.free = true; S.fip = extra.ip; }      /* 無料版: ドラフト開始の回数は、作った人の回線で数える */
     handle(S, b.uid, null, { hello: true, name: b.name, spec: false });
     S.v = 1;
     var r = await redis([["SET", kRoom(id), JSON.stringify(S), "NX", "EX", String(TTL)], ["HSET", kSeen(id), b.uid, String(Date.now())], ["EXPIRE", kSeen(id), String(TTL)]]);
@@ -354,7 +371,22 @@ async function opSync(b, res) {
       var h = handle(S, uid, m, b);
       if (h.changed) ch = true;
       if (h.msg) msg = h.msg;
-      if (step(S, seen, uid)) ch = true;
+      var ev = {};
+      if (step(S, seen, uid, ev)) ch = true;
+      if (S.fip && (ev.cd || ev.started)) {      /* 無料版: ドラフトは同じ回線から24時間に FREE_DRAFTS 回まで */
+        var dk = "vgd:d:" + S.fip, blocked = false;
+        if (ev.started) {
+          var dn = (await redis([["INCR", dk]]))[0];
+          if (dn === 1) await redis([["EXPIRE", dk, String(FREE_WINDOW)]]);
+          if (dn > FREE_DRAFTS) { await redis([["DECR", dk]]); blocked = true; }
+          else delete S.blocked;
+        } else if (+((await redis([["GET", dk]]))[0] || 0) >= FREE_DRAFTS) blocked = true;
+        if (blocked) {
+          S.phase = "lobby"; S.startsAt = 0; S.deadline = 0; S.turn = 0; S.cands = {}; S.pendingHero = ""; S.pendingTurn = -1; S.pool = { home: 0, away: 0 };
+          Object.keys(S.members).forEach(function (k) { S.members[k].ready = false; });
+          S.blocked = "freedraft"; msg = "無料版のドラフトは、同じ回線から24時間に3回までです。上限に達したため開始できません"; ch = true;
+        }
+      }
       if (ch) {
         S.v = (S.v || 0) + 1;
         await redis([["SET", kRoom(id), JSON.stringify(S), "EX", String(TTL)], ["EXPIRE", kSeen(id), String(TTL)]]);
@@ -374,15 +406,16 @@ module.exports = async function (req, res) {
   try {
     if (b.op === "auth") { var st = await checkHost(req, b); return st === "ok" ? send(res, 200, { ok: true }) : hostFail(res, st); }
     if (b.op === "create") {
+      var ip = "";
       if (b.free === true) {      /* free.html: ログイン不要。同じIPから FREE_LIMIT 回まで */
         if (!validCfg(b.cfg)) return send(res, 400, { err: "cfg" });
         if (!cleanName(b.name)) return send(res, 400, { err: "name" });
-        var ip = String((req.headers && (req.headers["x-forwarded-for"] || req.headers["x-real-ip"])) || "ip").split(",")[0].trim().slice(0, 64), fk = "vgd:c:" + ip;      /* 通常・代表者モードを合算して数える */
+        ip = String((req.headers && (req.headers["x-forwarded-for"] || req.headers["x-real-ip"])) || "ip").split(",")[0].trim().slice(0, 64), fk = "vgd:c:" + ip;      /* 通常・代表者モードを合算して数える */
         var n = (await redis([["INCR", fk]]))[0];
         if (n === 1) await redis([["EXPIRE", fk, String(FREE_WINDOW)]]);
         if (n > FREE_LIMIT) return send(res, 429, { err: "freelimit" });
       } else { var st2 = await checkHost(req, b); if (st2 !== "ok") return hostFail(res, st2); }
-      return await opCreate(b, res);
+      return await opCreate(b, res, b.free === true ? { free: true, ip: ip } : null);
     }
     if (b.op === "sync") return await opSync(b, res);
     return send(res, 400, { err: "op" });
