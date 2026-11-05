@@ -11,6 +11,10 @@ var ROLES3 = ["ローム", "ジャングル", "レーン"], ROLES5 = ["ローム
 var FREE_LIMIT = 3, FREE_DRAFTS = 3, FREE_WINDOW = 24 * 3600;      /* free.html: 同じIPから作れる部屋の数 / 始められるドラフトの数 / 期間(秒) */
 var HOST_USER = process.env.HOST_USER || "";
 var HOST_PASSWORD = process.env.HOST_PASSWORD || "";
+/* ホストが複数いる場合: HOST_USERS = "ユーザー名:パスワード,ユーザー名:パスワード,..."(パスワードにカンマは使えません) */
+var HOST_ACCOUNTS = (process.env.HOST_USERS || "").split(",").map(function (x) {
+  var i = x.indexOf(":"); return i > 0 ? { u: x.slice(0, i).trim(), p: x.slice(i + 1) } : null;
+}).filter(function (a) { return a && a.u && a.p; });
 var TTL = 6 * 3600;          /* ルームは最後の更新から6時間で消えます */
 var PRESENCE_MS = 10000;     /* これ以上応答がない人は「切断中」 */
 var MAX_MEMBERS = 80;
@@ -305,12 +309,13 @@ function same(a, b) {
 }
 /* 失敗は IP ごとに10分で10回まで(総当たり対策)。戻り値: "ok" | "bad" | "limit" | "nopw" */
 async function checkHost(req, b) {
-  if (!HOST_PASSWORD) return "nopw";
+  if (!HOST_PASSWORD && !HOST_ACCOUNTS.length) return "nopw";
   var ip = String((req.headers && (req.headers["x-forwarded-for"] || req.headers["x-real-ip"])) || "ip").split(",")[0].trim().slice(0, 64);
   var key = "vgd:f:" + ip;
   var cnt = +((await redis([["GET", key]]))[0] || 0);
   if (cnt >= 10) return "limit";
-  var ok = same(b.hp, HOST_PASSWORD) & (HOST_USER ? same(b.hu, HOST_USER) : true);
+  var ok = HOST_PASSWORD ? (same(b.hp, HOST_PASSWORD) & (HOST_USER ? same(b.hu, HOST_USER) : true)) : 0;      /* 従来の1組 */
+  HOST_ACCOUNTS.forEach(function (a) { ok = ok | (same(b.hp, a.p) & same(b.hu, a.u)); });          /* 追加の複数ユーザー(全部を調べる) */
   if (ok) return "ok";
   await redis([["INCR", key], ["EXPIRE", key, "600"]]);
   return "bad";
