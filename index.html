@@ -455,7 +455,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261105-3";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261105-4";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="host";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -1188,7 +1188,7 @@ async function init(){
   var qRoom=(params.get("room")||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,10);
   var qWatch=params.get("watch")==="1",qTeam=params.get("team"),qLd=params.get("ld")==="1";
   if(qRoom&&!qWatch&&(qTeam==="home"||qTeam==="away")){
-    joinTeam=qTeam;
+    joinTeam=qTeam;$("#watchBtn").hidden=true;      /* チーム参加リンクには「観戦で入室」を出さない */
     if(qLd)$("#joinMsg").textContent="名前(IGN)を入力して、参戦者か代表者として入室すると、"+teamJa(qTeam)+"の席に入ります。";
     else{$("#joinBtn").textContent=teamJa(qTeam)+"として入室";$("#joinMsg").textContent="名前(IGN)を入力して「"+teamJa(qTeam)+"として入室」を押すと、"+teamJa(qTeam)+"の席に入ります。";}
   }
@@ -1201,7 +1201,13 @@ async function init(){
   var sr=null;
   try{sr=JSON.parse(lsGet("vgd_room")||"null")}catch(e){sr=null}
   if(sr&&sr.id&&!qRoom){$("#joinId").value=sr.id;joinRoom(sr.id,!!sr.spec,!!sr.ld);return}
-  if(qRoom&&qWatch){$("#joinMsg").textContent="表示名(IGN)を入力して「観戦で入室」を押してください。";return}
+  if(qRoom&&qWatch){      /* 観戦リンク: 名前の入力なしで、そのまま観戦者として入室する(名前が未入力なら Player+数字 を仮に使う) */
+    var gen=false;
+    if(!cleanNm($("#myName").value)){$("#myName").value="Player"+(10+Math.floor(Math.random()*90));gen=true}
+    $("#joinId").value=qRoom;
+    joinRoom(qRoom,true,false).then(function(){if(gen)lsDel("vgd_name")});
+    return;
+  }
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
