@@ -485,7 +485,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261106-8";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261106-9";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="host";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -570,7 +570,7 @@ function refreshEntry(){
 }
 async function hostLogin(u,p,silent){
   var r=await apiCall({op:"auth",hu:u,hp:p});
-  if(r.status===200){hostOK=true;hostAuth={u:u,p:p};lsSet("vgd_ha",JSON.stringify(hostAuth));refreshEntry();return true}
+  if(r.status===200){hostOK=true;if(r.data&&r.data.open){hostAuth=null;lsDel("vgd_ha")}else{hostAuth={u:u,p:p};lsSet("vgd_ha",JSON.stringify(hostAuth))}refreshEntry();return true}      /* open=サーバーにパスワードの設定がない(ログイン不要) */
   if(r.status===401||r.status===403){hostAuth=null;lsDel("vgd_ha")}
   if(!silent){
     $("#gateMsg").textContent=r.status===401?"ユーザー名またはパスワードが違います。":r.status===429?"試行回数が多すぎます。しばらく待ってからもう一度お試しください。":(r.status===500&&r.data&&r.data.err==="nopw")?"サーバーにホストのパスワードが設定されていません(Vercel の環境変数 HOST_USER / HOST_PASSWORD を設定して再デプロイしてください)。":"サーバーに接続できませんでした。";
@@ -1266,7 +1266,7 @@ async function init(){
   if(IS_FREE){$("#gateOut").hidden=true;$("#freeNote").hidden=false}
   refreshEntry();
   setBusy(false);setBanner();
-  if(!IS_FREE&&!qRoom&&hostAuth)hostLogin(hostAuth.u,hostAuth.p,true);        /* 保存済みのログイン情報を確認(失敗したらログイン画面のまま) */
+  if(!IS_FREE&&!qRoom)hostLogin(hostAuth?hostAuth.u:"",hostAuth?hostAuth.p:"",true);        /* 保存済みのログイン情報を確認。パスワード未設定のサーバーなら、そのままログイン不要で入れる(失敗したらログイン画面のまま) */
   var sr=null;
   try{sr=JSON.parse(lsGet("vgd_room")||"null")}catch(e){sr=null}
   if(sr&&sr.id&&!qRoom){$("#joinId").value=sr.id;joinRoom(sr.id,!!sr.spec,!!sr.ld);return}
