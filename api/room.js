@@ -309,7 +309,8 @@ function same(a, b) {
 }
 /* 失敗は IP ごとに10分で10回まで(総当たり対策)。戻り値: "ok" | "bad" | "limit" | "nopw" */
 async function checkHost(req, b) {
-  if (!HOST_PASSWORD && !HOST_ACCOUNTS.length) return "nopw";
+  if (!HOST_PASSWORD && !HOST_ACCOUNTS.length) return "open";      /* パスワードの環境変数が無ければ、ログイン不要(誰でも部屋を作れる・回数制限なし) */
+  if (b.op === "auth" && !b.hu && !b.hp) return "bad";      /* 入力なしの確認(ページを開いた時)は、失敗の回数に数えない */
   var ip = String((req.headers && (req.headers["x-forwarded-for"] || req.headers["x-real-ip"])) || "ip").split(",")[0].trim().slice(0, 64);
   var key = "vgd:f:" + ip;
   var cnt = +((await redis([["GET", key]]))[0] || 0);
@@ -409,7 +410,7 @@ module.exports = async function (req, res) {
   if (typeof b === "string") { try { b = JSON.parse(b); } catch (e) { b = null; } }
   if (!b || typeof b !== "object") return send(res, 400, { err: "bad" });
   try {
-    if (b.op === "auth") { var st = await checkHost(req, b); return st === "ok" ? send(res, 200, { ok: true }) : hostFail(res, st); }
+    if (b.op === "auth") { var st = await checkHost(req, b); return (st === "ok" || st === "open") ? send(res, 200, { ok: true, open: st === "open" }) : hostFail(res, st); }
     if (b.op === "create") {
       var ip = "";
       if (b.free === true) {      /* free.html: ログイン不要。同じIPから FREE_LIMIT 回まで */
@@ -419,7 +420,7 @@ module.exports = async function (req, res) {
         var n = (await redis([["INCR", fk]]))[0];
         if (n === 1) await redis([["EXPIRE", fk, String(FREE_WINDOW)]]);
         if (n > FREE_LIMIT) return send(res, 429, { err: "freelimit" });
-      } else { var st2 = await checkHost(req, b); if (st2 !== "ok") return hostFail(res, st2); }
+      } else { var st2 = await checkHost(req, b); if (st2 !== "ok" && st2 !== "open") return hostFail(res, st2); }
       return await opCreate(b, res, b.free === true ? { free: true, ip: ip } : null);
     }
     if (b.op === "sync") return await opSync(b, res);
