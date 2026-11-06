@@ -9,12 +9,6 @@ var DB_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_T
 
 var ROLES3 = ["ローム", "ジャングル", "レーン"], ROLES5 = ["ローム", "ジャングル", "トップ", "ミッド", "ボット"];
 var FREE_LIMIT = 3, FREE_DRAFTS = 3, FREE_WINDOW = 24 * 3600;      /* free.html: 同じIPから作れる部屋の数 / 始められるドラフトの数 / 期間(秒) */
-var HOST_USER = process.env.HOST_USER || "";
-var HOST_PASSWORD = process.env.HOST_PASSWORD || "";
-/* ホストが複数いる場合: HOST_USERS = "ユーザー名:パスワード,ユーザー名:パスワード,..."(パスワードにカンマは使えません) */
-var HOST_ACCOUNTS = (process.env.HOST_USERS || "").split(",").map(function (x) {
-  var i = x.indexOf(":"); return i > 0 ? { u: x.slice(0, i).trim(), p: x.slice(i + 1) } : null;
-}).filter(function (a) { return a && a.u && a.p; });
 var TTL = 6 * 3600;          /* ルームは最後の更新から6時間で消えます */
 var PRESENCE_MS = 10000;     /* これ以上応答がない人は「切断中」 */
 var MAX_MEMBERS = 80;
@@ -300,33 +294,6 @@ var okTok = function (t) { return typeof t === "string" && t.length >= 8 && t.le
 var okId = function (i) { return typeof i === "string" && /^[A-Z0-9]{4,10}$/.test(i); };
 function genId() { var a = "ABCDEFGHJKMNPQRSTUVWXYZ23456789", s = ""; for (var i = 0; i < 6; i++) s += a[Math.floor(Math.random() * a.length)]; return s; }
 
-/* ---------- ホスト認証(ルームを作れるのはホストだけ) ---------- */
-var crypto = require("crypto");
-function same(a, b) {
-  var x = crypto.createHash("sha256").update(String(a == null ? "" : a)).digest();
-  var y = crypto.createHash("sha256").update(String(b == null ? "" : b)).digest();
-  return crypto.timingSafeEqual(x, y);
-}
-/* 失敗は IP ごとに10分で10回まで(総当たり対策)。戻り値: "ok" | "bad" | "limit" | "nopw" */
-async function checkHost(req, b) {
-  if (!HOST_PASSWORD && !HOST_ACCOUNTS.length) return "open";      /* パスワードの環境変数が無ければ、ログイン不要(誰でも部屋を作れる・回数制限なし) */
-  if (b.op === "auth" && !b.hu && !b.hp) return "bad";      /* 入力なしの確認(ページを開いた時)は、失敗の回数に数えない */
-  var ip = String((req.headers && (req.headers["x-forwarded-for"] || req.headers["x-real-ip"])) || "ip").split(",")[0].trim().slice(0, 64);
-  var key = "vgd:f:" + ip;
-  var cnt = +((await redis([["GET", key]]))[0] || 0);
-  if (cnt >= 10) return "limit";
-  var ok = HOST_PASSWORD ? (same(b.hp, HOST_PASSWORD) & (HOST_USER ? same(b.hu, HOST_USER) : true)) : 0;      /* 従来の1組 */
-  HOST_ACCOUNTS.forEach(function (a) { ok = ok | (same(b.hp, a.p) & same(b.hu, a.u)); });          /* 追加の複数ユーザー(全部を調べる) */
-  if (ok) return "ok";
-  await redis([["INCR", key], ["EXPIRE", key, "600"]]);
-  return "bad";
-}
-function hostFail(res, st) {
-  if (st === "nopw") return send(res, 500, { err: "nopw" });
-  if (st === "limit") return send(res, 429, { err: "limit" });
-  return send(res, 401, { err: "auth" });
-}
-
 /* ---------- ハンドラ ---------- */
 function send(res, code, obj) { res.status(code).json(obj); }
 
@@ -410,7 +377,6 @@ module.exports = async function (req, res) {
   if (typeof b === "string") { try { b = JSON.parse(b); } catch (e) { b = null; } }
   if (!b || typeof b !== "object") return send(res, 400, { err: "bad" });
   try {
-    if (b.op === "auth") { var st = await checkHost(req, b); return (st === "ok" || st === "open") ? send(res, 200, { ok: true, open: st === "open" }) : hostFail(res, st); }
     if (b.op === "create") {
       var ip = "";
       if (b.free === true) {      /* free.html: ログイン不要。同じIPから FREE_LIMIT 回まで */
@@ -420,7 +386,7 @@ module.exports = async function (req, res) {
         var n = (await redis([["INCR", fk]]))[0];
         if (n === 1) await redis([["EXPIRE", fk, String(FREE_WINDOW)]]);
         if (n > FREE_LIMIT) return send(res, 429, { err: "freelimit" });
-      } else { var st2 = await checkHost(req, b); if (st2 !== "ok" && st2 !== "open") return hostFail(res, st2); }
+      }
       return await opCreate(b, res, b.free === true ? { free: true, ip: ip } : null);
     }
     if (b.op === "sync") return await opSync(b, res);
