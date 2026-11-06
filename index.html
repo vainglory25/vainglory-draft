@@ -50,6 +50,14 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid
 .btn.pri:hover:not(:disabled){filter:brightness(1.08)}
 .btn.home{background:var(--home-d);border-color:var(--home);color:#dcecff}
 .btn.away{background:var(--away-d);border-color:var(--away);color:#ffe0dc}
+.nxmask{position:fixed;inset:0;z-index:200;background:rgba(5,7,16,.72);display:flex;align-items:center;justify-content:center;padding:16px}
+.nxmask[hidden]{display:none}
+.nxbox{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;width:100%;max-width:420px;max-height:90vh;overflow:auto}
+.nxbox h3{margin:0 0 10px;font-size:16px}
+.nxbody{font-size:13px;line-height:1.7;color:var(--fg);margin-bottom:14px}
+.nxbody b{color:var(--gold)}
+.nxbtns{display:flex;flex-direction:column;gap:8px}
+.nxbtns .btn{width:100%;padding:10px 14px}
 .btn.sm{padding:4px 10px;font-size:12px;border-radius:999px}
 .btn.ghost{background:transparent}
 
@@ -471,11 +479,16 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <div class="updbar" id="updBar" hidden role="alert"><span>新しいバージョンがあります。</span><button class="btn sm pri" id="updBtn" type="button">今すぐ更新</button></div>
 <button class="fab" id="fab" type="button" hidden></button>
 <div class="toast" id="toast" hidden></div>
+<div class="nxmask" id="nxMask" hidden><div class="nxbox" role="dialog" aria-modal="true" aria-labelledby="nxTitle">
+  <h3 id="nxTitle">次の試合へ進みます</h3>
+  <div class="nxbody" id="nxBody"></div>
+  <div class="nxbtns"><button class="btn pri" id="nxSwap" type="button">入れ替えて続行</button><button class="btn" id="nxKeep" type="button">入れ替えずに続行</button><button class="btn ghost" id="nxCancel" type="button">キャンセル</button></div>
+</div></div>
 
 <script>
 (function(){
 "use strict";
-var BUILD="20261106-10";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261106-13";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="host";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -855,6 +868,10 @@ function wireCreate(){
   $("#poolSec").addEventListener("change",function(){var v=Math.round(+$("#poolSec").value);cs.pool=v>=10?Math.min(600,v):10;$("#poolSec").value=cs.pool;renderCreate()});
   $("#segTimer").addEventListener("click",function(e){var b=e.target.closest("button");if(!b||cs.custom)return;cs.timer=+b.dataset.v;renderCreate()});
   function normTm(v){v=Math.round(+v||0);return Math.max(5,Math.min(120,v))}      /* 指定時間: 5秒〜120秒(1秒単位) */
+  $("#nxSwap").addEventListener("click",function(){nxClose();act({a:"next",swap:true})});
+  $("#nxKeep").addEventListener("click",function(){nxClose();act({a:"next",swap:false})});
+  $("#nxCancel").addEventListener("click",nxClose);
+  $("#nxMask").addEventListener("click",function(e){if(e.target===this)nxClose()});
   $("#tmCustom").addEventListener("change",function(){cs.custom=this.checked;if(!cs.custom&&[15,30,45,60].indexOf(cs.timer)<0)cs.timer=30;renderCreate()});
   $("#tmSec").addEventListener("input",function(){var v=+this.value;if(v>=5&&v<=120&&v===Math.round(v)){cs.timer=v;renderCreate()}});
   $("#tmSec").addEventListener("change",function(){cs.timer=normTm(this.value);this.value=cs.timer;renderCreate()});
@@ -1000,14 +1017,16 @@ function renderLobby(){
   $("#readybar").innerHTML=rb;
   $("#rStrip").innerHTML=stripHTML(S.cfg.rows);
 }
-function nextGame(){      /* フィアレス: 確認してから、今の試合のピックを使用済みにしてロビーへ */
+function nextGame(){      /* フィアレス: 今の試合のピックを使用済みにしてロビーへ。ホームとアウェイを入れ替えるかどうかは、ここで選ぶ */
   var ps=[],bs=[];
   Object.keys(S.log||{}).forEach(function(k){var t=D.turns[+k],h=S.log[k].hero;if(!t||!h)return;(t.type==="P"?ps:bs).push(h)});
-  var m="次の試合へ進みます。\n\n次の試合から使えなくなるヒーロー:\n"+(ps.length?ps.join("、"):"(なし)");
-  if(S.cfg.fearlessBan)m+="\n\nBANされたヒーローも使えなくなります:\n"+(bs.length?bs.join("、"):"(なし)");
-  m+="\n\nロビーに戻ります。全員が準備完了を押すと、次の試合が始まります。";
-  if(window.confirm(m))act({a:"next"});
+  var m="<b>次の試合から使えなくなるヒーロー</b><br>"+esc(ps.length?ps.join("、"):"(なし)");
+  if(S.cfg.fearlessBan)m+="<br><br><b>BANされたヒーローも使えなくなります</b><br>"+esc(bs.length?bs.join("、"):"(なし)");
+  m+="<br><br>ロビーに戻ります。全員が準備完了を押すと、次の試合が始まります。<br>ホームとアウェイを入れ替えますか?";
+  $("#nxBody").innerHTML=m;$("#nxMask").hidden=false;
+  try{$("#nxSwap").focus()}catch(e){}
 }
+function nxClose(){$("#nxMask").hidden=true}
 function extOf(){return (S&&S.cfg&&S.cfg.ext)||"reset"}
 function poolLeft(t,now){                      /* チームの時間プールの残り(ミリ秒)。今の手番のチームは超過分を引いて表示 */
   var p=(S.pool&&S.pool[t])||0;
