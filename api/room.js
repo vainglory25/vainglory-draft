@@ -184,6 +184,7 @@ function handle(S, uid, m, body) {
         var left = S.cfg.heroes.filter(function (h) { return S.cfg.fixedBans.indexOf(h) < 0 && nu.indexOf(h) < 0; }).length;
         if (left < S.cfg.size * 2 + nb * 2) { msg = "使えるヒーローが足りなくなるため、次の試合へは進めません。「最初から」で使用済みをリセットしてください"; break; }
         S.used = nu; S.game = (S.game || 1) + 1;
+        if (m.swap === true) Object.keys(mem).forEach(function (k) { if (mem[k].team === "home") mem[k].team = "away"; else if (mem[k].team === "away") mem[k].team = "home"; });      /* 次の試合は、ホームとアウェイを入れ替える(席の並び・代表者はそのまま) */
       } else if (S.cfg.fearless) { S.used = []; S.game = 1; }      /* フィアレスの「最初から」: 使用済みを全部戻す */
       S.phase = "lobby"; S.turn = 0; S.deadline = 0; S.startsAt = 0; S.pendingHero = ""; S.pendingTurn = -1; S.resetT = -1; S.pausedAt = 0;
       S.cands = {}; S.log = {}; S.leaders = null; S.code = 0; S.seats = { home: [], away: [] }; S.pool = { home: 0, away: 0 };
