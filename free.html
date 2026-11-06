@@ -321,6 +321,7 @@ body.has-fab .wrap{padding-bottom:110px}
 .tile{display:block;padding:0;aspect-ratio:1/1;overflow:hidden;border-radius:8px}
 .tile .mono{position:absolute;inset:0;width:100%;height:100%;border-radius:0;font-size:22px}
 .tile .mono.hv{font-size:0}
+.tile:has(.mono.hv) .nm{opacity:0}      /* 画像に名前が入っているので、重ねる文字は隠す(画像がない人だけ文字で出す)。重ねたい場合はこの行を消す */
 .tile .nm{position:absolute;left:0;right:0;bottom:0;z-index:1;max-width:none;padding:18px 2px 3px;text-align:center;font-size:11px;font-weight:700;line-height:1.15;color:#fff;text-shadow:0 1px 3px #000;background:linear-gradient(to top,rgba(6,7,18,.94),rgba(6,7,18,0))}
 .tile .nm.lg{font-size:10px}
 .tile .nm.xl{font-size:9px;letter-spacing:-.02em}
@@ -356,6 +357,22 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
   .poolrow .pl{display:none}.poolrow .pc{padding:2px 8px}.poolrow{gap:6px}
 }
 @media (max-width:420px){.teams{grid-template-columns:1fr}}
+/* ロビーの表示切り替え: PC表示=HOMEとAWAYを左右に並べる(狭い画面でも) / モバイル標準=縦に並べる(広い画面では幅をしぼる) */
+.lay-old .teams{grid-template-columns:1fr 1fr}
+/* モバイル標準のロビー: ドラフト中と同じ「HOME / AWAY の帯に、席のカードを横一列に」並べる */
+.lay-new .teams{grid-template-columns:1fr;gap:8px}
+.lay-new .team{padding:10px 10px 8px;border-top:1px solid var(--line);border-left:4px solid var(--line);border-radius:12px}
+.lay-new .team.home{border-left-color:var(--home)}
+.lay-new .team.away{border-left-color:var(--away)}
+.lay-new .team h3{font-size:13px;margin-bottom:8px}
+.lay-new .seatrow{display:flex;gap:6px}
+.lay-new .seat{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;position:relative;margin:0;padding:18px 3px 6px;min-height:84px;text-align:center}
+.lay-new .seat .sn{position:absolute;top:3px;left:6px;font-size:11px}
+.lay-new .seat .who{max-width:100%;font-size:12px;line-height:1.25;white-space:normal;word-break:break-all;overflow:hidden}
+.lay-new .seat .who small{display:block;margin:1px 0 0}
+.lay-new .seat>span:last-child{justify-content:center;flex-wrap:wrap;gap:4px;margin-top:auto}
+.lay-new .seat.empty .who{font-size:11px}
+@media (max-width:560px){.lay-old .teams{gap:8px}.lay-old .teams .seat{padding-left:6px;padding-right:6px}}
 @media (prefers-reduced-motion:reduce){.cell.cur{animation:none!important}}
 </style>
 </head>
@@ -403,8 +420,8 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
           <label class="optt sub" id="fbanRow" hidden><input type="checkbox" id="fbanChk">BANしたヒーローも次の試合で使えない</label>
           <p class="hint">フィアレスの部屋では、ドラフト完了後にホストが「次の試合へ」を押すと、使用済みを引き継いでロビーに戻ります。部屋を作ったあとは変更できません。</p>
         </div>
-        <div class="row"><span class="lab">1手番の制限時間</span><div class="seg" id="segTimer" role="group" aria-label="制限時間"><button type="button" data-v="15">15秒</button><button type="button" data-v="30">30秒</button><button type="button" data-v="45">45秒</button><button type="button" data-v="60">60秒</button></div></div>
-        <div class="row" id="tmRow"><label class="optt" style="margin:0"><input type="checkbox" id="tmCustom"><b>指定時間入力</b>(5秒〜120秒)</label><span><input class="field num" id="tmSec" type="number" inputmode="numeric" min="5" max="120" step="1" value="30" style="width:90px" disabled> 秒</span></div>
+        <div class="row"><span class="lab">1手番の制限時間</span><div class="seg" id="segTimer" role="group" aria-label="制限時間"><button type="button" data-v="15">15秒</button><button type="button" data-v="30">30秒</button><button type="button" data-v="45">45秒</button><button type="button" data-v="60">60秒</button><button type="button" data-v="c">指定</button></div></div>
+        <div class="row" id="tmRow"><label class="lab" for="tmSec" style="margin:0">指定する秒数(5秒〜120秒)</label><span><input class="field num" id="tmSec" type="number" inputmode="numeric" min="5" max="120" step="1" value="20" style="width:90px"> 秒</span></div>
         <div class="row"><span class="lab">タイマー延長</span><div class="seg" id="segExt" role="group" aria-label="タイマー延長"><button type="button" data-v="pool">時間プール</button><button type="button" data-v="reset">リセット</button><button type="button" data-v="half">半分追加</button><button type="button" data-v="none">なし</button></div></div>
         <div class="row" id="poolRow"><label class="lab" for="poolSec">チームの時間プール(秒)</label><input class="field num" id="poolSec" type="number" inputmode="numeric" min="10" max="600" step="5" style="width:110px"></div>
         <p class="hint" id="extHint"></p>
@@ -488,7 +505,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261106-13";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261106-18";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="free";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -535,7 +552,7 @@ function monoHTML(n){
 }
 /* 画像の拡大率と位置をパーセントで指定して、1人分(正方形)だけを見せる。どの大きさの枠でも同じ切り出しになる */
 function buildHeroCss(){
-  var css="",CROP=168,OX=27,OY=5,PX=243.3,PY=243.5;
+  var css="",CROP=232,OX=0,OY=0,PX=243.3,PY=243.5;      /* 元のタイル全体(名前入り)を表示。以前の切り出しに戻すときは CROP=168,OX=27,OY=5 */
   HEROES.forEach(function(h,i){
     var p=HERO_POS[h],sh=p&&SHEETS[p[0]];if(!sh)return;
     var cx=Math.round(sh.x+PX*p[1])+OX,cy=Math.round(sh.y+PY*p[2])+OY;
@@ -571,7 +588,7 @@ function refreshEntry(){
 }
 var off=0,connected=false;
 var localSel="",q="";
-var cs={custom:false,leader:false,fearless:false,fbans:false,size:3,timer:30,bans:2,ext:"pool",pool:120,rows:[],fixed:["チャーンウォーカー","ヴィオラ"]};   /* 既定の固定BAN(作成画面で変更できます) */
+var cs={custom:true,leader:false,fearless:false,fbans:false,size:3,timer:20,bans:2,ext:"pool",pool:120,rows:[],fixed:["チャーンウォーカー","ヴィオラ"]};   /* 既定の固定BAN(作成画面で変更できます) */
 
 function nowS(){return Date.now()+off}
 function toast(t){var el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true},2600)}
@@ -826,8 +843,8 @@ function renderCreateBtn(){
 }
 function renderCreate(){
   $$("#segSize button").forEach(function(b){b.classList.toggle("on",+b.dataset.v===cs.size)});
-  $$("#segTimer button").forEach(function(b){b.classList.toggle("on",!cs.custom&&+b.dataset.v===cs.timer);b.disabled=!!cs.custom;b.style.opacity=cs.custom?".4":""});
-  $("#tmCustom").checked=!!cs.custom;$("#tmSec").disabled=!cs.custom;
+  $$("#segTimer button").forEach(function(b){b.classList.toggle("on",b.dataset.v==="c"?!!cs.custom:(!cs.custom&&+b.dataset.v===cs.timer))});
+  $("#tmRow").hidden=!cs.custom;
   if(cs.custom&&document.activeElement!==$("#tmSec"))$("#tmSec").value=cs.timer;
   $$("#segBans button").forEach(function(b){b.classList.toggle("on",+b.dataset.v===cs.bans)});
   $$("#segExt button").forEach(function(b){b.classList.toggle("on",b.dataset.v===cs.ext)});
@@ -866,13 +883,12 @@ function wireCreate(){
   $("#segExt").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.ext=b.dataset.v;renderCreate()});
   $("#poolSec").addEventListener("input",function(){var v=Math.round(+$("#poolSec").value);if(v>=10&&v<=600)cs.pool=v;renderCreate()});
   $("#poolSec").addEventListener("change",function(){var v=Math.round(+$("#poolSec").value);cs.pool=v>=10?Math.min(600,v):10;$("#poolSec").value=cs.pool;renderCreate()});
-  $("#segTimer").addEventListener("click",function(e){var b=e.target.closest("button");if(!b||cs.custom)return;cs.timer=+b.dataset.v;renderCreate()});
+  $("#segTimer").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;if(b.dataset.v==="c"){cs.custom=true;if(!(cs.timer>=5&&cs.timer<=120))cs.timer=20}else{cs.custom=false;cs.timer=+b.dataset.v}renderCreate()});
   function normTm(v){v=Math.round(+v||0);return Math.max(5,Math.min(120,v))}      /* 指定時間: 5秒〜120秒(1秒単位) */
   $("#nxSwap").addEventListener("click",function(){nxClose();act({a:"next",swap:true})});
   $("#nxKeep").addEventListener("click",function(){nxClose();act({a:"next",swap:false})});
   $("#nxCancel").addEventListener("click",nxClose);
   $("#nxMask").addEventListener("click",function(e){if(e.target===this)nxClose()});
-  $("#tmCustom").addEventListener("change",function(){cs.custom=this.checked;if(!cs.custom&&[15,30,45,60].indexOf(cs.timer)<0)cs.timer=30;renderCreate()});
   $("#tmSec").addEventListener("input",function(){var v=+this.value;if(v>=5&&v<=120&&v===Math.round(v)){cs.timer=v;renderCreate()}});
   $("#tmSec").addEventListener("change",function(){cs.timer=normTm(this.value);this.value=cs.timer;renderCreate()});
   $("#segBans").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.bans=+b.dataset.v;setRows();renderCreate()});
@@ -1003,7 +1019,7 @@ function renderLobby(){
       else if(me.locked)acts="";
       else acts='<button class="btn sm '+t+'" type="button" data-sit="'+t+'"'+(seats.length>=N?" disabled":"")+'>'+teamJa(t)+'に参加</button>'+(S.cfg.leader&&isHost?' <button class="btn sm pri" type="button" data-sit="'+t+'" data-lead="1"'+(seats.length>=N?" disabled":"")+'>'+teamJa(t)+'に参加(代表者)</button>':'');
     }
-    html+='<div class="team '+t+'"><h3><span>'+(t==="home"?"HOME":"AWAY")+'</span><span class="tr'+(D.teamReady[t]?" ok":"")+'">'+(D.teamReady[t]?"チーム準備完了":(S.cfg.leader?(D.leaders[t]?"代表者 未準備":"代表者なし"):"準備 "+rc+"/"+N))+'</span></h3>'+rows+'<div class="acts">'+acts+'</div></div>';
+    html+='<div class="team '+t+'"><h3><span>'+(t==="home"?"HOME":"AWAY")+'</span><span class="tr'+(D.teamReady[t]?" ok":"")+'">'+(D.teamReady[t]?"チーム準備完了":(S.cfg.leader?(D.leaders[t]?"代表者 未準備":"代表者なし"):"準備 "+rc+"/"+N))+'</span></h3><div class="seatrow">'+rows+'</div><div class="acts">'+acts+'</div></div>';
   });
   $("#teams").innerHTML=html;
   var rb="";
