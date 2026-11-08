@@ -116,34 +116,76 @@ function quotaOf(cfg) { return { C: 1, J: 1, L: cfg.size - 2 }; }
 /* BANなら「取られていない」だけ。PICKは、ロール別・予算制の条件も見る */
 function pickable(S, h, team, type, extra) {
   if (taken(S, h, team, type)) return false;
-  if (type !== "P") return true;
+  if (type !== "P") {      /* BAN: 取られていないだけでなく、そのBANで、両チームのピックが成り立たなくならないこと */
+    if (!(S.cfg.cost || S.cfg.hcls)) return true;
+    return ["home", "away"].every(function (t) { return feasibleAfter(S, h, t); });
+  }
   var cfg = S.cfg, mine = pickedBy(S, team).concat((extra || []).filter(function (x) { return x !== h; })), left = cfg.size - mine.length - 1;
   if (left < 0) return false;
   var cnt = { C: 0, J: 0, L: 0 }, spent = 0;
   mine.forEach(function (x) { if (cfg.hcls) cnt[cfg.hcls[x]]++; if (cfg.cost) spent += cfg.cost[x]; });
   if (cfg.hcls) { var c = cfg.hcls[h]; if (cnt[c] >= quotaOf(cfg)[c]) return false; cnt[c]++; }
-  if (cfg.cost) {
-    spent += cfg.cost[h];
-    var need = 0;
-    if (cfg.hcls) {      /* これから足りない役割ごとに、一番安いヒーローを買えるだけの予算が残っているか */
-      var q = quotaOf(cfg);
-      ["C", "J", "L"].forEach(function (cl) {
-        var mn = 99; cfg.heroes.forEach(function (x) { if (cfg.hcls[x] === cl && cfg.cost[x] < mn) mn = cfg.cost[x]; });
-        need += Math.max(0, q[cl] - cnt[cl]) * mn;
-      });
-    } else {
-      var mn2 = 99; cfg.heroes.forEach(function (x) { if (cfg.cost[x] < mn2) mn2 = cfg.cost[x]; });
-      need = left * mn2;
-    }
-    if (spent + need > cfg.budget) return false;
+  if (cfg.cost) spent += cfg.cost[h];
+  if (!cfg.cost && !cfg.hcls) return true;
+  if (!feasible(S, h, team, mine.concat([h]), cnt, spent)) return false;
+  return feasibleAfter(S, cfg.mirror ? "" : h, team === "home" ? "away" : "home", mine.concat([h]));      /* 自分のピックで、相手チームが詰まらないこと */
+}
+/* team の、いまのピックのまま、h が(BANや相手に)取られても、残りの枠を埋められるか */
+function feasibleAfter(S, h, team, otherPicks) {
+  var cfg = S.cfg, m = pickedBy(S, team), cn = { C: 0, J: 0, L: 0 }, sp = 0;
+  m.forEach(function (x) { if (cfg.hcls) cn[cfg.hcls[x]]++; if (cfg.cost) sp += cfg.cost[x]; });
+  return feasible(S, h, team, m, cn, sp, true, otherPicks);
+}
+/* h を選んだあとも、残りの枠を、実際にまだ空いているヒーローで、役割と予算の範囲内に埋められるか。
+   相手チームの残りのピックが、いちばん安いヒーローから取っていく最悪の場合でも足りるかを見る */
+function feasible(S, h, team, mine, cnt, spent, isBan, otherPicks) {
+  var cfg = S.cfg, left = cfg.size - mine.length, q = quotaOf(cfg);
+  if (left <= 0) return !cfg.cost || spent <= cfg.budget;
+  var opp = team === "home" ? "away" : "home", oppPicked = otherPicks || pickedBy(S, opp);
+  var oc = { C: 0, J: 0, L: 0 };
+  if (cfg.hcls) oppPicked.forEach(function (x) { oc[cfg.hcls[x]]++; });
+  var nb = 0;      /* これから行われるBANは見込まない(BANも「ピックを成り立たなくするもの」は選べないため) */
+  var cls = cfg.hcls ? ["C", "J", "L"] : ["*"], lists = { C: [], J: [], L: [], "*": [] };
+  cfg.heroes.forEach(function (x) {
+    if (x === h || mine.indexOf(x) >= 0 || taken(S, x, team, "P")) return;
+    lists[cfg.hcls ? cfg.hcls[x] : "*"].push(cfg.cost ? cfg.cost[x] : 0);
+  });
+  var total = 0;
+  for (var k = 0; k < cls.length; k++) {
+    var c = cls[k], r = cfg.hcls ? q[c] - cnt[c] : left;
+    if (r <= 0) continue;
+    var oppNeed = cfg.mirror ? 0 : Math.max(0, cfg.hcls ? q[c] - oc[c] : cfg.size - oppPicked.length);
+    var L = lists[c].sort(function (a, b) { return a - b; }), skip = oppNeed + nb;
+    if (L.length < skip + r) return false;
+    for (var j = skip; j < skip + r; j++) total += L[j];
   }
-  return true;
+  return !cfg.cost || spent + total <= cfg.budget;
+}
+/* 予算の最低ライン: コスト表で、両チームがチームを組める最小の予算。相手が安いヒーローから取っていく最悪の場合でも足りる点数(ミラーありなら、両チームが同じ安いヒーローを選べる) */
+function minBudget(hs, fx, cost, hcls, size, mirror) {
+  var groups = hcls ? { C: [], J: [], L: [] } : { "*": [] }, q = hcls ? { C: 1, J: 1, L: size - 2 } : { "*": size }, tot = 0;
+  hs.forEach(function (h) { if (fx.indexOf(h) < 0) groups[hcls ? hcls[h] : "*"].push(cost[h]); });
+  for (var c in groups) {
+    var L = groups[c].sort(function (a, b) { return a - b; }), from = mirror ? 0 : q[c];
+    if (L.length < from + q[c]) return Infinity;
+    for (var i = from; i < from + q[c]; i++) tot += L[i];
+  }
+  return tot;
 }
 function cleanName(n) { return String(n == null ? "" : n).replace(/[\u0000-\u001f\u007f-\u009f\u00ad\u034f\u115f\u1160\u17b4\u17b5\u180e\u200b-\u200f\u202a-\u202e\u2060-\u206f\u3164\ufeff\uffa0<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 14); }
 function autoHero(S, team, type, avoid, extra) {
   avoid = (avoid || []).concat(extra || []);
   var ok = S.cfg.heroes.filter(function (h) { return avoid.indexOf(h) < 0 && pickable(S, h, team, type, extra); });
-  if (!ok.length) ok = S.cfg.heroes.filter(function (h) { return avoid.indexOf(h) < 0 && !taken(S, h, team, type); });      /* 条件を満たす人がいなければ、取られていない誰か */
+  if (!ok.length) {      /* 条件を満たす人がいなければ、取られていない中で、役割が満員でなく、いちばん安いヒーロー(強いヒーローを引かないように) */
+    ok = S.cfg.heroes.filter(function (h) { return avoid.indexOf(h) < 0 && !taken(S, h, team, type); });
+    if (type === "P" && (S.cfg.cost || S.cfg.hcls) && ok.length) {
+      var mineF = pickedBy(S, team).concat(extra || []), cf = { C: 0, J: 0, L: 0 }, qf = quotaOf(S.cfg);
+      if (S.cfg.hcls) mineF.forEach(function (x) { cf[S.cfg.hcls[x]]++; });
+      var sc = function (h) { return (S.cfg.hcls && cf[S.cfg.hcls[h]] >= qf[S.cfg.hcls[h]] ? 1000 : 0) + (S.cfg.cost ? S.cfg.cost[h] : 0); };
+      var best = Math.min.apply(null, ok.map(sc));
+      ok = ok.filter(function (h) { return sc(h) === best; });
+    }
+  }
   return ok.length ? ok[Math.floor(Math.random() * ok.length)] : "";
 }
 function finishDraft(S) { S.phase = "done"; S.deadline = 0; S.cands = {}; S.pausedAt = 0; S.bp = null; S.code = 3001 + Math.floor(Math.random() * 6999); S.leaders = S.leaders || null; }      /* 3001〜9999 */
@@ -168,6 +210,12 @@ function sampleAvail(S) {
       var q = quotaOf(cfg), cnt = { C: 0, J: 0, L: 0 };
       a.forEach(function (h) { cnt[cfg.hcls[h]]++; });
       if (!["C", "J", "L"].every(function (c) { return cnt[c] >= q[c] * 2 + 1; })) continue;
+    }
+    if (cfg.hcls || cfg.cost) {      /* BANの前の時点で、両チームが予算と役割を満たして埋められるプールだけを採用 */
+      var sv = S.avail, st = S.turn; S.avail = a; S.turn = 1e9;
+      var okp = ["home", "away"].every(function (t) { return feasible(S, "", t, [], { C: 0, J: 0, L: 0 }, 0, true); });
+      S.avail = sv; S.turn = st;
+      if (!okp) continue;
     }
     if (a.length >= cfg.size * 2 + bans * 2) return a;
   }
@@ -486,6 +534,7 @@ function validCfg(c) {
     if (!(budget >= size && budget <= size * 5)) return null;
     cost = {};
     for (var m2 = 0; m2 < hs.length; m2++) { var cv = Math.round(+(c.cost && c.cost[hs[m2]])); if (!(cv >= 1 && cv <= 5)) return null; cost[hs[m2]] = cv; }
+    if (budget < minBudget(hs, fx, cost, hcls, size, c.mirror === true)) return null;      /* コスト表では、チームを組めない予算 */
   }
   if (+c.randPool > 0) {
     randPool = Math.round(+c.randPool);
