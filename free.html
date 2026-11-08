@@ -127,6 +127,11 @@ details.fx[open] summary{margin-bottom:10px}
 .tile .cst.big{font-size:13px;padding:3px 7px}
 .tile .ob{position:absolute;bottom:2px;left:2px;z-index:3;font-style:normal;font-size:9px;line-height:1;padding:2px 4px;border-radius:4px;background:#000b;color:var(--muted);pointer-events:none}
 .tnbox{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 12px}.tnbox input{width:100%;min-width:0;box-sizing:border-box}.tnbox label{min-width:0;display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mute,#9aa3c7)}.tsub{opacity:.6;font-size:.7em;font-weight:600;margin-left:2px}
+.sec .lab{font-weight:800;font-size:14px;color:var(--fg)}.sec .row:last-child,.sec>.hint:last-child{margin-bottom:0}.sec .hint{margin-bottom:0}
+.sumbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-height:34vh;overflow-y:auto;margin:0 0 14px;padding:10px 10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 6px 14px rgba(0,0,0,.35);scrollbar-width:thin}
+.sumbar::before{content:"現在の設定";flex:none;font-size:11px;color:var(--muted);letter-spacing:.08em;margin-right:2px}
+.schip{display:inline-flex;align-items:center;flex:none;padding:2px 9px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);font-size:12px;white-space:nowrap}
+.sumbar .mchip{flex:none}
 .mchip{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:999px;border:1px solid var(--gold);color:var(--gold);font-size:12px;white-space:nowrap}
 .mchip.ser{background:rgba(232,196,108,.12);font-weight:700}
 .colh .tinfo{font-size:11px;color:var(--muted);font-weight:400;letter-spacing:0;margin-left:10px}
@@ -426,7 +431,8 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
     <div class="cols">
       <div class="card" id="createCard" hidden>
         <h2>ルームを作成</h2>
-        <div class="row"><span class="lab">形式</span><div class="seg" id="segSize" role="group" aria-label="形式"><button type="button" data-v="3">3v3</button><button type="button" data-v="5">5v5</button></div></div>
+        <div class="sumbar" id="sumBar" aria-label="現在の設定"></div>
+        <div class="optbox sec"><div class="row" style="margin:0"><span class="lab">形式</span><div class="seg" id="segSize" role="group" aria-label="形式"><button type="button" data-v="3">3v3</button><button type="button" data-v="5">5v5</button></div></div></div>
         <div class="optbox">
           <label class="optt"><input type="checkbox" id="leaderChk"><b>代表者モード</b>(各チームの代表者1人だけが操作する)</label>
           <p class="hint" id="leaderHint">オフ:チーム全員が順番に操作します / オン:各チームの代表者だけがBAN・ピックします(代表者は入室時に選びます)。部屋を作ったあとは変更できません。</p>
@@ -478,22 +484,28 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
           <p class="hint">ホストが「次の試合へ」を押すと、ホームとアウェイの参加者が入れ替わってロビーに戻ります(試合ごとに交互になります)。オフのときは、そのままのチーム分けで戻ります。</p>
         </div>
         </details>
+        <div class="optbox sec">
         <div class="row"><span class="lab">1手番の制限時間</span><div class="seg" id="segTimer" role="group" aria-label="制限時間"><button type="button" data-v="15">15秒</button><button type="button" data-v="30">30秒</button><button type="button" data-v="45">45秒</button><button type="button" data-v="60">60秒</button><button type="button" data-v="c">指定</button></div></div>
         <div class="row" id="tmRow"><label class="lab" for="tmSec" style="margin:0">指定する秒数(5秒〜120秒)</label><span><input class="field num" id="tmSec" type="number" inputmode="numeric" min="5" max="120" step="1" value="20" style="width:90px"> 秒</span></div>
         <div class="row" id="extRow"><span class="lab">タイマー延長</span><div class="seg" id="segExt" role="group" aria-label="タイマー延長"><button type="button" data-v="none">なし</button><button type="button" data-v="pool">時間プール</button><button type="button" data-v="reset">リセット</button><button type="button" data-v="half">半分追加</button></div></div>
         <div class="row" id="poolRow"><label class="lab" for="poolSec">チームの時間プール(秒)</label><input class="field num" id="poolSec" type="number" inputmode="numeric" min="10" max="600" step="5" style="width:110px"></div>
         <p class="hint" id="extHint"></p>
-                <div class="row" id="banNRow" style="margin-top:40px"><span class="lab">BANの人数(各チーム)</span><span class="stp"><button type="button" class="btn sm" id="banMinus" aria-label="BANを1人減らす">−</button><b class="num" id="banN">2</b><span>人</span><button type="button" class="btn sm" id="banPlus" aria-label="BANを1人増やす">+</button></span></div>
+        </div>
+                <div class="optbox sec">
+        <div class="row" id="banNRow"><span class="lab">BANの数(各チーム)</span><span class="stp"><button type="button" class="btn sm" id="banMinus" aria-label="BANを1体減らす">−</button><b class="num" id="banN">2</b><span>体</span><button type="button" class="btn sm" id="banPlus" aria-label="BANを1体増やす">+</button></span></div>
         <div class="lab" style="margin-bottom:6px">進行順</div>
         <div class="rlist" id="cStrip"></div>
         <p class="hint" id="stripHint"></p>
-        <div class="lab" style="margin-top:14px">固定BAN(最初からBANするヒーロー) <span id="fixedCount"></span></div>
+        </div>
+        <div class="optbox sec">
+        <div class="lab" style="margin-top:0;margin-bottom:8px">固定BAN(最初からBANするヒーロー) <span id="fixedCount"></span></div>
         <div class="fixed-list" id="fixedList"></div>
         <details class="fx" id="fixedDet">
           <summary>固定BANを変更する(タップで追加・解除)</summary>
           <div class="searchrow"><input class="field" id="fq" placeholder="ヒーロー名で絞り込み" autocomplete="off"></div>
           <div class="pool-scroll" style="max-height:320px"><div id="fPool"></div></div>
         </details>
+        </div>
         <div class="sum" id="cSum"></div>
         <button class="btn pri" id="createBtn" type="button" disabled>ルームを作成して入室</button>
         <p class="hint">作った人がホストです(「次の試合へ」や席の入れ替えができます)。進行はサーバーが行うので、タブを閉じても再読み込みしても続けられます。</p>
@@ -564,7 +576,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261108-6";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261108-11";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="free";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -1001,7 +1013,7 @@ function renderCreateBtn(){
   var cnt=cs.rows.filter(function(x){return x==="B"}).length;
   var short=HEROES.length-cs.fixed.length<cs.size*2+cs.bans*2;
   $("#createBtn").disabled=!(cnt===cs.bans&&!short&&!joining);
-  if(short)$("#createMsg").textContent="ヒーローが足りません(固定BAN+ピック+BANが、全"+HEROES.length+"体を超えています)。BANの人数か固定BANを減らしてください。";
+  if(short)$("#createMsg").textContent="ヒーローが足りません(固定BAN+ピック+BANが、全"+HEROES.length+"体を超えています)。BANの数か固定BANを減らしてください。";
   else if($("#createMsg").textContent.indexOf("ヒーローが足りません")===0)$("#createMsg").textContent="";
 }
 function renderCreate(){
@@ -1016,7 +1028,7 @@ function renderCreate(){
   $("#extRow").hidden=cs.blind;$("#extHint").hidden=cs.blind;
   $("#poolRow").hidden=cs.ext!=="pool"||cs.blind;
   $("#mirrorChk").checked=cs.mirror;$("#blindChk").checked=cs.blind;$("#roleChk").checked=cs.role;
-  $("#roleHint").textContent="各チームのピックは、キャプテン1人・ジャングラー1人・レーナー"+(cs.size-2)+"人になります。オフのときは、役割に関係なく選べます。";
+  $("#roleHint").textContent="各チームのピックは、キャプテン1体・ジャングラー1体・レーナー"+(cs.size-2)+"体になります。オフのときは、役割に関係なく選べます。";
   var minRp=cs.size*2+cs.bans*2+(cs.role?4:0),avail=HEROES.length-cs.fixed.length;
   $("#rpChk").checked=cs.rp>0;$("#rpRow").hidden=!(cs.rp>0);
   $$("#segRp button").forEach(function(b){var v=+b.dataset.v,bad=v<minRp||v>avail;b.disabled=bad;b.style.opacity=bad?".4":"";b.classList.toggle("on",cs.rp===v)});
@@ -1034,7 +1046,7 @@ function renderCreate(){
   $("#swapChk").checked=cs.swap;
   $("#blindRow").hidden=!cs.blind;
   $$("#segBlind button").forEach(function(b){b.classList.toggle("on",(+b.dataset.v===1)===cs.blindAll)});
-  $("#blindHint").textContent=(cs.blindAll?"BANは全員分まとめて、PICKも全員分まとめて、同時に選んで確定します。チームの誰でも選べて(代表者モードなら代表者だけ)、人数ぶん揃えて確定すると、一斉に公開されます。進行順は、BANが先、PICKが後になります。":"各行で、両チームが同時に選んで確定すると、一斉に公開されます。")+" 時間切れは、ピックは足りないぶんがランダム、BANは選んだ分だけです。「ミラーあり」でないときは、同じヒーローをピックすると、先に確定した方が優先され、後の人は選び直しになります。BANなしにするには、下の「BANの人数」を「なし」にしてください。タイマー延長は「なし」になります。";
+  $("#blindHint").textContent=(cs.blindAll?"BANもPICKも、チーム全体の分をまとめて同時に選んで確定します。チームの誰でも選べて(代表者モードなら代表者だけ)、必要な数ぶん揃えて確定すると、一斉に公開されます。進行順は、BANが先、PICKが後になります。":"各行で、両チームが同時に選んで確定すると、一斉に公開されます。")+" 時間切れは、ピックは足りないぶんがランダム、BANは選んだ分だけです。「ミラーあり」でないときは、同じヒーローをピックすると、先に確定した方が優先され、後の人は選び直しになります。BANなしにするには、下の「BANの数(各チーム)」を0体にしてください。タイマー延長は「なし」になります。";
   if(document.activeElement!==$("#poolSec"))$("#poolSec").value=cs.pool;
   var half=Math.round(cs.timer/2);
   $("#extHint").textContent=cs.ext==="none"?"延長はありません。制限時間("+cs.timer+"秒)を過ぎると、ピックはランダム、BANは選択なしで、すぐ次の手番へ進みます。":cs.ext==="pool"?"制限時間を過ぎた分だけ、そのチームの時間プールから減っていきます(使った分は戻りません)。プールが0になると、ピックはランダム、BANは選択なしで次の手番へ進みます。延長ボタンはありません。":cs.ext==="reset"?"手番ごとに1回、残り時間を制限時間("+cs.timer+"秒)いっぱいに戻せます。時間切れは、ピックはランダム、BANは選択なしで次へ進みます。":"手番ごとに1回、残り時間に制限時間の約半分(+"+half+"秒)を追加できます。時間切れは、ピックはランダム、BANは選択なしで次へ進みます。";
@@ -1048,12 +1060,27 @@ function renderCreate(){
     sh+=cell(nh,"home")+'<button type="button" class="rflip" data-flip="'+i+'" title="この行の先攻を入れ替える"'+(bl2?" disabled":"")+'>⇄</button>'+cell(na,"away");
   });
   $("#cStrip").className="tgrid";$("#cStrip").innerHTML=sh;
-  $("#stripHint").textContent=(cs.blind&&cs.blindAll?"各チーム"+target+"人BAN、"+cs.size+"人ピックです。ブラインド(まとめて)なので、BAN→PICKの順に、それぞれ同時に出します。":(cs.bans===0?"BANなしです。":"各チーム"+target+"人BANです。")+cs.size+"人ピックで全"+cs.rows.length+"行です。左がHOME、右がAWAYで、数字が進む順番です。"+(cs.bans>0?"1行目はBAN固定です。BANにしたい行をタップすると、いちばん近いBANがその行に移動します。":"")+" 真ん中の ⇄ で、その行をどちらが先に行うかを入れ替えられます。")+(cs.blind&&!cs.blindAll?" (ブラインドの1行ずつでは、行の中は同時なので、数字は行の番号です)":"");
-  $("#fixedCount").textContent=cs.fixed.length?"("+cs.fixed.length+"人)":"";
+  $("#stripHint").textContent=(cs.blind&&cs.blindAll?"各チーム"+target+"体BAN、"+cs.size+"体ピックです。ブラインド(まとめて)なので、BAN→PICKの順に、それぞれ同時に出します。":(cs.bans===0?"BANなしです。":"各チーム"+target+"体BANです。")+cs.size+"体ピックで全"+cs.rows.length+"行です。左がHOME、右がAWAYで、数字が進む順番です。"+(cs.bans>0?"1行目はBAN固定です。BANにしたい行をタップすると、いちばん近いBANがその行に移動します。":"")+" 真ん中の ⇄ で、その行をどちらが先に行うかを入れ替えられます。")+(cs.blind&&!cs.blindAll?" (ブラインドの1行ずつでは、行の中は同時なので、数字は行の番号です)":"");
+  $("#fixedCount").textContent=cs.fixed.length?"("+cs.fixed.length+"体)":"";
   $("#fixedList").innerHTML=cs.fixed.map(function(h){return '<span class="fchip">'+monoHTML(h)+esc(h)+'</span>'}).join("");
   renderFixedPool();
-  $("#cSum").textContent=cs.size+"v"+cs.size+" / 各手番 "+cs.timer+"秒("+(cs.ext==="pool"?"チーム時間プール "+cs.pool+"秒":cs.ext==="reset"?"リセット":cs.ext==="none"?"延長なし":"半分追加")+") / "+(cs.bans?"BAN 各チーム"+cs.bans+"人(計"+cs.bans*2+"人)":"BANなし")+" + 固定BAN "+cs.fixed.length+"人 / 全 "+cs.rows.length+" 行"+(cs.leader?" / 代表者モード":"")+(cs.fearless?" / フィアレス"+(cs.fbans?"(BAN含む)":""):"")+(cs.mirror?" / ミラーあり":"")+(cs.blind?" / ブラインド"+(cs.blindAll?"(まとめて)":"(1行ずつ)"):"")+(cs.role?" / ロール別":"")+(cs.rp>0?" / ランダムプール"+cs.rp+"体":"")+(cs.bud?" / 予算制"+cs.budPts+"点":"")+(cs.serChk?" / シリーズ("+(cs.serUse?"BO"+cs.serN:"回数指定なし")+")":"")+(cs.swap?" / 次の試合で入れ替え":"");
+  $("#cSum").textContent=cs.size+"v"+cs.size+" / 各手番 "+cs.timer+"秒("+(cs.ext==="pool"?"チーム時間プール "+cs.pool+"秒":cs.ext==="reset"?"リセット":cs.ext==="none"?"延長なし":"半分追加")+") / "+(cs.bans?"BAN 各チーム"+cs.bans+"体(計"+cs.bans*2+"体)":"BANなし")+" + 固定BAN "+cs.fixed.length+"体 / 全 "+cs.rows.length+" 行"+(cs.leader?" / 代表者モード":"")+(cs.fearless?" / フィアレス"+(cs.fbans?"(BAN含む)":""):"")+(cs.mirror?" / ミラーあり":"")+(cs.blind?" / ブラインド"+(cs.blindAll?"(まとめて)":"(1行ずつ)"):"")+(cs.role?" / ロール別":"")+(cs.rp>0?" / ランダムプール"+cs.rp+"体":"")+(cs.bud?" / 予算制"+cs.budPts+"点":"")+(cs.serChk?" / シリーズ("+(cs.serUse?"BO"+cs.serN:"回数指定なし")+")":"")+(cs.swap?" / 次の試合で入れ替え":"");
+  renderSumBar();
   renderCreateBtn();
+}
+function renderSumBar(){      /* 部屋作成画面の上部に固定で、今の設定を表示する */
+  var base=[cs.size+"v"+cs.size,"各手番 "+cs.timer+"秒",cs.blind?"延長なし":(cs.ext==="pool"?"時間プール "+cs.pool+"秒":cs.ext==="reset"?"延長:リセット":cs.ext==="none"?"延長なし":"延長:半分追加"),cs.bans?"BAN 各チーム"+cs.bans+"体":"BANなし","固定BAN "+cs.fixed.length+"体","全"+cs.rows.length+"行"];
+  var modes=[];
+  if(cs.leader)modes.push("代表者モード");
+  if(cs.fearless)modes.push("フィアレス"+(cs.fbans?"(BAN含む)":""));
+  if(cs.mirror)modes.push("ミラーあり");
+  if(cs.blind)modes.push("ブラインド"+(cs.blindAll?"(まとめて)":"(1行ずつ)"));
+  if(cs.role)modes.push("ロール別ピック");
+  if(cs.rp>0)modes.push("ランダムプール "+cs.rp+"体");
+  if(cs.bud)modes.push("予算制 "+cs.budPts+"点");
+  if(cs.serChk)modes.push("シリーズ "+(cs.serUse?"BO"+cs.serN:"回数指定なし"));
+  if(cs.swap)modes.push("次の試合でHOME/AWAY入れ替え");
+  $("#sumBar").innerHTML=base.map(function(t){return '<span class="schip">'+esc(t)+'</span>'}).join("")+modes.map(function(t){return '<span class="mchip">'+esc(t)+'</span>'}).join("");
 }
 function groupsHTML(filter,tileFn){
   var f=String(filter||"").trim().toLowerCase(),out="";
@@ -1115,7 +1142,7 @@ function wireCreate(){
     for(var j=1;j<cs.rows.length;j++){
       if(cs.rows[j]==="B"&&(best<0||Math.abs(j-i)<Math.abs(best-i)))best=j;
     }
-    if(best<0){$("#createMsg").textContent="BANが1人のときは1行目のみがBANです。";return}
+    if(best<0){$("#createMsg").textContent="BANが1体のときは1行目のみがBANです。";return}
     cs.rows[best]="P";cs.rows[i]="B";cs.first=defaultFirst(cs.rows).split("");
     $("#createMsg").textContent="";renderCreate();
   });
@@ -1191,7 +1218,7 @@ function renderMeta(){
   var role=D.myTeam?'<span class="badge '+D.myTeam+'">'+teamJa(D.myTeam)+'で参加中</span>':(me&&me.spec?'<span class="badge spec">観戦</span>':'<span class="badge spec">未着席</span>');
   var bans=cfg.rows.split("").filter(function(x){return x==="B"}).length;
   var phase={lobby:"ロビー",countdown:"開始カウントダウン",draft:"ドラフト中",done:"ドラフト完了"}[S.phase];
-  $("#roomMeta").innerHTML=role+(isHost?'<span class="badge gold">ホスト</span>':'')+'<span class="badge gold">'+esc(phase)+'</span><span class="num">'+cfg.size+'v'+cfg.size+' / '+cfg.timer+'秒 / BAN 各チーム'+bans+'人 / '+cfg.rows.length+'行</span><span>観戦 '+spec+'人</span>';
+  $("#roomMeta").innerHTML=role+(isHost?'<span class="badge gold">ホスト</span>':'')+'<span class="badge gold">'+esc(phase)+'</span><span class="num">'+cfg.size+'v'+cfg.size+' / '+cfg.timer+'秒 / BAN 各チーム'+bans+'体 / '+cfg.rows.length+'行</span><span>観戦 '+spec+'人</span>';
 }
 function serLabel(){      /* シリーズ戦の勝ち数。ホーム/アウェイは、入れ替えを反映した今の側 */
   var si=serInfo();if(!si)return "";
@@ -1347,7 +1374,7 @@ function renderTurn(){
   }
   var c=D.cur,mine=isActor(),verb=c.type==="B"?"BAN":"PICK",used=S.resetT===S.turn,bl=S.cfg.blind;
   tb.className="turnbar "+(bl?"":c.team)+(mine?" mine":"");
-  var sn=stepN(),head=bl?'手番 '+(S.turn+1)+'-'+(S.se||S.turn+2)+' / '+D.turns.length+' · 同時 '+verb+(sn>1?'(各'+sn+'人まとめて)':''):'手番 '+(S.turn+1)+' / '+D.turns.length+' · '+verb;
+  var sn=stepN(),head=bl?'手番 '+(S.turn+1)+'-'+(S.se||S.turn+2)+' / '+D.turns.length+' · 同時 '+verb+(sn>1?'(各'+sn+'体まとめて)':''):'手番 '+(S.turn+1)+' / '+D.turns.length+' · '+verb;
   var who=bl?(mine?'<em>あなたの番です</em>':(blindWaiting()?'確定しました。相手を待っています':'両チーム同時に'+verb+'を選んでいます')):(mine?'<em>あなたの番です</em>':esc(teamJa(c.team))+' '+esc(nameOf(D.actor))+' の'+verb);
   tb.innerHTML='<div class="tb-l"><div class="k num">'+head+'</div>'+
     '<div class="v">'+who+'</div>'+
@@ -1535,7 +1562,7 @@ async function init(){
   checkUpdate();
   $("#myName").value=myName;
   buildHeroCss();
-  $("#leaderChk").addEventListener("change",function(){cs.leader=this.checked});
+  $("#leaderChk").addEventListener("change",function(){cs.leader=this.checked;renderCreate()});
   $("#fearlessChk").addEventListener("change",function(){cs.fearless=this.checked;$("#fbanRow").hidden=!cs.fearless;if(!cs.fearless){cs.fbans=false;$("#fbanChk").checked=false}renderCreate()});
   $("#fbanChk").addEventListener("change",function(){cs.fbans=this.checked;renderCreate()});
   setRows();wireCreate();wireRoom();renderCreate();
