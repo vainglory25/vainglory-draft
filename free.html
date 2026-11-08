@@ -482,7 +482,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
         <div class="row" id="extRow"><span class="lab">タイマー延長</span><div class="seg" id="segExt" role="group" aria-label="タイマー延長"><button type="button" data-v="none">なし</button><button type="button" data-v="pool">時間プール</button><button type="button" data-v="reset">リセット</button><button type="button" data-v="half">半分追加</button></div></div>
         <div class="row" id="poolRow"><label class="lab" for="poolSec">チームの時間プール(秒)</label><input class="field num" id="poolSec" type="number" inputmode="numeric" min="10" max="600" step="5" style="width:110px"></div>
         <p class="hint" id="extHint"></p>
-                <div class="row" id="banNRow" style="margin-top:40px"><span class="lab">BANの人数(各チーム)・0人でBANなし</span><span class="stp"><button type="button" class="btn sm" id="banMinus" aria-label="BANを1人減らす(0人でBANなし)">−</button><b class="num" id="banN">2</b><span>人</span><button type="button" class="btn sm" id="banPlus" aria-label="BANを1人増やす">+</button></span></div>
+                <div class="row" id="banNRow" style="margin-top:40px"><span class="lab">BANの人数(各チーム)</span><span class="stp"><button type="button" class="btn sm" id="banMinus" aria-label="BANを1人減らす">−</button><b class="num" id="banN">2</b><span>人</span><button type="button" class="btn sm" id="banPlus" aria-label="BANを1人増やす">+</button></span></div>
         <div class="lab" style="margin-bottom:6px">手番</div>
         <div class="rlist" id="cStrip"></div>
         <p class="hint" id="stripHint"></p>
@@ -563,7 +563,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261108-2";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261108-3";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="free";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
