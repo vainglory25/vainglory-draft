@@ -576,7 +576,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261108-11";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261108-14";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="free";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -663,11 +663,17 @@ var off=0,connected=false;
 var localSel="",q="";
 var COST0={};      /* 予算制のコスト(初期値): 添付の表のとおり(2点以外を列挙)。作成画面でホストが変更できます */
 HEROES.forEach(function(h){COST0[h]=2});
+/* 3v3用と5v5用で、ヒーローごとの初期コストを分けられます。5v5の値は、COST5の下で上書きしてください */
 ["グレース", "ランス", "ローレライ", "ライラ", "ジュール", "クラル", "ライム", "タカ", "アマエル", "バロン", "ブラックフェザー", "ケイン", "剣聖", "ケストレル", "キネティック", "ミホ"].forEach(function(h){COST0[h]=3});
 ["チャーンウォーカー", "ヴィオラ", "トニー"].forEach(function(h){COST0[h]=4});
 ["オゾ", "ソー", "ヴァーリア"].forEach(function(h){COST0[h]=1});
+var COST3=Object.assign({},COST0),COST5=Object.assign({},COST0);
+/* 5v5用: 3v3との違いだけ上書き */
+["アーダン","フィン","イェーツ","イシュター"].forEach(function(h){COST5[h]=3});
+["ライム","ソー"].forEach(function(h){COST5[h]=2});
+function costBase(sz){return Object.assign({},sz===5?COST5:COST3)}
 var HCLS={};ROLES.forEach(function(g){g.list.forEach(function(h){HCLS[h]=g.k==="captain"?"C":g.k==="jungler"?"J":"L"})});
-var cs={mirror:false,blind:false,role:false,rp:0,bud:false,budPts:6,budTouched:false,cost:Object.assign({},COST0),series:99,serChk:false,serUse:false,serN:3,swap:true,banOn:true,banN:2,first:[],blindAll:false,extBak:"pool",custom:true,leader:false,fearless:false,fbans:false,size:3,timer:20,bans:2,ext:"pool",pool:120,rows:[],fixed:["チャーンウォーカー","ヴィオラ"]};   /* 既定の固定BAN(作成画面で変更できます) */
+var cs={mirror:false,blind:false,role:false,rp:0,bud:false,budPts:6,budTouched:false,cost:costBase(3),costEdited:false,series:99,serChk:false,serUse:false,serN:3,swap:true,banOn:true,banN:2,first:[],blindAll:false,extBak:"pool",custom:true,leader:false,fearless:false,fbans:false,size:3,timer:20,bans:2,ext:"pool",pool:120,rows:[],fixed:["チャーンウォーカー","ヴィオラ"]};   /* 既定の固定BAN(作成画面で変更できます) */
 
 function nowS(){return Date.now()+off}
 function toast(t){var el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true},2600)}
@@ -1036,7 +1042,7 @@ function renderCreate(){
   $("#budChk").checked=cs.bud;$("#budRow").hidden=!cs.bud;
   var bmin=budgetMin(),bmax=Math.max(cs.size*5,bmin);
   $("#budPts").min=bmin;$("#budPts").max=bmax;$("#budMin").textContent=bmin;
-  if(!cs.budTouched)cs.budPts=Math.max(cs.size*2,bmin);
+  if(!cs.budTouched)cs.budPts=Math.max(cs.size===5?12:6,bmin);
   if(cs.budPts<bmin)cs.budPts=bmin;if(cs.budPts>bmax)cs.budPts=bmax;
   if(document.activeElement!==$("#budPts"))$("#budPts").value=cs.budPts;
   if(cs.bud&&$("#costDet").open)renderCostPool();
@@ -1102,7 +1108,7 @@ function renderFixedPool(){
   });
 }
 function wireCreate(){
-  $("#segSize").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.size=+b.dataset.v;setRows();renderCreate()});
+  $("#segSize").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.size=+b.dataset.v;if(!cs.costEdited)cs.cost=costBase(cs.size);setRows();renderCreate()});
   $("#mirrorChk").addEventListener("change",function(){cs.mirror=this.checked;renderCreate()});
   $("#blindChk").addEventListener("change",function(){cs.blind=this.checked;if(cs.blind){cs.extBak=cs.ext}else{cs.ext=cs.extBak||"pool"}setRows();renderCreate()});
   $("#segBlind").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.blindAll=+b.dataset.v===1;setRows();renderCreate()});
@@ -1113,11 +1119,11 @@ function wireCreate(){
   $("#segRp").addEventListener("click",function(e){var b=e.target.closest("button");if(!b||b.disabled)return;cs.rp=+b.dataset.v;renderCreate()});
   $("#budChk").addEventListener("change",function(){cs.bud=this.checked;renderCreate()});
   $("#budPts").addEventListener("input",function(){var v=Math.round(+this.value);if(v>=budgetMin()&&v<=Math.max(cs.size*5,budgetMin())){cs.budPts=v;cs.budTouched=true;renderCreate()}});
-  $("#budPts").addEventListener("change",function(){var v=Math.round(+this.value)||cs.size*2;cs.budPts=Math.max(budgetMin(),Math.min(Math.max(cs.size*5,budgetMin()),v));cs.budTouched=true;this.value=cs.budPts;renderCreate()});
+  $("#budPts").addEventListener("change",function(){var v=Math.round(+this.value)||(cs.size===5?12:6);cs.budPts=Math.max(budgetMin(),Math.min(Math.max(cs.size*5,budgetMin()),v));cs.budTouched=true;this.value=cs.budPts;renderCreate()});
   $("#costDet").addEventListener("toggle",function(){if(this.open)renderCostPool()});
   $("#bq").addEventListener("input",renderCostPool);
-  $("#bPool").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;var h=b.dataset.h;cs.cost[h]=cs.cost[h]>=5?1:cs.cost[h]+1;renderCostPool()});
-  $("#costReset").addEventListener("click",function(){cs.cost=Object.assign({},COST0);renderCostPool()});
+  $("#bPool").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;var h=b.dataset.h;cs.cost[h]=cs.cost[h]>=5?1:cs.cost[h]+1;cs.costEdited=true;renderCostPool()});
+  $("#costReset").addEventListener("click",function(){cs.cost=costBase(cs.size);cs.costEdited=false;renderCostPool()});
   [["home","#tnHome"],["away","#tnAway"]].forEach(function(x){$(x[1]).addEventListener("change",function(){act({a:"tname",t:x[0],n:this.value})})});
   $("#serChk").addEventListener("change",function(){cs.serChk=this.checked;renderCreate()});
   $("#segSer").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.serUse=+b.dataset.v===1;renderCreate()});
