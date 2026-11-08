@@ -190,6 +190,7 @@ vercel-live-feedback{display:none!important}      /* Vercel のツールバー(�
 .rd i{width:12px;height:12px;border-radius:50%;background:var(--line);display:inline-block}
 .rd.on{color:var(--ok)}
 .rd.on i{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.mv{display:inline-flex;gap:2px}.mvb{border:1px solid var(--line);background:var(--panel2);color:var(--fg);border-radius:6px;width:26px;height:26px;padding:0;font-size:11px;line-height:1}.mvb:disabled{opacity:.25}.lay-new .mvb{transform:rotate(-90deg)}
 .kick{border:0;background:transparent;color:var(--muted);padding:0 4px;font-size:16px;line-height:1}
 .kick:hover{color:var(--away)}
 .team .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
@@ -423,8 +424,18 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
       <input class="field" id="myName" maxlength="14" placeholder="あなたの名前" autocomplete="off">
     </div>
     <div class="cols">
+      <div class="card" id="gateCard" hidden>
+        <h2>ホストログイン</h2>
+        <p class="hint">ルームを作成できるのはホストだけです。参加・観戦する人は、ホストから届いた <b>ルーム付きのリンク</b> を開いてください。</p>
+        <div class="row" style="margin-bottom:6px"><label for="gateUser" class="lab">ユーザー名</label></div>
+        <input class="field" id="gateUser" autocomplete="username" autocapitalize="off" style="width:100%">
+        <div class="row" style="margin:10px 0 6px"><label for="gatePass" class="lab">パスワード</label></div>
+        <input class="field" id="gatePass" type="password" autocomplete="current-password" style="width:100%">
+        <div class="btns" style="margin-top:14px"><button class="btn pri" id="gateBtn" type="button">ログイン</button></div>
+        <p class="msg" id="gateMsg" role="status"></p>
+      </div>
       <div class="card" id="createCard" hidden>
-        <h2>ルームを作成</h2>
+        <h2>ルームを作成 <button class="btn sm ghost" id="gateOut" type="button" style="float:right">ログアウト</button></h2>
         <div class="row"><span class="lab">形式</span><div class="seg" id="segSize" role="group" aria-label="形式"><button type="button" data-v="3">3v3</button><button type="button" data-v="5">5v5</button></div></div>
         <div class="optbox">
           <label class="optt"><input type="checkbox" id="leaderChk"><b>代表者モード</b>(各チームの代表者1人だけが操作する)</label>
@@ -483,7 +494,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
         <div class="row" id="poolRow"><label class="lab" for="poolSec">チームの時間プール(秒)</label><input class="field num" id="poolSec" type="number" inputmode="numeric" min="10" max="600" step="5" style="width:110px"></div>
         <p class="hint" id="extHint"></p>
                 <div class="row" id="banNRow" style="margin-top:40px"><span class="lab">BANの人数(各チーム)</span><span class="stp"><button type="button" class="btn sm" id="banMinus" aria-label="BANを1人減らす">−</button><b class="num" id="banN">2</b><span>人</span><button type="button" class="btn sm" id="banPlus" aria-label="BANを1人増やす">+</button></span></div>
-        <div class="lab" style="margin-bottom:6px">手番</div>
+        <div class="lab" style="margin-bottom:6px">進行順</div>
         <div class="rlist" id="cStrip"></div>
         <p class="hint" id="stripHint"></p>
         <div class="lab" style="margin-top:14px">固定BAN(最初からBANするヒーロー) <span id="fixedCount"></span></div>
@@ -563,7 +574,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261108-4";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261108-6L";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="host";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -638,13 +649,24 @@ var myName=lsGet("vgd_name")||"";
 var S=null,D=null;                    /* S: ルームの状態(ホストが正)  D: Sから導いた値 */
 var roomId=null,isHost=false,inRoom=false,joining=false,joinSpec=false;
 var netGen=0,joinTeam="";
-var entryRoom="",joinLeader=false;
+var hostOK=false,entryRoom="",hostAuth=null,joinLeader=false;
+try{hostAuth=JSON.parse(lsGet("vgd_ha")||"null")}catch(e){hostAuth=null}
 /* 入口画面の出し分け: ルーム指定のリンク=入室だけ / 指定なし=作成 */
 function refreshEntry(){
-  var mode=entryRoom?"join":"host";
+  var mode=IS_FREE?(entryRoom?"join":"host"):(hostOK?"host":(entryRoom?"join":"gate"));
+  $("#gateCard").hidden=mode!=="gate";
   $("#createCard").hidden=mode!=="host";
   $("#joinCard").hidden=mode!=="join";
-  $("#nameBar").hidden=false;
+  $("#nameBar").hidden=mode==="gate";
+}
+async function hostLogin(u,p,silent){
+  var r=await apiCall({op:"auth",hu:u,hp:p});
+  if(r.status===200){hostOK=true;hostAuth={u:u,p:p};lsSet("vgd_ha",JSON.stringify(hostAuth));refreshEntry();return true}
+  if(r.status===401||r.status===403){hostAuth=null;lsDel("vgd_ha")}
+  if(!silent){
+    $("#gateMsg").textContent=r.status===401?"ユーザー名またはパスワードが違います。":r.status===429?"試行回数が多すぎます。しばらく待ってからもう一度お試しください。":(r.status===500&&r.data&&r.data.err==="nopw")?"サーバーにホストのパスワードが設定されていません(Vercel の環境変数 HOST_USER / HOST_PASSWORD を設定して再デプロイしてください)。":"サーバーに接続できませんでした。";
+  }
+  return false;
 }
 var off=0,connected=false;
 var localSel="",q="";
@@ -931,9 +953,10 @@ async function createRoom(){
   btn.disabled=true;msg.textContent="ルームを作成中…";
   var cfg={leader:!!cs.leader,size:cs.size,timer:cs.timer,ext:cs.ext,pool:cs.ext==="pool"?cs.pool:0,rows:cs.rows.join(""),first:cs.first.join(""),fixedBans:cs.fixed.slice(),heroes:HEROES.slice(),fearless:!!cs.fearless,fearlessBan:!!(cs.fearless&&cs.fbans),mirror:!!cs.mirror,blind:!!cs.blind,blindAll:!!(cs.blind&&cs.blindAll),swap:!!cs.swap,series:cs.serChk?(cs.serUse?cs.serN:99):0,randPool:cs.rp||0,rolePick:!!cs.role,hcls:cs.role?HCLS:undefined,budget:cs.bud?cs.budPts:0,cost:cs.bud?cs.cost:undefined};
   joinSpec=false;
-  var r=await apiCall({op:"create",uid:myUid,tok:myTok,name:myName,cfg:cfg,free:IS_FREE});
+  var r=await apiCall({op:"create",uid:myUid,tok:myTok,name:myName,cfg:cfg,free:IS_FREE,hu:hostAuth&&hostAuth.u,hp:hostAuth&&hostAuth.p});
   btn.disabled=false;
   if(r.status===200&&r.data.s){msg.textContent="";enterRoom(r.data.id,r.data);return}
+  if(!IS_FREE&&(r.status===401||r.status===403)){hostOK=false;hostAuth=null;lsDel("vgd_ha");refreshEntry();$("#gateMsg").textContent="ホストのログインが必要です。もう一度ログインしてください。";msg.textContent="";return}
   if(r.status===429&&r.data&&r.data.err==="freelimit"){msg.textContent="無料版で作れる部屋は、同じ回線から24時間に3回までです。";renderCreate();return}
   msg.textContent=failText(r);renderCreate();
 }
@@ -1047,7 +1070,7 @@ function renderCreate(){
     sh+=cell(nh,"home")+'<button type="button" class="rflip" data-flip="'+i+'" title="この行の先攻を入れ替える"'+(bl2?" disabled":"")+'>⇄</button>'+cell(na,"away");
   });
   $("#cStrip").className="tgrid";$("#cStrip").innerHTML=sh;
-  $("#stripHint").textContent=(cs.blind&&cs.blindAll?"各チーム"+target+"人BAN、"+cs.size+"人ピックです。ブラインド(まとめて)なので、BAN→PICKの順に、それぞれ同時に出します。":(cs.bans===0?"BANなしです。":"各チーム"+target+"人BANです。")+cs.size+"人ピックで全"+cs.rows.length+"行です。左がHOME、右がAWAYで、数字が進む順番(手番)です。"+(cs.bans>0?"1行目はBAN固定です。BANにしたい行をタップすると、いちばん近いBANがその行に移動します。":"")+" 真ん中の ⇄ で、その行をどちらが先に行うかを入れ替えられます。")+(cs.blind&&!cs.blindAll?" (ブラインドの1行ずつでは、行の中は同時なので、数字は行の番号です)":"");
+  $("#stripHint").textContent=(cs.blind&&cs.blindAll?"各チーム"+target+"人BAN、"+cs.size+"人ピックです。ブラインド(まとめて)なので、BAN→PICKの順に、それぞれ同時に出します。":(cs.bans===0?"BANなしです。":"各チーム"+target+"人BANです。")+cs.size+"人ピックで全"+cs.rows.length+"行です。左がHOME、右がAWAYで、数字が進む順番です。"+(cs.bans>0?"1行目はBAN固定です。BANにしたい行をタップすると、いちばん近いBANがその行に移動します。":"")+" 真ん中の ⇄ で、その行をどちらが先に行うかを入れ替えられます。")+(cs.blind&&!cs.blindAll?" (ブラインドの1行ずつでは、行の中は同時なので、数字は行の番号です)":"");
   $("#fixedCount").textContent=cs.fixed.length?"("+cs.fixed.length+"人)":"";
   $("#fixedList").innerHTML=cs.fixed.map(function(h){return '<span class="fchip">'+monoHTML(h)+esc(h)+'</span>'}).join("");
   renderFixedPool();
@@ -1101,6 +1124,9 @@ function wireCreate(){
   $("#nxSwap").addEventListener("click",function(){nxClose();act({a:"next"})});
   $("#nxCancel").addEventListener("click",nxClose);
   $("#nxMask").addEventListener("click",function(e){if(e.target===this)nxClose()});
+  $("#gateBtn").addEventListener("click",function(){$("#gateMsg").textContent="確認中…";hostLogin($("#gateUser").value.trim(),$("#gatePass").value,false).then(function(ok){if(ok){$("#gateMsg").textContent="";$("#gatePass").value=""}})});
+  $("#gatePass").addEventListener("keydown",function(e){if(e.key==="Enter")$("#gateBtn").click()});
+  $("#gateOut").addEventListener("click",function(){hostOK=false;hostAuth=null;lsDel("vgd_ha");refreshEntry()});
   $("#tmSec").addEventListener("input",function(){var v=+this.value;if(v>=5&&v<=120&&v===Math.round(v)){cs.timer=v;renderCreate()}});
   $("#tmSec").addEventListener("change",function(){cs.timer=normTm(this.value);this.value=cs.timer;renderCreate()});
   $("#banMinus").addEventListener("click",function(){if(cs.banN>0){cs.banN--;setRows();renderCreate()}});
@@ -1243,14 +1269,20 @@ function renderLobby(){
   var canSit=S.phase==="lobby"&&!me.spec;
   var html="";
   ["home","away"].forEach(function(t){
+    var canMove=S.phase==="lobby"&&(isHost||(S.cfg.leader&&me.leader&&me.team===t));      /* 席順を入れ替えられるのは、ホストと、そのチームの代表者 */
     var seats=D.seats[t],rc=seats.filter(function(u){return mem[u]&&mem[u].ready}).length;
     var rows="";
     for(var i=0;i<N;i++){
       var u=seats[i];
       if(!u){rows+='<div class="seat empty"><span class="sn num">'+(i+1)+'</span><span class="who">空席</span><span></span></div>';continue}
       var m=mem[u]||{},mine=u===myUid;
+      var mv="";
+      if(canMove&&!(S.cfg.leader&&m.leader)){
+        var up=i>0&&!(S.cfg.leader&&mem[seats[i-1]]&&mem[seats[i-1]].leader),dn=i<seats.length-1;
+        mv='<span class="mv">'+'<button class="mvb" type="button" data-mv="-1" data-u="'+esc(u)+'" aria-label="順番を前へ"'+(up?"":" disabled")+'>▲</button><button class="mvb" type="button" data-mv="1" data-u="'+esc(u)+'" aria-label="順番を後ろへ"'+(dn?"":" disabled")+'>▼</button></span>';
+      }
       rows+='<div class="seat'+(mine?" me":"")+'"><span class="sn num">'+(i+1)+'</span><span class="who">'+esc(m.name||"")+(S.cfg.leader&&m.leader?'<small>代表</small>':'')+(mine?'<small>あなた</small>':'')+(u===S.host?'<small>ホスト</small>':'')+(m.on===false?'<small>切断中</small>':'')+'</span>'+
-        '<span style="display:flex;align-items:center;gap:6px">'+rtag(m)+((S.cfg.leader&&!m.leader)?'':'<span class="rd'+(m.ready?" on":"")+'" role="img" title="'+(m.ready?"準備完了":"未準備")+'" aria-label="'+(m.ready?"準備完了":"未準備")+'"><i></i></span>')+
+        '<span style="display:flex;align-items:center;gap:6px">'+mv+rtag(m)+((S.cfg.leader&&!m.leader)?'':'<span class="rd'+(m.ready?" on":"")+'" role="img" title="'+(m.ready?"準備完了":"未準備")+'" aria-label="'+(m.ready?"準備完了":"未準備")+'"><i></i></span>')+
         (isHost&&!mine&&S.phase==="lobby"?'<button class="kick" type="button" data-kick="'+esc(u)+'" aria-label="席から外す">×</button>':'')+'</span></div>';
     }
     var acts="";
@@ -1442,6 +1474,7 @@ function wireRoom(){
     if(b.dataset.sit)act({a:"sit",team:b.dataset.sit,leader:!!b.dataset.lead});
     else if(b.dataset.stand)act({a:"stand"});
     else if(b.dataset.kick)act({a:"kick",u:b.dataset.kick});
+    else if(b.dataset.mv)act({a:"move",u:b.dataset.u,d:+b.dataset.mv});
   });
   $("#readybar").addEventListener("click",function(e){if(e.target.closest("[data-ready]"))act({a:"ready"})});
   $("#rolebar").addEventListener("click",function(e){
@@ -1543,8 +1576,9 @@ async function init(){
   }
   if(qRoom){$("#joinId").value=qRoom;entryRoom=qRoom}
   if(qLd){$("#joinBtn").textContent="参戦者として入室";$("#joinLeaderBtn").hidden=false}
-  if(IS_FREE){$("#freeNote").hidden=false}
+  if(IS_FREE){$("#gateOut").hidden=true;$("#freeNote").hidden=false}
   refreshEntry();
+  if(!IS_FREE&&!qRoom&&hostAuth)hostLogin(hostAuth.u,hostAuth.p,true);
   setBusy(false);setBanner();
   var sr=null;
   try{sr=JSON.parse(lsGet("vgd_room")||"null")}catch(e){sr=null}
