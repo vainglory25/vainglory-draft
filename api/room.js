@@ -172,6 +172,17 @@ function minBudget(hs, fx, cost, hcls, size, mirror) {
   }
   return tot;
 }
+/* 特別仕様(cfg.fin): BO5で4戦目まで2勝2敗なら、5戦目だけ「ブラインド・まとめて・ミラーあり・BANなし」にする。固定BANはそのまま */
+function finalCfg(cfg) {
+  var rows = new Array(cfg.size + 1).join("P");
+  return Object.assign({}, cfg, { rows: rows, first: defaultFirst(rows), blind: true, blindAll: true, mirror: true, ext: "none", pool: 0, timer: cfg.finTimer || cfg.timer });
+}
+/* シリーズ戦の履歴: 1試合ぶんの記録(BAN・ピックを、チームごとに行われた順で)。ab は、ホームが「チームA/B」のどちらか(入れ替えても同じチームと分かるように) */
+function gameRec(S) {
+  var turns = buildTurns(S.cfg), lg = S.log || {}, r = { g: S.game || 1, w: S.res || "", ab: { home: (S.series && S.series.flip) ? "B" : "A", away: (S.series && S.series.flip) ? "A" : "B" }, tn: { home: (S.tn && S.tn.home) || "", away: (S.tn && S.tn.away) || "" }, b: { home: [], away: [] }, p: { home: [], away: [] } };
+  turns.forEach(function (t, i) { var h = lg[i] && lg[i].hero; (t.type === "B" ? r.b : r.p)[t.team].push(h || ""); });
+  return r;
+}
 function cleanName(n) { return String(n == null ? "" : n).replace(/[\u0000-\u001f\u007f-\u009f\u00ad\u034f\u115f\u1160\u17b4\u17b5\u180e\u200b-\u200f\u202a-\u202e\u2060-\u206f\u3164\ufeff\uffa0<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 14); }
 function autoHero(S, team, type, avoid, extra) {
   avoid = (avoid || []).concat(extra || []);
@@ -356,12 +367,16 @@ function handle(S, uid, m, body) {
           if (left < S.cfg.size * 2 + nb * 2) { msg = "使えるヒーローが足りなくなるため、次の試合へは進めません。「最初から」で使用済みをリセットしてください"; break; }
           S.used = nu;
         }
+        if (sr) S.hl = (S.hl || []).concat([gameRec(S)]).slice(-25);      /* 履歴に残す(シリーズ戦) */
         S.game = (S.game || 1) + 1;
         if (sr) { if (S.res) sr.hist.push({ g: S.game - 1, w: (S.res === "home") !== sr.flip ? "A" : "B" }); if (swp) sr.flip = !sr.flip; }
         S.res = "";
+        if (S.cfg.fin && sr && !S.cfg0 && S.game === 5 && sr.wins.A === 2 && sr.wins.B === 2) { S.cfg0 = S.cfg; S.cfg = finalCfg(S.cfg); }      /* 5戦目だけ特別設定 */
         if (swp && S.tn) { var tt = S.tn.home; S.tn.home = S.tn.away; S.tn.away = tt; }      /* チーム名もチームについていく */
         if (swp) Object.keys(mem).forEach(function (k) { if (mem[k].team === "home") mem[k].team = "away"; else if (mem[k].team === "away") mem[k].team = "home"; });      /* 次の試合は、ホームとアウェイを入れ替える(席の並び・代表者はそのまま) */
       } else {
+        S.hl = [];
+        if (S.cfg0) { S.cfg = S.cfg0; S.cfg0 = null; }      /* 特別設定の5戦目を、元の設定に戻す */
         if (S.cfg.fearless) S.used = [];      /* 「最初から」: 使用済みを全部戻す */
         S.game = 1;
         S.series = S.cfg.series ? { wins: { A: 0, B: 0 }, hist: [], flip: false } : null;
@@ -491,6 +506,7 @@ function viewFor(S, uid, seen, now) {
   Object.keys(src).forEach(function (k) { if (k === uid || (t && teamOf(k) === t)) c[k] = src[k]; });
   for (var k in S) { if (k !== "toks" && k !== "fip") v[k] = S[k]; }
   v.cands = c;
+  if (S.series && S.phase === "done") v.hlc = gameRec(S);      /* 今の試合の記録(終了後) */
   if (S.bp && S.phase === "draft") {      /* ブラインド: 相手の選択は見せない(確定したかどうかだけ) */
     v.bp = {};
     ["home", "away"].forEach(function (tm) { var b = S.bp[tm]; v.bp[tm] = tm === t ? { hs: b.hs, ok: b.ok } : { ok: b.ok }; });
@@ -554,7 +570,7 @@ function validCfg(c) {
     if (randPool < minPool || randPool > hs.length - fx.length) return null;
   }
   var first = typeof c.first === "string" && c.first.length === rows.length && /^[HA]+$/.test(c.first) ? c.first : defaultFirst(rows);
-  return { first: first, mirror: c.mirror === true, blind: blind, blindAll: blind && c.blindAll === true, swap: c.swap === true, rolePick: !!hcls, hcls: hcls, budget: budget, cost: cost, randPool: randPool, series: series, size: size, timer: timer, rows: rows, fixedBans: fx, heroes: hs.slice(), ext: ext, pool: pool, leader: c.leader === true, fearless: fl, fearlessBan: fl && c.fearlessBan === true };
+  return { fin: c.finalBlind === true && series === 5, finTimer: (+c.finTimer >= 10 && +c.finTimer <= 180) ? Math.round(+c.finTimer) : timer, first: first, mirror: c.mirror === true, blind: blind, blindAll: blind && c.blindAll === true, swap: c.swap === true, rolePick: !!hcls, hcls: hcls, budget: budget, cost: cost, randPool: randPool, series: series, size: size, timer: timer, rows: rows, fixedBans: fx, heroes: hs.slice(), ext: ext, pool: pool, leader: c.leader === true, fearless: fl, fearlessBan: fl && c.fearlessBan === true };
 }
 var okUid = function (u) { return typeof u === "string" && /^[A-Za-z0-9]{3,40}$/.test(u); };
 var okTok = function (t) { return typeof t === "string" && t.length >= 8 && t.length <= 64; };
