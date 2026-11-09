@@ -85,6 +85,18 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid
 .btns{display:flex;gap:8px;flex-wrap:wrap}
 
 .strip{display:flex;gap:6px;flex-wrap:wrap}
+#rStrip{display:flex;flex-direction:column;gap:8px}
+#rStrip .sgrp{display:block}
+#rStrip .th{font-family:var(--f-disp);font-weight:700;letter-spacing:.14em;font-size:12px;padding:2px 0}
+#rStrip .th.home{color:var(--home)}#rStrip .th.away{color:var(--away)}
+#rStrip .sl{display:flex;gap:6px;flex-wrap:wrap}
+@media (max-width:560px){
+  #rStrip{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  #rStrip .th{text-align:center}
+  #rStrip .sl{flex-direction:column}
+  #rStrip .rchip{display:flex;align-items:center;justify-content:center;gap:8px;min-width:0}
+  #rStrip .rchip small{display:inline}
+}
 .rchip{min-width:48px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);text-align:center;font-family:var(--f-disp);line-height:1.2}
 .rchip small{display:block;font-size:10px;letter-spacing:.14em;opacity:.8}
 .rchip b{font-size:15px}
@@ -139,6 +151,13 @@ details.fx[open] summary{margin-bottom:10px}
 .colh .tinfo .cl.on{color:var(--ok)}
 .serbox{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:13px}
 .serbox .sc{font-weight:700;font-size:15px}
+#histBox{margin:8px 0}
+#histBox details{border:1px solid var(--line,#33406b);border-radius:12px;padding:8px 12px;background:rgba(255,255,255,.03)}
+#histBox summary{cursor:pointer;font-weight:700}
+.hg{margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.1);font-size:13px;line-height:1.7}
+.hg b.w{color:#f0c24b}
+.hg .hr{display:grid;grid-template-columns:3.2em 1fr;gap:2px 8px}
+.hg .hr i{font-style:normal;opacity:.7}
 .tile.used .mono{filter:grayscale(1) brightness(.5)}
 .tile .ub{position:absolute;top:2px;left:2px;z-index:3;font-style:normal;font-size:9px;line-height:1;padding:2px 4px;border-radius:4px;background:#000a;color:var(--muted);pointer-events:none}
 #lobbyNote{margin:0 0 10px}
@@ -477,6 +496,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
           <label class="optt"><input type="checkbox" id="serChk"><b>シリーズ戦の記録</b>(ドラフト後に、ホストが勝った側を記録する)</label>
           <div class="row" id="serBox" hidden style="margin-top:8px"><span class="lab">試合数</span><div class="seg" id="segSer" role="group" aria-label="シリーズ戦"><button type="button" data-v="0">回数指定なし</button><button type="button" data-v="1">回数指定あり</button></div></div>
           <div class="row" id="serRow" hidden style="margin-top:8px"><label class="lab" for="serN">試合数(奇数 3〜21)</label><span><input class="field num" id="serN" type="number" inputmode="numeric" min="3" max="21" step="2" value="3" style="width:90px"> 試合 (先に <b id="serNeed">2</b> 勝で終了)</span></div>
+          <div class="row" id="finRow" hidden style="margin-top:8px"><label class="lab" for="finT">5試合目(ブラインド)の制限時間(秒)</label><span><input class="field num" id="finT" type="number" inputmode="numeric" min="10" max="180" step="1" value="60" style="width:90px"> 秒 (3体まとめて、全体で)</span></div>
           <p class="hint">ドラフトの完了後に、ホストが勝った側を記録します。「次の試合へ」でロビーに戻ります。回数指定なしは、ホストが「最初から」を押すまで続きます。フィアレスなど、ほかのモードと一緒に使えます。</p>
         </div>
         <div class="optbox">
@@ -530,6 +550,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
     <div class="meta" id="roomMeta"></div>
     <div class="rolebar" id="rolebar" hidden></div>
     <div id="fixedWrap" class="fixed-wrap" hidden></div>
+    <div id="histBox" hidden></div>
 
     <div id="lobby" hidden>
       <div class="banner" id="lobbyNote" hidden></div>
@@ -576,7 +597,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261108-14";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261109-5";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="free";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -673,7 +694,8 @@ var COST3=Object.assign({},COST0),COST5=Object.assign({},COST0);
 ["ライム","ソー"].forEach(function(h){COST5[h]=2});
 function costBase(sz){return Object.assign({},sz===5?COST5:COST3)}
 var HCLS={};ROLES.forEach(function(g){g.list.forEach(function(h){HCLS[h]=g.k==="captain"?"C":g.k==="jungler"?"J":"L"})});
-var cs={mirror:false,blind:false,role:false,rp:0,bud:false,budPts:6,budTouched:false,cost:costBase(3),costEdited:false,series:99,serChk:false,serUse:false,serN:3,swap:true,banOn:true,banN:2,first:[],blindAll:false,extBak:"pool",custom:true,leader:false,fearless:false,fbans:false,size:3,timer:20,bans:2,ext:"pool",pool:120,rows:[],fixed:["チャーンウォーカー","ヴィオラ"]};   /* 既定の固定BAN(作成画面で変更できます) */
+var DRIP=false;      /* drip.championship.html だけ true(5戦目の特別設定を有効にする) */
+var cs={finT:60,mirror:false,blind:false,role:false,rp:0,bud:false,budPts:6,budTouched:false,cost:costBase(3),costEdited:false,series:99,serChk:false,serUse:false,serN:3,swap:true,banOn:true,banN:2,first:[],blindAll:false,extBak:"pool",custom:true,leader:false,fearless:false,fbans:false,size:3,timer:20,bans:2,ext:"pool",pool:120,rows:[],fixed:["チャーンウォーカー","ヴィオラ"]};   /* 既定の固定BAN(作成画面で変更できます) */
 
 function nowS(){return Date.now()+off}
 function toast(t){var el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true},2600)}
@@ -948,7 +970,7 @@ async function createRoom(){
   var msg=$("#createMsg"),btn=$("#createBtn");
   if(!needName(msg))return;
   btn.disabled=true;msg.textContent="ルームを作成中…";
-  var cfg={leader:!!cs.leader,size:cs.size,timer:cs.timer,ext:cs.ext,pool:cs.ext==="pool"?cs.pool:0,rows:cs.rows.join(""),first:cs.first.join(""),fixedBans:cs.fixed.slice(),heroes:HEROES.slice(),fearless:!!cs.fearless,fearlessBan:!!(cs.fearless&&cs.fbans),mirror:!!cs.mirror,blind:!!cs.blind,blindAll:!!(cs.blind&&cs.blindAll),swap:!!cs.swap,series:cs.serChk?(cs.serUse?cs.serN:99):0,randPool:cs.rp||0,rolePick:!!cs.role,hcls:cs.role?HCLS:undefined,budget:cs.bud?cs.budPts:0,cost:cs.bud?cs.cost:undefined};
+  var cfg={leader:!!cs.leader,size:cs.size,timer:cs.timer,ext:cs.ext,pool:cs.ext==="pool"?cs.pool:0,rows:cs.rows.join(""),first:cs.first.join(""),fixedBans:cs.fixed.slice(),heroes:HEROES.slice(),fearless:!!cs.fearless,fearlessBan:!!(cs.fearless&&cs.fbans),mirror:!!cs.mirror,blind:!!cs.blind,blindAll:!!(cs.blind&&cs.blindAll),swap:!!cs.swap,series:cs.serChk?(cs.serUse?cs.serN:99):0,finalBlind:!!(DRIP&&cs.serChk&&cs.serUse&&cs.serN===5),finTimer:cs.finT,randPool:cs.rp||0,rolePick:!!cs.role,hcls:cs.role?HCLS:undefined,budget:cs.bud?cs.budPts:0,cost:cs.bud?cs.cost:undefined};
   joinSpec=false;
   var r=await apiCall({op:"create",uid:myUid,tok:myTok,name:myName,cfg:cfg,free:IS_FREE});
   btn.disabled=false;
@@ -1047,7 +1069,7 @@ function renderCreate(){
   if(document.activeElement!==$("#budPts"))$("#budPts").value=cs.budPts;
   if(cs.bud&&$("#costDet").open)renderCostPool();
   $$("#segSer button").forEach(function(b){b.classList.toggle("on",(+b.dataset.v===1)===cs.serUse)});
-  $("#serChk").checked=cs.serChk;$("#serBox").hidden=!cs.serChk;$("#serRow").hidden=!(cs.serChk&&cs.serUse);$("#serNeed").textContent=Math.ceil(cs.serN/2);
+  $("#finRow").hidden=!(DRIP&&cs.serChk&&cs.serUse&&cs.serN===5);if(document.activeElement!==$("#finT"))$("#finT").value=cs.finT;$("#serChk").checked=cs.serChk;$("#serBox").hidden=!cs.serChk;$("#serRow").hidden=!(cs.serChk&&cs.serUse);$("#serNeed").textContent=Math.ceil(cs.serN/2);
   if(document.activeElement!==$("#serN"))$("#serN").value=cs.serN;
   $("#swapChk").checked=cs.swap;
   $("#blindRow").hidden=!cs.blind;
@@ -1125,6 +1147,7 @@ function wireCreate(){
   $("#bPool").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;var h=b.dataset.h;cs.cost[h]=cs.cost[h]>=5?1:cs.cost[h]+1;cs.costEdited=true;renderCostPool()});
   $("#costReset").addEventListener("click",function(){cs.cost=costBase(cs.size);cs.costEdited=false;renderCostPool()});
   [["home","#tnHome"],["away","#tnAway"]].forEach(function(x){$(x[1]).addEventListener("change",function(){act({a:"tname",t:x[0],n:this.value})})});
+  $("#finT").addEventListener("change",function(){var v=Math.round(+this.value)||60;v=Math.max(10,Math.min(180,v));cs.finT=v;this.value=v;renderCreate()});
   $("#serChk").addEventListener("change",function(){cs.serChk=this.checked;renderCreate()});
   $("#segSer").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.serUse=+b.dataset.v===1;renderCreate()});
   $("#segExt").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;cs.ext=b.dataset.v;renderCreate()});
@@ -1188,7 +1211,7 @@ function onState(){
 }
 function renderAll(){
   if(!S||!D)return;
-  renderMeta();renderRolebar();renderFixed();
+  renderMeta();renderRolebar();renderFixed();renderHist();
   var ph=S.phase;
   $("#lobby").hidden=!(ph==="lobby"||ph==="countdown");
   $("#draft").hidden=!(ph==="draft"||ph==="done");
@@ -1215,8 +1238,14 @@ function notifyTurn(){
     try{if(navigator.vibrate)navigator.vibrate([200,100,200])}catch(e){}
   }
 }
-function stripHTML(rows){
-  return rows.split("").map(function(t,i){return '<span class="rchip '+t+'"><small>'+(t==="B"?"BAN":"PICK")+'</small><b class="num">'+(i+1)+'</b></span>'}).join("");
+function stripHTML(rows,first,blind){      /* ロビーの進行順: HOMEとAWAYの両方を表示(PCは縦に並べ、スマホは左右に並べる) */
+  var h="",a="";
+  rows.split("").forEach(function(t,i){
+    var fh=!first||first[i]!=="A",nh=blind?i+1:2*i+(fh?1:2),na=blind?i+1:2*i+(fh?2:1);
+    var chip=function(n){return '<span class="rchip '+t+'"><small>'+(t==="B"?"BAN":"PICK")+'</small><b class="num">'+n+'</b></span>'};
+    h+=chip(nh);a+=chip(na);
+  });
+  return '<div class="sgrp"><div class="th home">HOME</div><div class="sl">'+h+'</div></div><div class="sgrp"><div class="th away">AWAY</div><div class="sl">'+a+'</div></div>';
 }
 function renderMeta(){
   var cfg=S.cfg,mem=S.members||{},me=mem[myUid],spec=0;
@@ -1226,6 +1255,26 @@ function renderMeta(){
   var phase={lobby:"ロビー",countdown:"開始カウントダウン",draft:"ドラフト中",done:"ドラフト完了"}[S.phase];
   $("#roomMeta").innerHTML=role+(isHost?'<span class="badge gold">ホスト</span>':'')+'<span class="badge gold">'+esc(phase)+'</span><span class="num">'+cfg.size+'v'+cfg.size+' / '+cfg.timer+'秒 / BAN 各チーム'+bans+'体 / '+cfg.rows.length+'行</span><span>観戦 '+spec+'人</span>';
 }
+var histOpen=null,histHTML="",histPh="";
+function histList(){return (S&&S.series)?((S.hl||[]).concat(S.hlc?[S.hlc]:[])):[]}
+function renderHist(){      /* シリーズ戦: これまでの試合の、BAN・ピックの履歴 */
+  if(S&&histPh!==S.phase){histPh=S.phase;histOpen=null}
+  var box=$("#histBox"),L=histList();
+  if(!L.length){box.hidden=true;box.innerHTML="";histHTML="";return}
+  var si=serInfo(),auto=!!(S.phase==="done"&&S.res&&si&&(si.over||(si.bo!==99&&S.game>=si.bo)));
+  var nm=function(r,side){return r.tn[side]||("チーム"+r.ab[side])};
+  var hs=function(a){return a.map(function(h){return h?esc(h):"—"}).join("、")||"なし"};
+  var html=L.map(function(r){
+    return '<div class="hg"><b>第'+r.g+'戦</b> '+esc(nm(r,"home"))+'(HOME) vs '+esc(nm(r,"away"))+'(AWAY)'+(r.w?' · <b class="w">'+esc(nm(r,r.w))+' 勝ち</b>':' · 勝敗未記録')+
+      '<div class="hr"><i>BAN</i><span>'+esc(nm(r,"home"))+': '+hs(r.b.home)+'<br>'+esc(nm(r,"away"))+': '+hs(r.b.away)+'</span><i>PICK</i><span>'+esc(nm(r,"home"))+': '+hs(r.p.home)+'<br>'+esc(nm(r,"away"))+': '+hs(r.p.away)+'</span></div></div>';
+  }).join("");
+  var open=histOpen===null?auto:histOpen,key=html+"|"+open;
+  box.hidden=false;
+  if(key===histHTML)return;
+  histHTML=key;
+  box.innerHTML='<details'+(open?' open':'')+'><summary>これまでの履歴('+L.length+'試合)</summary>'+html+'</details>';
+  box.querySelector("details").addEventListener("toggle",function(){histOpen=this.open;histHTML=html+"|"+this.open});
+}
 function serLabel(){      /* シリーズ戦の勝ち数。ホーム/アウェイは、入れ替えを反映した今の側 */
   var si=serInfo();if(!si)return "";
   var t="シリーズ "+(si.bo===99?"(回数指定なし)":"BO"+si.bo)+" · "+esc(tnm("home"))+" <b class=\"sc\">"+si.hw+"</b> - <b class=\"sc\">"+si.aw+"</b> "+esc(tnm("away"));
@@ -1233,10 +1282,11 @@ function serLabel(){      /* シリーズ戦の勝ち数。ホーム/アウェ�
   return t;
 }
 function modeChips(){
-  var c=S.cfg,out=[];
+  var c=S.cfg,out=[],nb=(c.rows||"").includes("B");
+  if(S.cfg0)out.push("★最終戦(特別設定)");
+  if(c.blind)out.push(c.blindAll?(nb?"ブラインド(BAN全部→PICK全部をまとめて)":"ブラインド(PICK全部をまとめて)"):"ブラインド(1行ずつ同時に)");
   if(c.mirror)out.push("ミラーあり");
-  if(c.blind)out.push(c.blindAll?"ブラインド(BAN全部→PICK全部をまとめて)":"ブラインド(1行ずつ同時に)");
-  if(c.swap)out.push("次の試合でHOME/AWAY入れ替え");
+  if(c.swap&&!S.cfg0)out.push("次の試合でHOME/AWAY入れ替え");
   if(!(c.rows||"").includes("B"))out.push("BANなし");
   if(c.rolePick)out.push("ロール別ピック");
   if(c.randPool)out.push("ランダムプール "+c.randPool+"体"+(S.avail?"":"(開始時に決定)"));
@@ -1311,7 +1361,7 @@ function renderLobby(){
   }else if(me.spec)rb='<span class="lab">観戦で入室しています。閲覧のみで、操作はできません。</span>';
   else rb='<span class="lab">まだ席に座っていません。参加するには、ホームかアウェイの「参加」を押してください。</span>';
   $("#readybar").innerHTML=rb;
-  $("#rStrip").innerHTML=stripHTML(S.cfg.rows);
+  $("#rStrip").innerHTML=stripHTML(S.cfg.rows,S.cfg.first,S.cfg.blind);
 }
 function nextGame(){      /* 次の試合へ: フィアレスなら、今の試合のピックを使用済みにしてロビーへ。ホームとアウェイを入れ替えるかどうかは、ここで選ぶ */
   var ps=[],bs=[],m="";
