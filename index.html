@@ -448,8 +448,18 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
       <input class="field" id="myName" maxlength="14" placeholder="あなたの名前" autocomplete="off">
     </div>
     <div class="cols">
+      <div class="card" id="gateCard" hidden>
+        <h2>ホストログイン</h2>
+        <p class="hint">ルームを作成できるのはホストだけです。参加・観戦する人は、ホストから届いた <b>ルーム付きのリンク</b> を開いてください。</p>
+        <div class="row" style="margin-bottom:6px"><label for="gateUser" class="lab">ユーザー名</label></div>
+        <input class="field" id="gateUser" autocomplete="username" autocapitalize="off" style="width:100%">
+        <div class="row" style="margin:10px 0 6px"><label for="gatePass" class="lab">パスワード</label></div>
+        <input class="field" id="gatePass" type="password" autocomplete="current-password" style="width:100%">
+        <div class="btns" style="margin-top:14px"><button class="btn pri" id="gateBtn" type="button">ログイン</button></div>
+        <p class="msg" id="gateMsg" role="status"></p>
+      </div>
       <div class="card" id="createCard" hidden>
-        <h2>ルームを作成</h2>
+        <h2>ルームを作成 <button class="btn sm ghost" id="gateOut" type="button" style="float:right">ログアウト</button></h2>
         <div class="sumbar" id="sumBar" aria-label="現在の設定"></div>
         <div class="optbox sec"><div class="row" style="margin:0"><span class="lab">形式</span><div class="seg" id="segSize" role="group" aria-label="形式"><button type="button" data-v="3">3v3</button><button type="button" data-v="5">5v5</button></div></div></div>
         <div class="optbox">
@@ -597,7 +607,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261109-5";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261109-5L";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="host";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -672,13 +682,24 @@ var myName=lsGet("vgd_name")||"";
 var S=null,D=null;                    /* S: ルームの状態(ホストが正)  D: Sから導いた値 */
 var roomId=null,isHost=false,inRoom=false,joining=false,joinSpec=false;
 var netGen=0,joinTeam="";
-var entryRoom="",joinLeader=false;
+var hostOK=false,entryRoom="",hostAuth=null,joinLeader=false;
+try{hostAuth=JSON.parse(lsGet("vgd_ha")||"null")}catch(e){hostAuth=null}
 /* 入口画面の出し分け: ルーム指定のリンク=入室だけ / 指定なし=作成 */
 function refreshEntry(){
-  var mode=entryRoom?"join":"host";
+  var mode=IS_FREE?(entryRoom?"join":"host"):(hostOK?"host":(entryRoom?"join":"gate"));
+  $("#gateCard").hidden=mode!=="gate";
   $("#createCard").hidden=mode!=="host";
   $("#joinCard").hidden=mode!=="join";
-  $("#nameBar").hidden=false;
+  $("#nameBar").hidden=mode==="gate";
+}
+async function hostLogin(u,p,silent){
+  var r=await apiCall({op:"auth",hu:u,hp:p});
+  if(r.status===200){hostOK=true;hostAuth={u:u,p:p};lsSet("vgd_ha",JSON.stringify(hostAuth));refreshEntry();return true}
+  if(r.status===401||r.status===403){hostAuth=null;lsDel("vgd_ha")}
+  if(!silent){
+    $("#gateMsg").textContent=r.status===401?"ユーザー名またはパスワードが違います。":r.status===429?"試行回数が多すぎます。しばらく待ってからもう一度お試しください。":(r.status===500&&r.data&&r.data.err==="nopw")?"サーバーにホストのパスワードが設定されていません(Vercel の環境変数 HOST_USER / HOST_PASSWORD を設定して再デプロイしてください)。":"サーバーに接続できませんでした。";
+  }
+  return false;
 }
 var off=0,connected=false;
 var localSel="",q="";
@@ -972,9 +993,10 @@ async function createRoom(){
   btn.disabled=true;msg.textContent="ルームを作成中…";
   var cfg={leader:!!cs.leader,size:cs.size,timer:cs.timer,ext:cs.ext,pool:cs.ext==="pool"?cs.pool:0,rows:cs.rows.join(""),first:cs.first.join(""),fixedBans:cs.fixed.slice(),heroes:HEROES.slice(),fearless:!!cs.fearless,fearlessBan:!!(cs.fearless&&cs.fbans),mirror:!!cs.mirror,blind:!!cs.blind,blindAll:!!(cs.blind&&cs.blindAll),swap:!!cs.swap,series:cs.serChk?(cs.serUse?cs.serN:99):0,finalBlind:!!(DRIP&&cs.serChk&&cs.serUse&&cs.serN===5),finTimer:cs.finT,randPool:cs.rp||0,rolePick:!!cs.role,hcls:cs.role?HCLS:undefined,budget:cs.bud?cs.budPts:0,cost:cs.bud?cs.cost:undefined};
   joinSpec=false;
-  var r=await apiCall({op:"create",uid:myUid,tok:myTok,name:myName,cfg:cfg,free:IS_FREE});
+  var r=await apiCall({op:"create",uid:myUid,tok:myTok,name:myName,cfg:cfg,free:IS_FREE,hu:hostAuth&&hostAuth.u,hp:hostAuth&&hostAuth.p});
   btn.disabled=false;
   if(r.status===200&&r.data.s){msg.textContent="";enterRoom(r.data.id,r.data);return}
+  if(!IS_FREE&&(r.status===401||r.status===403)){hostOK=false;hostAuth=null;lsDel("vgd_ha");refreshEntry();$("#gateMsg").textContent="ホストのログインが必要です。もう一度ログインしてください。";msg.textContent="";return}
   if(r.status===429&&r.data&&r.data.err==="freelimit"){msg.textContent="無料版で作れる部屋は、同じ回線から24時間に3回までです。";renderCreate();return}
   msg.textContent=failText(r);renderCreate();
 }
@@ -1158,6 +1180,9 @@ function wireCreate(){
   $("#nxSwap").addEventListener("click",function(){nxClose();act({a:"next"})});
   $("#nxCancel").addEventListener("click",nxClose);
   $("#nxMask").addEventListener("click",function(e){if(e.target===this)nxClose()});
+  $("#gateBtn").addEventListener("click",function(){$("#gateMsg").textContent="確認中…";hostLogin($("#gateUser").value.trim(),$("#gatePass").value,false).then(function(ok){if(ok){$("#gateMsg").textContent="";$("#gatePass").value=""}})});
+  $("#gatePass").addEventListener("keydown",function(e){if(e.key==="Enter")$("#gateBtn").click()});
+  $("#gateOut").addEventListener("click",function(){hostOK=false;hostAuth=null;lsDel("vgd_ha");refreshEntry()});
   $("#tmSec").addEventListener("input",function(){var v=+this.value;if(v>=5&&v<=120&&v===Math.round(v)){cs.timer=v;renderCreate()}});
   $("#tmSec").addEventListener("change",function(){cs.timer=normTm(this.value);this.value=cs.timer;renderCreate()});
   $("#banMinus").addEventListener("click",function(){if(cs.banN>0){cs.banN--;setRows();renderCreate()}});
@@ -1634,8 +1659,9 @@ async function init(){
   }
   if(qRoom){$("#joinId").value=qRoom;entryRoom=qRoom}
   if(qLd){$("#joinBtn").textContent="参戦者として入室";$("#joinLeaderBtn").hidden=false}
-  if(IS_FREE){$("#freeNote").hidden=false}
+  if(IS_FREE){$("#gateOut").hidden=true;$("#freeNote").hidden=false}
   refreshEntry();
+  if(!IS_FREE&&!qRoom&&hostAuth)hostLogin(hostAuth.u,hostAuth.p,true);
   setBusy(false);setBanner();
   var sr=null;
   try{sr=JSON.parse(lsGet("vgd_room")||"null")}catch(e){sr=null}
