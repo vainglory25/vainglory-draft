@@ -85,18 +85,18 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid
 .btns{display:flex;gap:8px;flex-wrap:wrap}
 
 .strip{display:flex;gap:6px;flex-wrap:wrap}
-#rStrip{display:flex;flex-direction:column;gap:8px}
+#rStrip{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:520px}      /* 既定とPC表示(🖥): HOMEとAWAYの2列で、上から下へ */
 #rStrip .sgrp{display:block}
-#rStrip .th{font-family:var(--f-disp);font-weight:700;letter-spacing:.14em;font-size:12px;padding:2px 0}
+#rStrip .th{font-family:var(--f-disp);font-weight:700;letter-spacing:.14em;font-size:12px;padding:2px 0;text-align:center}
 #rStrip .th.home{color:var(--home)}#rStrip .th.away{color:var(--away)}
-#rStrip .sl{display:flex;gap:6px;flex-wrap:wrap}
-@media (max-width:560px){
-  #rStrip{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  #rStrip .th{text-align:center}
-  #rStrip .sl{flex-direction:column}
-  #rStrip .rchip{display:flex;align-items:center;justify-content:center;gap:8px;min-width:0}
-  #rStrip .rchip small{display:inline}
-}
+#rStrip .sl{display:flex;flex-direction:column;gap:6px}
+#rStrip .rchip{display:flex;align-items:center;justify-content:center;gap:8px;min-width:0}
+#rStrip .rchip small{display:inline}
+.lay-new #rStrip{display:flex;flex-direction:column;gap:8px;max-width:none}      /* スマホ表示(📱): HOMEの行、AWAYの行を、左から右へ */
+.lay-new #rStrip .th{text-align:left}
+.lay-new #rStrip .sl{flex-direction:row;flex-wrap:wrap}
+.lay-new #rStrip .rchip{display:block;min-width:48px}
+.lay-new #rStrip .rchip small{display:block}
 .rchip{min-width:48px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);text-align:center;font-family:var(--f-disp);line-height:1.2}
 .rchip small{display:block;font-size:10px;letter-spacing:.14em;opacity:.8}
 .rchip b{font-size:15px}
@@ -597,7 +597,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261109-5";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261110-2";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="host";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
