@@ -311,6 +311,10 @@ vercel-live-feedback{display:none!important}      /* Vercel のツールバー(�
 .lay-new #cmpRow{display:flex;align-items:center;gap:8px;margin-top:4px}
 .lay-new #cmpRow #roleInfo{flex:1 1 auto;min-width:0;flex-wrap:nowrap;overflow:hidden;margin:0;gap:4px 6px}
 .lay-new #cmpRow #roleInfo[hidden]{display:none}
+#roleInfo .ri{min-width:0;flex:0 1 auto;max-width:100%}
+#roleInfo .ri .in{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.lay-new #cmpRow #roleInfo .ri{padding:3px 8px;gap:4px}
+.lay-new #cmpRow #roleInfo>span:first-child{display:none}
 .lay-new .cmpbtn{display:block;margin:0 0 0 auto;flex:none;font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
 .lay-new .cell{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;padding:6px 3px 5px;border:1px solid var(--line);border-radius:10px;background:var(--bg,#0000)}
 .lay-new .cell.B{background:rgba(255,112,98,.07)}
@@ -633,7 +637,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261112-13";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261112-15";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="free";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -1543,7 +1547,7 @@ function renderRoleInfo(){      /* 自分のチームの、ロール・色の意
     var L=(D.seats[t]||[]).filter(function(u){var m=mem[u];return m&&(m.role||m.color)});
     var cn={red:"赤",blue:"青",yellow:"黄"};
     if(L.length)full='<span>チームのロール</span>'+L.map(function(u){var m=mem[u];return '<span class="ri"><b>'+esc(m.name||"")+'</b>'+(m.color?'<span class="rtag"><i class="'+m.color+'"></i>'+esc(cn[m.color]||"")+'</span>':'')+(m.role?'<span>'+esc(m.role)+'</span>':'')+'</span>'}).join("");
-    if(L.length)html='<span>ロール</span>'+L.map(function(u){var m=mem[u],rc=(m.role||"").charAt(0);return '<span class="ri" title="'+esc((m.name||"")+(m.role?" · "+m.role:""))+'">'+(m.color?'<span class="rtag"><i class="'+m.color+'"></i></span>':'')+(rc?'<b>'+esc(rc)+'</b>':'')+'</span>'}).join("");
+    if(L.length)html='<span>ロール</span>'+L.map(function(u){var m=mem[u],rc=(m.role||"").charAt(0);return '<span class="ri" title="'+esc((m.name||"")+(m.role?" · "+m.role:""))+'"><span class="in">'+esc(m.name||"")+'</span>'+(m.color?'<span class="rtag"><i class="'+m.color+'"></i></span>':'')+(rc?'<b>'+esc(rc)+'</b>':'')+'</span>'}).join("");
   }
   $("#roleInfo").hidden=!html;$("#roleInfo").innerHTML=html;$("#roleInfoL").hidden=!full;$("#roleInfoL").innerHTML=full;
 }
