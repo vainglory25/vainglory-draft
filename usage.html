@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Upstash 使用量</title>
+<style>
+:root{--bg:#0b0f1d;--panel:#151a33;--panel2:#1b2142;--line:#2b3360;--fg:#e9ecf8;--muted:#9aa3c7;--gold:#e8c46c;--ok:#5fd39a;--warn:#f0b34a;--bad:#ff6f61;--blue:#5aa7ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;line-height:1.6}
+.wrap{max-width:1040px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:22px;margin:0}
+.sub{color:var(--muted);font-size:13px}
+.top{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;justify-content:space-between;margin-bottom:16px}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+select,button,input{font:inherit;color:var(--fg);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-height:40px}
+button{cursor:pointer}button:hover{border-color:var(--gold)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.card h2{margin:0 0 10px;font-size:15px;color:var(--gold);letter-spacing:.04em}
+.big{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:baseline}
+.big .n{font-size:40px;font-weight:800;font-variant-numeric:tabular-nums}
+.big .of{color:var(--muted)}
+.badge{display:inline-block;padding:2px 12px;border-radius:999px;font-size:13px;font-weight:700;border:1px solid}
+.b-ok{color:var(--ok);border-color:var(--ok)}.b-warn{color:var(--warn);border-color:var(--warn)}.b-bad{color:var(--bad);border-color:var(--bad)}
+.bar{position:relative;height:22px;background:#0b0f1d;border:1px solid var(--line);border-radius:999px;margin:12px 0 6px;overflow:hidden}
+.bar>i{position:absolute;left:0;top:0;bottom:0;border-radius:999px}
+.bar>u{position:absolute;top:0;bottom:0;width:2px;background:#ffffff66}
+.scale{position:relative;height:16px;font-size:11px;color:var(--muted)}.scale span{position:absolute;transform:translateX(-50%)}.scale span:first-child{transform:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px}
+.stat .k{font-size:12px;color:var(--muted)}
+.stat .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat .s{font-size:12px;color:var(--muted)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+svg{width:100%;height:auto;display:block}
+.ax{fill:var(--muted);font-size:10px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td,th{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+.msg{padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--panel)}
+.msg.err{border-color:var(--bad)}
+.msg code{background:#0b0f1d;padding:1px 6px;border-radius:6px}
+pre{white-space:pre-wrap;word-break:break-all;font-size:12px;background:#0b0f1d;border:1px solid var(--line);border-radius:10px;padding:10px;max-height:340px;overflow:auto}
+details summary{cursor:pointer;color:var(--muted)}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--muted);margin-top:4px}.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div><h1>Upstash(Redis)使用量</h1><div class="sub" id="dbline">読み込み中…</div></div>
+    <div class="ctl">
+      <label class="sub" for="period">グラフの期間</label>
+      <select id="period"><option value="1h">1時間</option><option value="3h">3時間</option><option value="12h">12時間</option><option value="1d">1日</option><option value="3d">3日</option><option value="7d" selected>7日</option><option value="30d">30日(Proのみ)</option></select>
+      <button id="reload" type="button">更新</button>
+    </div>
+  </div>
+  <div id="out"></div>
+</div>
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s)};
+var out=$("#out"),PASSKEY="usage_pass",timer=null;
+function pass(){try{return sessionStorage.getItem(PASSKEY)||""}catch(e){return ""}}
+function setPass(v){try{sessionStorage.setItem(PASSKEY,v)}catch(e){}}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function fmt(n){return (+n||0).toLocaleString("ja-JP")}
+function bytes(b){b=+b||0;var u=["B","KB","MB","GB","TB"],i=0;while(b>=1024&&i<4){b/=1024;i++}return (i?b.toFixed(b<10?2:1):b)+" "+u[i]}
+function last(a){return Array.isArray(a)&&a.length?a[a.length-1].y:null}
+function sum(a){return Array.isArray(a)?a.reduce(function(s,p){return s+(+p.y||0)},0):0}
+function fmtT(x,per){var d=new Date(x);if(isNaN(d))return String(x);var p=function(n){return String(n).padStart(2,"0")};return (/h$/.test(per)||per==="1d")?p(d.getHours())+":"+p(d.getMinutes()):(d.getMonth()+1)+"/"+d.getDate()}
+
+/* 折れ線・棒グラフ(外部ライブラリなし) */
+function chart(series,opt){
+  var W=520,H=190,L=44,R=8,T=10,B=22,pts=series.length?series[0].d.length:0;
+  if(!pts)return '<div class="sub">データがありません(まだ記録がないか、期間が短すぎます)</div>';
+  var max=0;series.forEach(function(s){s.d.forEach(function(p){max=Math.max(max,+p.y||0)})});if(opt.minMax)max=Math.max(max,opt.minMax);if(!max)max=1;
+  var w=W-L-R,h=H-T-B,g='';
+  for(var i=0;i<=4;i++){var y=T+h-h*i/4,v=max*i/4;g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y+'" y2="'+y+'" stroke="#2b3360" stroke-width="1"/><text class="ax" x="'+(L-5)+'" y="'+(y+3)+'" text-anchor="end">'+esc(opt.unit==="ms"?v.toFixed(v<10?1:0):(v>=1000?Math.round(v).toLocaleString("ja-JP"):Math.round(v*10)/10))+'</text>'}
+  var n=series[0].d.length;
+  series.forEach(function(s,si){
+    if(opt.bar){var bw=Math.max(2,w/n*0.7/series.length);s.d.forEach(function(p,i){var x=L+w*(i+.5)/n-bw*series.length/2+si*bw,bh=h*(+p.y||0)/max;g+='<rect x="'+x.toFixed(1)+'" y="'+(T+h-bh).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" fill="'+s.c+'" rx="2"/>'});}
+    else{var d=s.d.map(function(p,i){return (i?"L":"M")+(L+w*(n>1?i/(n-1):.5)).toFixed(1)+" "+(T+h-h*(+p.y||0)/max).toFixed(1)}).join(" ");g+='<path d="'+d+'" fill="none" stroke="'+s.c+'" stroke-width="2" stroke-linejoin="round"/>'}
+  });
+  var ticks=Math.min(6,n);for(var t=0;t<ticks;t++){var idx=Math.round((n-1)*t/(ticks-1||1)),xx=L+w*(opt.bar?(idx+.5)/n:(n>1?idx/(n-1):.5));g+='<text class="ax" x="'+xx.toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle">'+esc(fmtT(series[0].d[idx].x,opt.per))+'</text>'}
+  var lg=series.length>1?'<div class="legend">'+series.map(function(s){return '<span><i style="background:'+s.c+'"></i>'+esc(s.n)+'</span>'}).join("")+'</div>':'';
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(opt.label)+'">'+g+'</svg>'+lg;
+}
+function stat(k,v,s){return '<div class="stat"><div class="k">'+esc(k)+'</div><div class="v">'+v+'</div>'+(s?'<div class="s">'+s+'</div>':'')+'</div>'}
+
+function render(r){
+  var st=r.stats||{},limit=r.limit,used=+st.total_monthly_requests||0,pct=used/limit*100,per=r.period;
+  var now=new Date(r.now),y=now.getUTCFullYear(),m=now.getUTCMonth(),dim=new Date(Date.UTC(y,m+1,0)).getUTCDate();
+  var elapsed=(now.getUTCDate()-1)+(now.getUTCHours()*3600+now.getUTCMinutes()*60+now.getUTCSeconds())/86400,left=Math.max(dim-elapsed,0);
+  var fc=elapsed>0.2?used/elapsed*dim:used,perDay=left>0?Math.max(limit-used,0)/left:0;
+  var cls=pct>=100?"bad":pct>=90?"bad":pct>=80?"warn":"ok",lab=pct>=100?"上限を超えています":pct>=90?"警告(90%超)":pct>=80?"注意(80%超)":"余裕あり";
+  var col=cls==="ok"?"var(--ok)":cls==="warn"?"var(--warn)":"var(--bad)";
+  $("#dbline").textContent=(r.db.name?r.db.name+" / ":"")+(r.db.region?r.db.region+" / ":"")+"ID "+r.db.id+" · 更新 "+new Date(r.now).toLocaleString("ja-JP");
+  var h='';
+  h+='<div class="card"><h2>今月のリクエスト数(上限 '+fmt(limit)+')</h2><div class="big"><span class="n" style="color:'+col+'">'+fmt(used)+'</span><span class="of">/ '+fmt(limit)+'</span><span class="n" style="font-size:28px">'+pct.toFixed(1)+'%</span><span class="badge b-'+cls+'">'+lab+'</span></div>'
+   +'<div class="bar"><i style="width:'+Math.min(pct,100)+'%;background:'+col+'"></i><u style="left:80%"></u><u style="left:90%"></u></div><div class="scale"><span style="left:0">0</span><span style="left:80%">80%</span><span style="left:90%">90%</span><span style="right:0;left:auto;transform:none">100%</span></div>'
+   +'<div class="grid" style="margin-top:12px">'
+   +stat("月末の見込み(目安)",'<span style="color:'+(fc>limit?"var(--bad)":"inherit")+'">'+fmt(Math.round(fc))+'</span>',"今のペースが続いた場合(月はUTC基準)")
+   +stat("残り",fmt(Math.max(limit-used,0)),"上限まであと")
+   +stat("今月の残り日数",left.toFixed(1)+" 日","UTC基準の暦月")
+   +stat("1日あたり使える数",fmt(Math.round(perDay)),"残りを均等に使う場合")
+   +'</div></div>';
+  h+='<div class="card"><h2>数値の一覧</h2><div class="grid">'
+   +stat("今日のコマンド数",fmt(st.daily_net_commands),"読み取り "+fmt(st.daily_read_requests)+" / 書き込み "+fmt(st.daily_write_requests))
+   +stat("今月の読み取り",fmt(st.total_monthly_read_requests),"リクエスト")
+   +stat("今月の書き込み",fmt(st.total_monthly_write_requests),"リクエスト")
+   +stat("帯域(今日)",bytes(st.dailybandwidth),"今月 "+bytes(st.total_monthly_bandwidth))
+   +stat("ストレージ",bytes(st.current_storage),"今月 "+bytes(st.total_monthly_storage))
+   +stat("今月の請求額",'$'+(+st.total_monthly_billing||0).toFixed(2),"")
+   +stat("キー数",last(st.keyspace)==null?"—":fmt(last(st.keyspace)),"最新")
+   +stat("接続数",last(st.connection_count)==null?"—":fmt(last(st.connection_count)),"REST接続 "+(last(st.rest_conn_count)==null?"—":fmt(last(st.rest_conn_count))))
+   +stat("ヒット / ミス",fmt(sum(st.hits))+" / "+fmt(sum(st.misses)),"選んだ期間の合計")
+   +'</div></div>';
+  h+='<div class="two">'
+   +'<div class="card"><h2>日別のリクエスト数</h2>'+chart([{n:"リクエスト",c:"#5aa7ff",d:st.dailyrequests||[]}],{bar:true,per:"7d",label:"日別のリクエスト数",minMax:0})+'</div>'
+   +'<div class="card"><h2>読み取りと書き込み('+esc(per)+')</h2>'+chart([{n:"読み取り",c:"#5fd39a",d:st.read||[]},{n:"書き込み",c:"#ff8a7a",d:st.write||[]}],{per:per,label:"読み取りと書き込み"})+'</div>'
+   +'<div class="card"><h2>スループット('+esc(per)+')</h2>'+chart([{n:"スループット",c:"#e8c46c",d:st.throughput||[]}],{per:per,label:"スループット"})+'</div>'
+   +'<div class="card"><h2>レイテンシ p99(ms)</h2>'+chart([{n:"p99",c:"#c79bff",d:st.latency_99||[]},{n:"中央値",c:"#5aa7ff",d:st.latency_p50||[]}],{per:per,unit:"ms",label:"レイテンシ"})+'</div>'
+   +'<div class="card"><h2>キー数('+esc(per)+')</h2>'+chart([{n:"キー数",c:"#5fd39a",d:st.keyspace||[]}],{per:per,label:"キー数"})+'</div>'
+   +'<div class="card"><h2>日別の請求額</h2>'+chart([{n:"請求",c:"#f0b34a",d:st.dailybilling||[]}],{bar:true,per:"7d",label:"日別の請求額"})+'</div>'
+   +'</div>';
+  var cc=(st.command_counts||[]).map(function(c){return {n:c.metric_identifier,v:sum(c.data_points)}}).filter(function(c){return c.v>0}).sort(function(a,b){return b.v-a.v}).slice(0,12);
+  if(cc.length){var tot=cc.reduce(function(s,c){return s+c.v},0);h+='<div class="card"><h2>コマンド別の回数('+esc(per)+'、上位)</h2><table><tr><th>コマンド</th><th class="r">回数</th><th class="r">割合</th></tr>'+cc.map(function(c){return '<tr><td>'+esc(c.n)+'</td><td class="r">'+fmt(c.v)+'</td><td class="r">'+(c.v/tot*100).toFixed(1)+'%</td></tr>'}).join("")+'</table></div>'}
+  h+='<div class="card"><details><summary>取得した生データ(すべての項目)</summary><pre>'+esc(JSON.stringify(st,null,1))+'</pre></details></div>';
+  h+='<div class="sub">※ Upstashの請求画面の「コマンド数」と、数え方が少し違う場合があります。判断に迷うときはUpstashの管理画面も確認してください。</div>';
+  out.innerHTML=h;
+}
+function fail(j,status){
+  var e=j&&j.err,m;
+  if(e==="pass"){
+    out.innerHTML='<div class="msg"><b>パスコードが必要です</b><p><input id="pw" type="password" autocomplete="current-password" placeholder="パスコード" style="width:min(320px,100%)"> <button id="pwb" type="button">表示</button></p>'+(j.bad?'<p style="color:var(--bad)">パスコードが違います。</p>':'')+'</div>';
+    $("#pwb").onclick=function(){setPass($("#pw").value);load()};$("#pw").onkeydown=function(ev){if(ev.key==="Enter"){setPass($("#pw").value);load()}};$("#dbline").textContent="";return}
+  if(e==="noenv")m='Vercelの環境変数が足りません。次を設定して、再デプロイしてください。<br><code>UPSTASH_EMAIL</code>(Upstashのメールアドレス)<br><code>UPSTASH_API_KEY</code>(Upstash の Account → Management API で発行)<br>任意: <code>UPSTASH_DB_ID</code>、<code>USAGE_PASS</code>、<code>USAGE_LIMIT</code>(初期 500000)';
+  else if(e==="auth")m='Upstashの認証に失敗しました。<code>UPSTASH_EMAIL</code> と <code>UPSTASH_API_KEY</code> が正しいか確認してください。';
+  else if(e==="nodb")m='このアプリのデータベースを自動で見つけられませんでした。<code>UPSTASH_DB_ID</code> を設定してください。'+(j.names&&j.names.length?'<br>候補: '+j.names.map(esc).join(" / "):"");
+  else if(e==="upstash")m='Upstashの応答エラーです(HTTP '+esc(j.status)+')。'+esc(j.msg||"")+'<br>グラフの期間を短くして試してください。';
+  else m='取得できませんでした。'+(status?'(HTTP '+status+')':'')+esc(j&&j.msg||"");
+  out.innerHTML='<div class="msg err">'+m+'</div>';$("#dbline").textContent="";
+}
+function load(){
+  $("#reload").disabled=true;
+  fetch("/api/usage?period="+encodeURIComponent($("#period").value),{headers:{"x-usage-pass":pass()},cache:"no-store"})
+   .then(function(r){return r.json().catch(function(){return null}).then(function(j){return {r:r,j:j}})})
+   .then(function(x){if(x.r.ok&&x.j&&x.j.stats)render(x.j);else fail(x.j||{},x.r.status)})
+   .catch(function(){out.innerHTML='<div class="msg err">サーバーにつながりませんでした。</div>'})
+   .then(function(){$("#reload").disabled=false});
+}
+$("#reload").onclick=load;$("#period").onchange=load;
+load();clearInterval(timer);timer=setInterval(function(){if(!document.hidden&&!$("#pw"))load()},300000);
+})();
+</script>
+</body>
+</html>
