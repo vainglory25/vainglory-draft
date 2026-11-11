@@ -307,7 +307,11 @@ vercel-live-feedback{display:none!important}      /* Vercel のツールバー(�
 .lay-new #topfix{position:sticky;top:0;z-index:20;background:var(--bg);padding-bottom:4px;margin-bottom:8px}
 .lay-new #topfix .turnbar{position:static;margin-bottom:8px}
 .lay-new #boards{display:flex;flex-direction:column;gap:6px}
-.lay-new .cmpbtn{display:block;margin:4px 0 0 auto;font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
+.lay-old #cmpRow{display:contents}
+.lay-new #cmpRow{display:flex;align-items:center;gap:8px;margin-top:4px}
+.lay-new #cmpRow #roleInfo{flex:1 1 auto;min-width:0;flex-wrap:nowrap;overflow:hidden;margin:0;gap:4px 6px}
+.lay-new #cmpRow #roleInfo[hidden]{display:none}
+.lay-new .cmpbtn{display:block;margin:0 0 0 auto;flex:none;font-size:11px;padding:2px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
 .lay-new .cell{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;padding:6px 3px 5px;border:1px solid var(--line);border-radius:10px;background:var(--bg,#0000)}
 .lay-new .cell.B{background:rgba(255,112,98,.07)}
 .lay-new .cell .rn{position:absolute;left:4px;top:3px;font-family:var(--f-disp);font-size:11px;line-height:1;color:var(--muted)}
@@ -322,6 +326,8 @@ vercel-live-feedback{display:none!important}      /* Vercel のツールバー(�
 .lay-new .cell.cur.away{border-color:var(--away);box-shadow:0 0 18px -4px var(--away)}
 .lay-new .cell.cur .ph,.lay-new .cell.cur .mono{outline:2px dashed var(--gold);outline-offset:1px}
 .lay-new .cell.cur{animation:pulse 1.6s ease-in-out infinite;border-width:2px}
+.lay-new #topfix.compact #rolebar{display:none}
+.lay-new #topfix #rolebar{margin:0 0 6px}
 .lay-new #topfix.compact #colHome,.lay-new #topfix.compact #colAway{padding:3px 8px 4px;display:flex;align-items:center;gap:6px}
 .lay-new #topfix.compact .colh{display:inline-block;margin:0 8px 0 0;font-size:11px;vertical-align:middle}
 .lay-new #topfix.compact .band{flex:1 1 auto;min-width:0;gap:3px}
@@ -598,7 +604,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
       <div id="topfix">
         <div class="turnbar" id="turnbar"></div>
         <div id="boards"><div id="colHome"></div><div id="colAway"></div></div>
-        <button type="button" id="cmpBtn" class="cmpbtn" aria-label="HOME/AWAYの表示を小さくする">▲ 小さく</button>
+        <div id="cmpRow"><button type="button" id="cmpBtn" class="cmpbtn" aria-label="HOME/AWAYの表示を小さくする">▲ 小さく</button></div>
       </div>
       <div class="stage">
         <div id="colPool">
@@ -627,7 +633,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261112-10";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261112-13";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="free";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -1520,19 +1526,26 @@ function renderBoard(){
     $(t==="home"?"#colHome":"#colAway").innerHTML=h;
   });
 }
-function placeRolebar(inLobby){      /* 「あなたのロール」は、ロビーではチーム名の入力欄の下、ドラフト中は従来の位置 */
-  var rb=$("#rolebar"),tb=$("#tnBox"),fw=$("#fixedWrap"),lob=$("#lobby");
-  if(inLobby){if(rb.parentNode!==lob)lob.insertBefore(rb,$("#roleInfoL"))}
-  else if(rb.parentNode===lob)fw.parentNode.insertBefore(rb,fw);
+var rbIn=false;
+function placeRolebar(inLobby){      /* 「あなたのロール」は、ロビーではチーム名の入力欄の下、ドラフト中はHOME/AWAYの(チーム名の)上 */
+  if(inLobby!==undefined)rbIn=inLobby;
+  var rb=$("#rolebar"),lob=$("#lobby"),old=document.body.classList.contains("lay-old");
+  var ref=rbIn?null:(old?document.querySelector(".stage"):$("#boards"));
+  var ri=$("#roleInfo"),cr=$("#cmpRow"),cp=$("#colPool");
+  if(!rbIn&&!old){if(ri.parentNode!==cr)cr.insertBefore(ri,cr.firstChild)}
+  else if(ri.parentNode!==cp)cp.insertBefore(ri,cp.firstChild);
+  if(rbIn){if(rb.parentNode!==lob)lob.insertBefore(rb,$("#roleInfoL"))}
+  else if(ref&&rb.nextSibling!==ref)ref.parentNode.insertBefore(rb,ref);
 }
 function renderRoleInfo(){      /* 自分のチームの、ロール・色の意思表示を、ロビー(HOME/AWAYの上)とドラフト(ヒーロー一覧の上)に出す */
-  var mem=S.members||{},t=D&&D.myTeam,html="";
+  var mem=S.members||{},t=D&&D.myTeam,html="",full="";
   if(t){
     var L=(D.seats[t]||[]).filter(function(u){var m=mem[u];return m&&(m.role||m.color)});
     var cn={red:"赤",blue:"青",yellow:"黄"};
-    if(L.length)html='<span>チームのロール</span>'+L.map(function(u){var m=mem[u];return '<span class="ri"><b>'+esc(m.name||"")+'</b>'+(m.color?'<span class="rtag"><i class="'+m.color+'"></i>'+esc(cn[m.color]||"")+'</span>':'')+(m.role?'<span>'+esc(m.role)+'</span>':'')+'</span>'}).join("");
+    if(L.length)full='<span>チームのロール</span>'+L.map(function(u){var m=mem[u];return '<span class="ri"><b>'+esc(m.name||"")+'</b>'+(m.color?'<span class="rtag"><i class="'+m.color+'"></i>'+esc(cn[m.color]||"")+'</span>':'')+(m.role?'<span>'+esc(m.role)+'</span>':'')+'</span>'}).join("");
+    if(L.length)html='<span>ロール</span>'+L.map(function(u){var m=mem[u],rc=(m.role||"").charAt(0);return '<span class="ri" title="'+esc((m.name||"")+(m.role?" · "+m.role:""))+'">'+(m.color?'<span class="rtag"><i class="'+m.color+'"></i></span>':'')+(rc?'<b>'+esc(rc)+'</b>':'')+'</span>'}).join("");
   }
-  ["#roleInfo","#roleInfoL"].forEach(function(q){var el=$(q);el.hidden=!html;el.innerHTML=html});
+  $("#roleInfo").hidden=!html;$("#roleInfo").innerHTML=html;$("#roleInfoL").hidden=!full;$("#roleInfoL").innerHTML=full;
 }
 function renderPool(){
   var can=S.phase==="draft"&&!!D.myTeam;
@@ -1638,6 +1651,7 @@ function wireRoom(){
       if(m===cur)return;cur=m;
       document.body.classList.toggle("lay-old",m==="old");document.body.classList.toggle("lay-new",m==="new");
       if(m==="old"){st.insertBefore(hm,pl);st.appendChild(aw)}else{bd.appendChild(hm);bd.appendChild(aw)}
+      placeRolebar();
       $("#layPC").classList.toggle("on",m==="old");$("#layMob").classList.toggle("on",m==="new");
       $("#layPC").setAttribute("aria-pressed",m==="old");$("#layMob").setAttribute("aria-pressed",m==="new");
     }
