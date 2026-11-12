@@ -330,8 +330,7 @@ vercel-live-feedback{display:none!important}      /* Vercel のツールバー(�
 .lay-new .cell.cur.away{border-color:var(--away);box-shadow:0 0 18px -4px var(--away)}
 .lay-new .cell.cur .ph,.lay-new .cell.cur .mono{outline:2px dashed var(--gold);outline-offset:1px}
 .lay-new .cell.cur{animation:pulse 1.6s ease-in-out infinite;border-width:2px}
-.lay-new #topfix.compact #rolebar{display:none}
-.lay-new #topfix #rolebar{margin:0 0 6px}
+.lay-new .stage>#rolebar{margin:0 0 8px}
 .lay-new #topfix.compact #colHome,.lay-new #topfix.compact #colAway{padding:3px 8px 4px;display:flex;align-items:center;gap:6px}
 .lay-new #topfix.compact .colh{display:inline-block;margin:0 8px 0 0;font-size:11px;vertical-align:middle}
 .lay-new #topfix.compact .band{flex:1 1 auto;min-width:0;gap:3px}
@@ -637,7 +636,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261112-15";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261112-16";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="free";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -1534,7 +1533,7 @@ var rbIn=false;
 function placeRolebar(inLobby){      /* 「あなたのロール」は、ロビーではチーム名の入力欄の下、ドラフト中はHOME/AWAYの(チーム名の)上 */
   if(inLobby!==undefined)rbIn=inLobby;
   var rb=$("#rolebar"),lob=$("#lobby"),old=document.body.classList.contains("lay-old");
-  var ref=rbIn?null:(old?document.querySelector(".stage"):$("#boards"));
+  var ref=rbIn?null:(old?document.querySelector(".stage"):$("#colPool"));
   var ri=$("#roleInfo"),cr=$("#cmpRow"),cp=$("#colPool");
   if(!rbIn&&!old){if(ri.parentNode!==cr)cr.insertBefore(ri,cr.firstChild)}
   else if(ri.parentNode!==cp)cp.insertBefore(ri,cp.firstChild);
