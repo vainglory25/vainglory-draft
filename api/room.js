@@ -185,7 +185,7 @@ function gameRec(S) {
 }
 /* 観戦コメント(定型文)。番号で送る。ここを変えると、画面の文言も変わる */
 var CMT = ["いい選択!", "ナイスBAN!", "そこをBANするのか!", "渋いピック", "意外な選択!", "強い構成!", "これは刺さる", "悩ましい…", "面白くなってきた", "勝負どころ!", "逆転あるぞ", "ミラー合戦だ", "神ドラフト", "頑張れ!", "応援しています", "GG"];
-var CM_MAX = 200;
+var CM_MAX = 100;
 function cleanName(n) { return String(n == null ? "" : n).replace(/[\u0000-\u001f\u007f-\u009f\u00ad\u034f\u115f\u1160\u17b4\u17b5\u180e\u200b-\u200f\u202a-\u202e\u2060-\u206f\u3164\ufeff\uffa0<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 14); }
 function autoHero(S, team, type, avoid, extra) {
   avoid = (avoid || []).concat(extra || []);
