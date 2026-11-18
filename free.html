@@ -310,6 +310,15 @@ vercel-live-feedback{display:none!important}      /* Vercel のツールバー(�
 .lay-new #topfix .turnbar{position:static;margin-bottom:8px}
 .lay-new #boards{display:flex;flex-direction:column;gap:6px}
 .lay-old #cmpRow{display:contents}
+.lay-new #cmpRow .cmpbtn{margin:0}
+.lay-new #cmpRow #cmpTBtn{margin-left:auto}
+.lay-new #topfix.tcompact .turnbar{padding:4px 10px;gap:2px 10px;margin-bottom:4px}
+.lay-new #topfix.tcompact .tb-l .k,.lay-new #topfix.tcompact .tb-act{display:none}
+.lay-new #topfix.tcompact .tb-l .v{font-size:14px;margin-top:0}
+.lay-new #topfix.tcompact .tb-r{font-size:26px}
+.lay-new #topfix.tcompact .poolrow{gap:4px}
+.lay-new #topfix.tcompact .poolrow .pc{padding:0 8px}
+.lay-new #topfix.tcompact .poolrow .pc b{font-size:13px}
 .lay-new #cmpRow{display:flex;align-items:center;gap:8px;margin-top:4px}
 .lay-new #cmpRow #roleInfo{flex:1 1 auto;min-width:0;flex-wrap:nowrap;overflow:hidden;margin:0;gap:4px 6px}
 .lay-new #cmpRow #roleInfo[hidden]{display:none}
@@ -609,7 +618,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
       <div id="topfix">
         <div class="turnbar" id="turnbar"></div>
         <div id="boards"><div id="colHome"></div><div id="colAway"></div></div>
-        <div id="cmpRow"><button type="button" id="cmpBtn" class="cmpbtn" aria-label="HOME/AWAYの表示を小さくする">▲ 小さく</button></div>
+        <div id="cmpRow"><button type="button" id="cmpTBtn" class="cmpbtn" aria-label="秒数表示を小さくする">▲ 秒数</button><button type="button" id="cmpBtn" class="cmpbtn" aria-label="HOME/AWAYの表示を小さくする">▲ 小さく</button></div>
       </div>
       <div class="stage">
         <div id="colPool">
@@ -638,7 +647,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261116-1";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261118-1";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="free";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -1645,12 +1654,12 @@ function wireRoom(){
   });
   $("#q").addEventListener("input",function(){q=$("#q").value;if(S&&D&&S.phase!=="lobby")renderPool()});
   (function(){
-    var tf=document.getElementById("topfix"),bt=document.getElementById("cmpBtn"),
+    var tf=document.getElementById("topfix"),bt=document.getElementById("cmpBtn"),tbt=document.getElementById("cmpTBtn"),
         hm=document.getElementById("colHome"),aw=document.getElementById("colAway"),
         bd=document.getElementById("boards"),st=document.querySelector(".stage"),pl=document.getElementById("colPool");
     if(!tf||!bt||!st)return;
-    var on=(lsGet("vgd_cmp")||"0")==="1",cur=null;
-    function ap(){tf.classList.toggle("compact",on);bt.textContent=on?"▼ 大きく":"▲ 小さく"}
+    var on=(lsGet("vgd_cmp")||"0")==="1",ton=(lsGet("vgd_cmpt")||"0")==="1",cur=null;
+    function ap(){tf.classList.toggle("compact",on);bt.textContent=on?"▼ 大きく":"▲ 小さく";tf.classList.toggle("tcompact",ton);tbt.textContent=ton?"▼ 秒数":"▲ 秒数"}
     function auto(){return window.innerWidth<800?"new":"old"}
     function setLay(m){
       if(m===cur)return;cur=m;
@@ -1662,6 +1671,7 @@ function wireRoom(){
     }
     function pick(){var v=lsGet("vgd_lay");return v==="old"||v==="new"?v:auto()}
     bt.addEventListener("click",function(){on=!on;lsSet("vgd_cmp",on?"1":"0");ap()});
+    tbt.addEventListener("click",function(){ton=!ton;lsSet("vgd_cmpt",ton?"1":"0");ap()});
     $("#layPC").addEventListener("click",function(){lsSet("vgd_lay","old");setLay("old")});
     $("#layMob").addEventListener("click",function(){lsSet("vgd_lay","new");setLay("new")});
     window.addEventListener("resize",function(){if(!lsGet("vgd_lay"))setLay(auto())});
