@@ -654,7 +654,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261118-5";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261118-6";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="free";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -1609,7 +1609,7 @@ function renderAct(){
   if(isActor()){
     var ac=myAct(),ps=pendingSet(),n=ac.n,verb=c.type==="B"?"BAN":"ピック";
     var cnt=n>1?' ('+ps.length+'/'+n+')':'';
-    el.innerHTML='<div class="t">'+(ps.length?'選択中'+cnt+': <b>'+esc(ps.join("、"))+'</b>':'<b>'+(n>1?n+'体を、タップして選んでください':'ヒーローをタップして選んでください')+'</b>')+'<small>'+(bl?'あなたの選択は、両チームが確定するまで、相手には見えません。'+(n>1?'選んだヒーローをもう一度タップすると外せます。'+(S.cfg.leader?'':'チームの誰でも選べます。')+'人数ぶん揃うと、右下のボタンで確定できます。':'右下のボタンで確定します。'):'手番の間、選択中のヒーローは相手チームにも表示されます。右下のボタンで確定します。')+'</small></div>';
+    el.innerHTML='<div class="t">'+(ps.length?'選択中'+cnt+': <b>'+esc(ps.join("、"))+'</b>':'<b>'+(n>1?n+'体を、タップして選んでください':'ヒーローをタップして選んでください')+'</b>')+'<small>'+(bl?'あなたの選択は、両チームが確定するまで、相手には見えません。'+(n>1?'選んだヒーローをもう一度タップすると外せます。'+(S.cfg.leader?'':'チームの誰でも選べます。')+'人数ぶん揃うと、右下のボタンで確定できます。':'右下のボタンで確定します。'):'選択中のヒーローは、自分のチームにだけ見えます。相手チームには、確定するまで見えません。右下のボタンで確定します。')+'</small></div>';
     setFab(true,verb+"を確定",ps.length?ps.join("、"):(n>1?n+"体を選択":"ヒーローを選択"),ps.length!==n);
   }else if(blindWaiting()){
     el.innerHTML='<div class="t"><b>確定しました</b><small>相手チームの確定を待っています。時間切れになると、未確定の側は自動で決まります。</small></div>';
