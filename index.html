@@ -287,6 +287,7 @@ vercel-live-feedback{display:none!important}      /* Vercel のツールバー(�
 .lay-old .cell .ph{width:40px;height:40px;border-radius:8px;border:1px dashed var(--line);display:grid;place-items:center;font-family:var(--f-disp);font-size:10px;letter-spacing:.1em;color:var(--muted)}
 .lay-old .cell .tx{min-width:0}
 .cell .hn:empty{display:none}
+.lay-new .cell .hn{display:none}
 /* BANしたヒーロー: ほかのピックと同じ大きさで、ヒーロー一覧と同じ、暗くして赤い斜線 */
 .cell.B .mono{position:relative}
 .cell.B .mono::before{content:"";position:absolute;inset:0;border-radius:inherit;-webkit-backdrop-filter:grayscale(1) brightness(.5);backdrop-filter:grayscale(1) brightness(.5);pointer-events:none}
@@ -654,7 +655,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261118-6";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261118-7";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="host";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
