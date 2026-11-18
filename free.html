@@ -310,7 +310,7 @@ vercel-live-feedback{display:none!important}      /* Vercel のツールバー(�
 .lay-new #topfix .turnbar{position:static;margin-bottom:8px}
 .lay-new #boards{display:flex;flex-direction:column;gap:6px}
 .lay-old #cmpRow{display:contents}
-.lay-new #cmpRow .cmpbtn{margin:0}
+.lay-new #cmpRow .cmpbtn{margin:0 0 0 auto}
 .lay-new #topfix.tcompact .turnbar{padding:4px 52px 4px 10px;gap:2px 10px;margin-bottom:4px}
 .lay-new #topfix.tcompact .tb-l .k,.lay-new #topfix.tcompact .tb-act{display:none}
 .lay-new #topfix.tcompact .tb-l .v{font-size:14px;margin-top:0}
@@ -654,7 +654,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261118-4";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261118-5";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="free";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -1524,7 +1524,7 @@ function cellHTML(t,r){
   var inner,hn="",aut=en&&en.auto,ow="";
   if(en){
     if(en.hero){inner=monoHTML(en.hero);hn=""}
-    else{inner='<span class="ph">SKIP</span>';hn="スキップ"}
+    else{inner='<span class="ph">SKIP</span>';hn=""}
   }else if(cur&&S.cfg.blind){
     var bb=(S.bp||{})[t],kk=0,jj;
     for(jj=S.turn;jj<ti;jj++)if(D.turns[jj].team===t)kk++;      /* このチームの、この回での何番目か */
