@@ -712,7 +712,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261120-12";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261120-13";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="free";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -1563,14 +1563,15 @@ function codeHTML(){
   return '<div class="codebox"><small>あなたのチームの名前(ゲーム内の名前に付けてください)</small><b class="num">'+esc(full)+'</b> <button class="btn sm" type="button" data-copycode="'+esc(full)+'">コピー</button></div>';
 }
 function colMode(){var c=document.body.classList;return c.contains("lay-col")?"col":(c.contains("lay-new")?"new":"old")}
-function colStored(){var n=parseInt(lsGet("vgd_cols_"+colMode()),10);return n>=2&&n<=8?n:(colMode()==="col"?4:0)}
+function colKey(){var m=colMode();return m==="col"&&window.innerWidth>window.innerHeight?"colL":m}   /* 3列レイアウトは、縦向きと横向きで別々に覚える */
+function colStored(){var n=parseInt(lsGet("vgd_cols_"+colKey()),10);return n>=2&&n<=8?n:(colMode()==="col"?(colKey()==="colL"?5:4):0)}
 function colShown(){      /* 自動(保存なし)のときは、いま実際に並んでいる列数を数える */
   var n=colStored();if(n)return n;
   var p=document.querySelector($("#draft").hidden?"#lhGrid .pool":"#poolGrid .pool");
   if(p){var c=getComputedStyle(p).gridTemplateColumns.split(" ").filter(Boolean).length;if(c>0)return Math.max(2,Math.min(8,c))}
   return 5;
 }
-function applyCols(){      /* ヒーロー一覧の列数(2〜8列)。レイアウトごとに覚える。3列レイアウトの初期値は4、ほかは自動 */
+function applyCols(){      /* ヒーロー一覧の列数(2〜8列)。レイアウトごとに覚える。3列レイアウトの初期値は縦向き4・横向き5、ほかは自動 */
   var n=colStored();
   ["#colPool","#lobbyHeroes"].forEach(function(q){var cp=$(q);cp.classList.toggle("colfix",!!n);if(n)cp.style.setProperty("--pc",n);else cp.style.removeProperty("--pc")});
   var v=colShown();
@@ -1578,7 +1579,7 @@ function applyCols(){      /* ヒーロー一覧の列数(2〜8列)。レイア�
   Array.prototype.forEach.call(document.querySelectorAll(".colMinus"),function(e){e.disabled=v<=2});
   Array.prototype.forEach.call(document.querySelectorAll(".colPlus"),function(e){e.disabled=v>=8});
 }
-function stepCols(d){var v=Math.max(2,Math.min(8,colShown()+d));lsSet("vgd_cols_"+colMode(),String(v));applyCols()}
+function stepCols(d){var v=Math.max(2,Math.min(8,colShown()+d));lsSet("vgd_cols_"+colKey(),String(v));applyCols()}
 function fitCols(){      /* 3列表示: 左右のBAN/PICKが、スクロールなしで画面の高さに収まるように、1枠の高さを自動で決める */
   var st=document.querySelector(".stage");
   if(!st)return;
