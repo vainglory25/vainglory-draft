@@ -299,6 +299,53 @@ vercel-live-feedback{display:none!important}      /* Vercel のツールバー(�
 .lay-old .cell.cur.away{border-color:var(--away);box-shadow:0 0 18px -4px var(--away)}
 .lay-old .cell.cur .ph,.lay-old .cell.cur .mono{outline:2px dashed var(--gold);outline-offset:1px}
 .lay-old .cell.cur{animation:pulse 1.6s ease-in-out infinite}
+/* ===== 3列レイアウト(PC表示を土台に、狭い画面でも常に3列。左右のBAN/PICKは固定、秒数と確定ボタンは画面の下に固定) ===== */
+#dock{display:none}
+.lay-old.lay-col #lobby:not([hidden]){grid-template-columns:minmax(84px,.8fr) minmax(0,2fr) minmax(84px,.8fr);grid-template-areas:"note note note" "tn tn tn" "rb rb rb" "role role role" "home mid away";gap:6px}
+.lay-old.lay-col #teams .team{padding:8px 4px 6px;border-radius:10px}
+.lay-old.lay-col #teams .team h3{display:block;font-size:12px;letter-spacing:.08em;margin:0 0 6px;text-align:center}
+.lay-old.lay-col #teams .team h3 *{font-size:10px;letter-spacing:0}
+.lay-old.lay-col #teams .seat{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;position:relative;margin:0 0 4px;padding:16px 3px 6px;min-height:72px;text-align:center}
+.lay-old.lay-col #teams .seat .sn{position:absolute;top:3px;left:5px;font-size:10px}
+.lay-old.lay-col #teams .seat .who{max-width:100%;font-size:12px;line-height:1.25;white-space:normal;word-break:break-all;overflow:hidden}
+.lay-old.lay-col #teams .seat .who small{display:block;margin:1px 0 0}
+.lay-old.lay-col #teams .seat>:nth-child(3){grid-column:auto;justify-self:auto;justify-content:center;flex-wrap:wrap;gap:4px;margin-top:auto}
+.lay-old.lay-col #teams .seat.empty .who{font-size:11px}
+.lay-old.lay-col #teams .acts{flex-direction:column;align-items:stretch;gap:4px}
+.colctl{display:inline-flex;align-items:center;gap:4px;flex:none;font-size:12px}
+.colctl b{min-width:1.2em;text-align:center}
+#colPool.colfix #poolGrid .pool,#lobbyHeroes.colfix #lhGrid .pool{grid-template-columns:repeat(var(--pc,4),minmax(0,1fr))}
+.lay-old.lay-col .stage{grid-template-columns:minmax(84px,.8fr) minmax(0,2fr) minmax(84px,.8fr);grid-template-areas:"home pool away";gap:6px;align-items:start}
+.lay-col #colHome,.lay-col #colAway{position:sticky;top:6px;align-self:start;max-height:calc(100vh - 12px);overflow-y:auto;padding:5px 4px 6px;border-radius:10px}
+.lay-col .colh{font-size:11px;letter-spacing:.08em;margin:0 0 4px;display:block}
+.lay-col .colh .tinfo{display:block;font-size:10px;letter-spacing:0}
+.lay-col .cell{display:flex;align-items:center;gap:4px;min-height:0;height:var(--ch,52px);box-sizing:border-box;padding:2px 4px;margin-bottom:4px;border-radius:8px}
+.lay-col .cell .rn{flex:none;width:12px;font-size:10px}
+.lay-old.lay-col .cell .mono,.lay-old.lay-col .cell .ph{flex:none;width:var(--ic,38px);height:var(--ic,38px);font-size:9px}
+.lay-col .cell .tx{display:none}
+.lay-col .stage[data-sz="m"] .cell .tx{display:block;min-width:0}
+.lay-col .cell .hn{display:none}
+.lay-col .bban{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px}
+.lay-col .bban .cell{display:block;width:26px;padding:0;margin:0;border:0;background:none;min-height:0;animation:none}
+.lay-old.lay-col .bban .cell .mono,.lay-old.lay-col .bban .cell .ph{width:26px;height:26px;font-size:7px;letter-spacing:0}
+.lay-col .bban .cell .rn,.lay-col .bban .cell .now,.lay-col .bban .cell .tx{display:none}
+.lay-col #colPool .pool-scroll{max-height:none;overflow:visible}
+.lay-col #actbar,.lay-col #myTurn{display:none!important}
+.lay-col #cmpRow{display:none}
+.lay-col #dock{display:flex;position:sticky;bottom:0;z-index:35;gap:6px;align-items:stretch;padding:6px 0 max(6px,env(safe-area-inset-bottom,0px));background:var(--bg);border-top:1px solid var(--line);margin-top:8px}
+.lay-col #dock .turnbar{flex:1 1 auto;min-width:0;margin:0;padding:4px 10px;gap:2px 10px;border-radius:12px;position:static}
+.lay-col #dock .tb-l .k,.lay-col #dock .tb-act,.lay-col #dock .tcbtn{display:none}
+.lay-col #dock .tb-l .v{font-size:14px;margin-top:0}
+.lay-col #dock .tb-r{font-size:28px}
+.lay-col #dock .tb-rw{padding:0}
+.lay-col #dock .poolrow{gap:4px}
+.lay-col #dock .poolrow .pl{display:none}
+.lay-col #dock .poolrow .pc{padding:0 8px}
+.lay-col #dock .poolrow .pc b{font-size:13px}
+.lay-col #dock .poolrow .pc small{display:none}
+@media (max-width:700px){.lay-col #dock{flex-direction:column;gap:6px}.lay-old.lay-col #dock .fab{width:100%;max-width:none;min-height:42px;padding:6px 10px;align-self:auto}.lay-col #dock .fab small{display:none}.lay-col #dock .poolrow{flex-wrap:nowrap}.lay-col #dock .poolrow .pc{font-size:11px;padding:0 5px;white-space:nowrap}.lay-col #dock .poolrow .pc b{font-size:12px}.lay-col #dock .tb-l .v{font-size:13px}.lay-col #dock .tb-r{font-size:24px}}
+.lay-col #dock .fab{position:static;flex:none;min-width:84px;max-width:38%;padding:8px 12px;font-size:14px;box-shadow:none;align-self:stretch}
+.lay-col #dock .fab small{max-width:100%}
 /* ===== 新レイアウト(上にチーム固定) ===== */
 .cell .lo,.cell .sh{font-style:normal}
 .lay-new .lo{display:none}
@@ -481,6 +528,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
       <button class="btn sm" id="copyWatch" type="button">観戦リンク</button>
       <span class="laysw" id="laySw" role="group" aria-label="表示レイアウト">
         <button type="button" id="layPC" title="PC向けレイアウト(左右にチーム)" aria-label="PCレイアウト"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/></svg></button>
+        <button type="button" id="layCol" title="3列レイアウト(左右にBAN/PICKを縦に固定・中央にヒーロー一覧)" aria-label="3列レイアウト"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="5" height="16" rx="1"/><rect x="9.5" y="4" width="5" height="16" rx="1"/><rect x="16.5" y="4" width="5" height="16" rx="1"/></svg></button>
         <button type="button" id="layMob" title="スマホ向けレイアウト(上にチーム固定)" aria-label="スマホレイアウト"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/></svg></button>
       </span>
       <button class="btn sm ghost" id="leaveBtn" type="button">退出</button>
@@ -502,8 +550,18 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
       <input class="field" id="myName" maxlength="14" placeholder="あなたの名前" autocomplete="off">
     </div>
     <div class="cols">
+      <div class="card" id="gateCard" hidden>
+        <h2>ホストログイン</h2>
+        <p class="hint">ルームを作成できるのはホストだけです。参加・観戦する人は、ホストから届いた <b>ルーム付きのリンク</b> を開いてください。</p>
+        <div class="row" style="margin-bottom:6px"><label for="gateUser" class="lab">ユーザー名</label></div>
+        <input class="field" id="gateUser" autocomplete="username" autocapitalize="off" style="width:100%">
+        <div class="row" style="margin:10px 0 6px"><label for="gatePass" class="lab">パスワード</label></div>
+        <input class="field" id="gatePass" type="password" autocomplete="current-password" style="width:100%">
+        <div class="btns" style="margin-top:14px"><button class="btn pri" id="gateBtn" type="button">ログイン</button></div>
+        <p class="msg" id="gateMsg" role="status"></p>
+      </div>
       <div class="card" id="createCard" hidden>
-        <h2>ルームを作成</h2>
+        <h2>ルームを作成 <button class="btn sm ghost" id="gateOut" type="button" style="float:right">ログアウト</button></h2>
         <div class="sumbar" id="sumBar" aria-label="現在の設定"></div>
         <div class="optbox sec"><div class="row" style="margin:0"><span class="lab">形式</span><div class="seg" id="segSize" role="group" aria-label="形式"><button type="button" data-v="3">3v3</button><button type="button" data-v="5">5v5</button></div></div></div>
         <div class="optbox">
@@ -617,6 +675,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
         <div class="strip" id="rStrip"></div>
         <details id="lobbyHeroes" open>
           <summary>ヒーロー一覧(確認用)</summary>
+          <div class="searchrow" style="justify-content:flex-end"><span class="colctl"><button type="button" class="btn sm ghost colMinus" aria-label="列を減らす">−</button><b class="colN">4</b><button type="button" class="btn sm ghost colPlus" aria-label="列を増やす">＋</button><span class="muted">列</span></span></div>
           <div id="lhGrid"></div>
         </details>
       </div>
@@ -631,9 +690,10 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
       <div class="stage">
         <div id="colPool">
           <div id="roleInfo" class="roleInfo" hidden></div>
-          <div class="searchrow"><input class="field" id="q" placeholder="ヒーロー名で絞り込み" autocomplete="off"></div>
+          <div class="searchrow"><input class="field" id="q" placeholder="ヒーロー名で絞り込み" autocomplete="off"><span class="colctl"><button type="button" class="btn sm ghost colMinus" aria-label="列を減らす">−</button><b class="colN">4</b><button type="button" class="btn sm ghost colPlus" aria-label="列を増やす">＋</button><span class="muted">列</span></span></div>
           <div class="pool-scroll"><div id="poolGrid"></div></div>
           <div class="actbar" id="actbar"></div>
+          <div id="dock"></div>
         </div>
       </div>
     </div>
@@ -655,7 +715,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261118-7";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261120-10L";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="host";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -730,13 +790,24 @@ var myName=lsGet("vgd_name")||"";
 var S=null,D=null;                    /* S: ルームの状態(ホストが正)  D: Sから導いた値 */
 var roomId=null,isHost=false,inRoom=false,joining=false,joinSpec=false;
 var netGen=0,joinTeam="";
-var entryRoom="",joinLeader=false;
+var hostOK=false,entryRoom="",hostAuth=null,joinLeader=false;
+try{hostAuth=JSON.parse(lsGet("vgd_ha")||"null")}catch(e){hostAuth=null}
 /* 入口画面の出し分け: ルーム指定のリンク=入室だけ / 指定なし=作成 */
 function refreshEntry(){
-  var mode=entryRoom?"join":"host";
+  var mode=IS_FREE?(entryRoom?"join":"host"):(hostOK?"host":(entryRoom?"join":"gate"));
+  $("#gateCard").hidden=mode!=="gate";
   $("#createCard").hidden=mode!=="host";
   $("#joinCard").hidden=mode!=="join";
-  $("#nameBar").hidden=false;
+  $("#nameBar").hidden=mode==="gate";
+}
+async function hostLogin(u,p,silent){
+  var r=await apiCall({op:"auth",hu:u,hp:p});
+  if(r.status===200){hostOK=true;hostAuth={u:u,p:p};lsSet("vgd_ha",JSON.stringify(hostAuth));refreshEntry();return true}
+  if(r.status===401||r.status===403){hostAuth=null;lsDel("vgd_ha")}
+  if(!silent){
+    $("#gateMsg").textContent=r.status===401?"ユーザー名またはパスワードが違います。":r.status===429?"試行回数が多すぎます。しばらく待ってからもう一度お試しください。":(r.status===500&&r.data&&r.data.err==="nopw")?"サーバーにホストのパスワードが設定されていません(Vercel の環境変数 HOST_USER / HOST_PASSWORD を設定して再デプロイしてください)。":"サーバーに接続できませんでした。";
+  }
+  return false;
 }
 var off=0,connected=false;
 var localSel="",q="";
@@ -1030,9 +1101,10 @@ async function createRoom(){
   btn.disabled=true;msg.textContent="ルームを作成中…";
   var cfg={leader:!!cs.leader,size:cs.size,timer:cs.timer,ext:cs.ext,pool:cs.ext==="pool"?cs.pool:0,rows:cs.rows.join(""),first:cs.first.join(""),fixedBans:cs.fixed.slice(),heroes:HEROES.slice(),fearless:!!cs.fearless,fearlessBan:!!(cs.fearless&&cs.fbans),mirror:!!cs.mirror,blind:!!cs.blind,blindAll:!!(cs.blind&&cs.blindAll),swap:!!cs.swap,series:cs.serChk?(cs.serUse?cs.serN:99):0,finalBlind:!!(DRIP&&cs.serChk&&cs.serUse&&cs.serN===5),finTimer:cs.finT,randPool:cs.rp||0,rolePick:!!cs.role,hcls:cs.role?HCLS:undefined,budget:cs.bud?cs.budPts:0,cost:cs.bud?cs.cost:undefined};
   joinSpec=false;
-  var r=await apiCall({op:"create",uid:myUid,tok:myTok,name:myName,cfg:cfg,free:IS_FREE});
+  var r=await apiCall({op:"create",uid:myUid,tok:myTok,name:myName,cfg:cfg,free:IS_FREE,hu:hostAuth&&hostAuth.u,hp:hostAuth&&hostAuth.p});
   btn.disabled=false;
   if(r.status===200&&r.data.s){msg.textContent="";enterRoom(r.data.id,r.data);return}
+  if(!IS_FREE&&(r.status===401||r.status===403)){hostOK=false;hostAuth=null;lsDel("vgd_ha");refreshEntry();$("#gateMsg").textContent="ホストのログインが必要です。もう一度ログインしてください。";msg.textContent="";return}
   if(r.status===429&&r.data&&r.data.err==="freelimit"){msg.textContent="無料版で作れる部屋は、同じ回線から24時間に3回までです。";renderCreate();return}
   msg.textContent=failText(r);renderCreate();
 }
@@ -1216,6 +1288,9 @@ function wireCreate(){
   $("#nxSwap").addEventListener("click",function(){nxClose();act({a:"next"})});
   $("#nxCancel").addEventListener("click",nxClose);
   $("#nxMask").addEventListener("click",function(e){if(e.target===this)nxClose()});
+  $("#gateBtn").addEventListener("click",function(){$("#gateMsg").textContent="確認中…";hostLogin($("#gateUser").value.trim(),$("#gatePass").value,false).then(function(ok){if(ok){$("#gateMsg").textContent="";$("#gatePass").value=""}})});
+  $("#gatePass").addEventListener("keydown",function(e){if(e.key==="Enter")$("#gateBtn").click()});
+  $("#gateOut").addEventListener("click",function(){hostOK=false;hostAuth=null;lsDel("vgd_ha");refreshEntry()});
   $("#tmSec").addEventListener("input",function(){var v=+this.value;if(v>=5&&v<=120&&v===Math.round(v)){cs.timer=v;renderCreate()}});
   $("#tmSec").addEventListener("change",function(){cs.timer=normTm(this.value);this.value=cs.timer;renderCreate()});
   $("#banMinus").addEventListener("click",function(){if(cs.banN>0){cs.banN--;setRows();renderCreate()}});
@@ -1276,8 +1351,8 @@ function renderAll(){
   $("#cdCancel").hidden=!D.myTeam||!!(S.cfg.leader&&!(S.members[myUid]&&S.members[myUid].leader));
   if(ph!=="draft"){$("#fab").hidden=true;document.body.classList.remove("has-fab")}
   placeRolebar(ph==="lobby"||ph==="countdown");
-  if(ph==="lobby"||ph==="countdown"){renderLobby();renderRoleInfo()}
-  else{renderTurn();renderBoard();renderRoleInfo();renderPool();renderAct()}
+  if(ph==="lobby"||ph==="countdown"){renderLobby();renderRoleInfo();applyCols()}
+  else{renderTurn();renderBoard();renderRoleInfo();renderPool();applyCols();renderAct()}
   notifyTurn();
   tick();
 }
@@ -1498,8 +1573,51 @@ function codeHTML(){
   var pre=S.code+"-"+(D.myTeam==="home"?1:2)+"_",full=pre+nameOf(myUid);
   return '<div class="codebox"><small>あなたのチームの名前(ゲーム内の名前に付けてください)</small><b class="num">'+esc(full)+'</b> <button class="btn sm" type="button" data-copycode="'+esc(full)+'">コピー</button></div>';
 }
+function colMode(){var c=document.body.classList;return c.contains("lay-col")?"col":(c.contains("lay-new")?"new":"old")}
+function colStored(){var n=parseInt(lsGet("vgd_cols_"+colMode()),10);return n>=2&&n<=8?n:(colMode()==="col"?4:0)}
+function colShown(){      /* 自動(保存なし)のときは、いま実際に並んでいる列数を数える */
+  var n=colStored();if(n)return n;
+  var p=document.querySelector($("#draft").hidden?"#lhGrid .pool":"#poolGrid .pool");
+  if(p){var c=getComputedStyle(p).gridTemplateColumns.split(" ").filter(Boolean).length;if(c>0)return Math.max(2,Math.min(8,c))}
+  return 5;
+}
+function applyCols(){      /* ヒーロー一覧の列数(2〜8列)。レイアウトごとに覚える。3列レイアウトの初期値は4、ほかは自動 */
+  var n=colStored();
+  ["#colPool","#lobbyHeroes"].forEach(function(q){var cp=$(q);cp.classList.toggle("colfix",!!n);if(n)cp.style.setProperty("--pc",n);else cp.style.removeProperty("--pc")});
+  var v=colShown();
+  Array.prototype.forEach.call(document.querySelectorAll(".colN"),function(e){e.textContent=v});
+  Array.prototype.forEach.call(document.querySelectorAll(".colMinus"),function(e){e.disabled=v<=2});
+  Array.prototype.forEach.call(document.querySelectorAll(".colPlus"),function(e){e.disabled=v>=8});
+}
+function stepCols(d){var v=Math.max(2,Math.min(8,colShown()+d));lsSet("vgd_cols_"+colMode(),String(v));applyCols()}
+function fitCols(){      /* 3列表示: 左右のBAN/PICKが、スクロールなしで画面の高さに収まるように、1枠の高さを自動で決める */
+  var st=document.querySelector(".stage");
+  if(!st)return;
+  if(!document.body.classList.contains("lay-col")||$("#draft").hidden){st.style.removeProperty("--ch");st.removeAttribute("data-sz");return}
+  var hm=$("#colHome"),aw=$("#colAway"),n=0,head=0,bb=0;
+  [hm,aw].forEach(function(c){
+    var b=c.querySelector(".band"),h=c.querySelector(".colh"),k=c.querySelector(".bban");
+    n=Math.max(n,b?b.children.length:0);head=Math.max(head,h?h.offsetHeight:0);bb=Math.max(bb,k?k.offsetHeight+6:0);
+  });
+  if(!n)return;
+  var room=window.innerHeight-12-11-head-4-bb,ch=Math.floor(room/n)-4;
+  ch=Math.max(26,Math.min(64,ch));
+  var ic=Math.max(20,Math.min(ch-8,56,hm.clientWidth-8-8-12-4-8));
+  st.style.setProperty("--ch",ch+"px");st.style.setProperty("--ic",ic+"px");
+  st.setAttribute("data-sz",ch>=46?"m":"s");
+}
+var fitT=0;
+window.addEventListener("resize",function(){clearTimeout(fitT);fitT=setTimeout(function(){fitCols();applyCols()},120)});
+window.addEventListener("orientationchange",function(){setTimeout(fitCols,300)});
+function placeTurn(){      /* 3列表示のドラフト中だけ、秒数(手番バー)を画面下の固定欄に入れる */
+  var tb=$("#turnbar"),dk=$("#dock"),tf=$("#topfix"),fab=$("#fab");
+  var inDock=document.body.classList.contains("lay-col")&&S&&S.phase==="draft";
+  if(inDock){if(tb.parentNode!==dk)dk.insertBefore(tb,dk.firstChild);if(fab.parentNode!==dk)dk.appendChild(fab)}
+  else{if(tb.parentNode!==tf)tf.insertBefore(tb,tf.firstChild);if(fab.parentNode!==document.body)document.body.appendChild(fab)}
+}
 function tcLabel(){return (lsGet("vgd_cmpt")||"0")==="1"?"▼":"▲"}
 function renderTurn(){
+  placeTurn();
   var tb=$("#turnbar");
   if(S.phase==="done"){
     var si=serInfo(),btns="";
@@ -1544,11 +1662,19 @@ function renderBoard(){
     var n=S.cfg.rows.length,ti2="";
     if(S.cfg.cost)ti2+='<span class="tinfo">予算 <b>'+teamSpent(t)+'</b>/'+S.cfg.budget+'</span>';
     if(S.cfg.hcls){var cc=classCount(t),q={C:1,J:1,L:S.cfg.size-2};ti2+='<span class="tinfo">'+[["C","キャプ"],["J","ジャン"],["L","レーン"]].map(function(x){return '<span class="cl'+(cc[x[0]]>=q[x[0]]?" on":"")+'">'+x[1]+' <b>'+cc[x[0]]+'</b>/'+q[x[0]]+'</span>'}).join(" ")+'</span>'}
-    var h='<div class="colh"><span>'+tnTag(t)+ti2+'</span></div><div class="band" style="grid-template-columns:repeat('+n+',minmax(0,1fr))">';
-    for(var r=0;r<n;r++)h+=cellHTML(t,r);
-    h+='</div>';
+    var h='<div class="colh"><span>'+tnTag(t)+ti2+'</span></div>',nb=(S.cfg.rows.match(/B/g)||[]).length;
+    if(document.body.classList.contains("lay-col")&&nb>5){      /* 3列表示: BANが6体以上なら、BANは上に小さく並べる */
+      var hb="",hp="",rr;
+      for(rr=0;rr<n;rr++){if(S.cfg.rows[rr]==="B")hb+=cellHTML(t,rr);else hp+=cellHTML(t,rr)}
+      h+='<div class="bban">'+hb+'</div><div class="band">'+hp+'</div>';
+    }else{
+      h+='<div class="band" style="grid-template-columns:repeat('+n+',minmax(0,1fr))">';
+      for(var r=0;r<n;r++)h+=cellHTML(t,r);
+      h+='</div>';
+    }
     $(t==="home"?"#colHome":"#colAway").innerHTML=h;
   });
+  fitCols();
 }
 var rbIn=false;
 function placeRolebar(inLobby){      /* 「あなたのロール」は、ロビーではチーム名の入力欄の下、ドラフト中はHOME/AWAYの(チーム名の)上 */
@@ -1674,16 +1800,21 @@ function wireRoom(){
     function auto(){return window.innerWidth<800?"new":"old"}
     function setLay(m){
       if(m===cur)return;cur=m;
-      document.body.classList.toggle("lay-old",m==="old");document.body.classList.toggle("lay-new",m==="new");
-      if(m==="old"){st.insertBefore(hm,pl);st.appendChild(aw)}else{bd.appendChild(hm);bd.appendChild(aw)}
-      placeRolebar();
+      document.body.classList.toggle("lay-old",m!=="new");document.body.classList.toggle("lay-col",m==="col");document.body.classList.toggle("lay-new",m==="new");
+      if(m!=="new"){st.insertBefore(hm,pl);st.appendChild(aw)}else{bd.appendChild(hm);bd.appendChild(aw)}
+      placeRolebar();placeTurn();fitCols();applyCols();
+      if(S&&S.cfg&&D&&S.phase!=="lobby"){try{renderBoard()}catch(e){}}
+      $("#layCol").classList.toggle("on",m==="col");$("#layCol").setAttribute("aria-pressed",m==="col");
       $("#layPC").classList.toggle("on",m==="old");$("#layMob").classList.toggle("on",m==="new");
       $("#layPC").setAttribute("aria-pressed",m==="old");$("#layMob").setAttribute("aria-pressed",m==="new");
     }
-    function pick(){var v=lsGet("vgd_lay");return v==="old"||v==="new"?v:auto()}
+    function pick(){var v=lsGet("vgd_lay");return v==="old"||v==="new"||v==="col"?v:auto()}
     bt.addEventListener("click",function(){on=!on;lsSet("vgd_cmp",on?"1":"0");ap()});
     $("#layPC").addEventListener("click",function(){lsSet("vgd_lay","old");setLay("old")});
     $("#layMob").addEventListener("click",function(){lsSet("vgd_lay","new");setLay("new")});
+    Array.prototype.forEach.call(document.querySelectorAll(".colMinus"),function(b){b.addEventListener("click",function(){stepCols(-1)})});
+    Array.prototype.forEach.call(document.querySelectorAll(".colPlus"),function(b){b.addEventListener("click",function(){stepCols(1)})});
+    $("#layCol").addEventListener("click",function(){lsSet("vgd_lay","col");setLay("col")});
     window.addEventListener("resize",function(){if(!lsGet("vgd_lay"))setLay(auto())});
     ap();setLay(pick());
   })();
@@ -1740,8 +1871,9 @@ async function init(){
     else{$("#joinBtn").textContent=teamJa(qTeam)+"として入室";$("#joinMsg").textContent="名前(IGN)を入力して「"+teamJa(qTeam)+"として入室」を押すと、"+teamJa(qTeam)+"の席に入ります。";}
   }
   if(qRoom){$("#joinId").value=qRoom;entryRoom=qRoom}
-  if(IS_FREE){$("#freeNote").hidden=false}
+  if(IS_FREE){$("#gateOut").hidden=true;$("#freeNote").hidden=false}
   refreshEntry();
+  if(!IS_FREE&&!qRoom&&hostAuth)hostLogin(hostAuth.u,hostAuth.p,true);
   setBusy(false);setBanner();
   var sr=null;
   try{sr=JSON.parse(lsGet("vgd_room")||"null")}catch(e){sr=null}
