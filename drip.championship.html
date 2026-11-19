@@ -343,7 +343,7 @@ vercel-live-feedback{display:none!important}      /* Vercel のツールバー(�
 .lay-col #dock .poolrow .pc{padding:0 8px}
 .lay-col #dock .poolrow .pc b{font-size:13px}
 .lay-col #dock .poolrow .pc small{display:none}
-@media (max-width:700px){.lay-col #dock{flex-direction:column;gap:6px}.lay-old.lay-col #dock .fab{width:100%;max-width:none;min-height:42px;padding:6px 10px;align-self:auto}.lay-col #dock .fab small{display:none}.lay-col #dock .poolrow{flex-wrap:nowrap}.lay-col #dock .poolrow .pc{font-size:11px;padding:0 5px;white-space:nowrap}.lay-col #dock .poolrow .pc b{font-size:12px}.lay-col #dock .tb-l .v{font-size:13px}.lay-col #dock .tb-r{font-size:24px}}
+@media (max-width:700px){.lay-col #dock{flex-direction:column;gap:6px}.lay-col #dock .turnbar{grid-template-columns:minmax(0,1fr)}.lay-col #dock .tb-rw{justify-content:space-between}.lay-old.lay-col #dock .fab{width:100%;max-width:none;min-height:42px;padding:6px 10px;align-self:auto}.lay-col #dock .fab small{display:none}.lay-col #dock .poolrow{flex-wrap:nowrap}.lay-col #dock .poolrow .pc{font-size:11px;padding:0 5px;white-space:nowrap}.lay-col #dock .poolrow .pc b{font-size:12px}.lay-col #dock .tb-l .v{font-size:13px}.lay-col #dock .tb-r{font-size:24px}}
 .lay-col #dock .fab{position:static;flex:none;min-width:84px;max-width:38%;padding:8px 12px;font-size:14px;box-shadow:none;align-self:stretch}
 .lay-col #dock .fab small{max-width:100%}
 /* ===== 新レイアウト(上にチーム固定) ===== */
@@ -363,7 +363,14 @@ vercel-live-feedback{display:none!important}      /* Vercel のツールバー(�
 .lay-new #topfix.tcompact .tb-l .k,.lay-new #topfix.tcompact .tb-act{display:none}
 .lay-new #topfix.tcompact .tb-l .v{font-size:14px;margin-top:0}
 .tb-l .v{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.tb-l .v .pzb{font-size:12px;padding:3px 10px;white-space:nowrap}
+.tb-btns{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-right:8px;min-width:0}
+.tb-btns .btn{font-size:12px;padding:3px 10px;white-space:nowrap}
+.lay-new #topfix:not(.tcompact) .tb-btns{flex-direction:column;align-items:flex-end;gap:4px;flex-wrap:nowrap}
+.lay-new .tb-l .v .vw{white-space:nowrap}
+.extb .ls{display:none}
+.lay-col .extb .lf,.lay-new #topfix.tcompact .extb .lf{display:none}
+.lay-col .extb .ls,.lay-new #topfix.tcompact .extb .ls{display:inline}
+.tb-rw{min-width:0}
 .turnbar{position:relative}
 .tb-rw{display:flex;align-items:center}
 .turnbar .tcbtn{position:absolute;top:6px;right:8px;min-width:26px;padding:1px 8px;line-height:1.4;z-index:1}
@@ -550,18 +557,8 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
       <input class="field" id="myName" maxlength="14" placeholder="あなたの名前" autocomplete="off">
     </div>
     <div class="cols">
-      <div class="card" id="gateCard" hidden>
-        <h2>ホストログイン</h2>
-        <p class="hint">ルームを作成できるのはホストだけです。参加・観戦する人は、ホストから届いた <b>ルーム付きのリンク</b> を開いてください。</p>
-        <div class="row" style="margin-bottom:6px"><label for="gateUser" class="lab">ユーザー名</label></div>
-        <input class="field" id="gateUser" autocomplete="username" autocapitalize="off" style="width:100%">
-        <div class="row" style="margin:10px 0 6px"><label for="gatePass" class="lab">パスワード</label></div>
-        <input class="field" id="gatePass" type="password" autocomplete="current-password" style="width:100%">
-        <div class="btns" style="margin-top:14px"><button class="btn pri" id="gateBtn" type="button">ログイン</button></div>
-        <p class="msg" id="gateMsg" role="status"></p>
-      </div>
       <div class="card" id="createCard" hidden>
-        <h2>ルームを作成 <button class="btn sm ghost" id="gateOut" type="button" style="float:right">ログアウト</button></h2>
+        <h2>ルームを作成</h2>
         <div class="sumbar" id="sumBar" aria-label="現在の設定"></div>
         <div class="optbox sec"><div class="row" style="margin:0"><span class="lab">形式</span><div class="seg" id="segSize" role="group" aria-label="形式"><button type="button" data-v="3">3v3</button><button type="button" data-v="5">5v5</button></div></div></div>
         <div class="optbox">
@@ -715,7 +712,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261120-10L";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261120-12";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="host";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -790,24 +787,13 @@ var myName=lsGet("vgd_name")||"";
 var S=null,D=null;                    /* S: ルームの状態(ホストが正)  D: Sから導いた値 */
 var roomId=null,isHost=false,inRoom=false,joining=false,joinSpec=false;
 var netGen=0,joinTeam="";
-var hostOK=false,entryRoom="",hostAuth=null,joinLeader=false;
-try{hostAuth=JSON.parse(lsGet("vgd_ha")||"null")}catch(e){hostAuth=null}
+var entryRoom="",joinLeader=false;
 /* 入口画面の出し分け: ルーム指定のリンク=入室だけ / 指定なし=作成 */
 function refreshEntry(){
-  var mode=IS_FREE?(entryRoom?"join":"host"):(hostOK?"host":(entryRoom?"join":"gate"));
-  $("#gateCard").hidden=mode!=="gate";
+  var mode=entryRoom?"join":"host";
   $("#createCard").hidden=mode!=="host";
   $("#joinCard").hidden=mode!=="join";
-  $("#nameBar").hidden=mode==="gate";
-}
-async function hostLogin(u,p,silent){
-  var r=await apiCall({op:"auth",hu:u,hp:p});
-  if(r.status===200){hostOK=true;hostAuth={u:u,p:p};lsSet("vgd_ha",JSON.stringify(hostAuth));refreshEntry();return true}
-  if(r.status===401||r.status===403){hostAuth=null;lsDel("vgd_ha")}
-  if(!silent){
-    $("#gateMsg").textContent=r.status===401?"ユーザー名またはパスワードが違います。":r.status===429?"試行回数が多すぎます。しばらく待ってからもう一度お試しください。":(r.status===500&&r.data&&r.data.err==="nopw")?"サーバーにホストのパスワードが設定されていません(Vercel の環境変数 HOST_USER / HOST_PASSWORD を設定して再デプロイしてください)。":"サーバーに接続できませんでした。";
-  }
-  return false;
+  $("#nameBar").hidden=false;
 }
 var off=0,connected=false;
 var localSel="",q="";
@@ -1101,10 +1087,9 @@ async function createRoom(){
   btn.disabled=true;msg.textContent="ルームを作成中…";
   var cfg={leader:!!cs.leader,size:cs.size,timer:cs.timer,ext:cs.ext,pool:cs.ext==="pool"?cs.pool:0,rows:cs.rows.join(""),first:cs.first.join(""),fixedBans:cs.fixed.slice(),heroes:HEROES.slice(),fearless:!!cs.fearless,fearlessBan:!!(cs.fearless&&cs.fbans),mirror:!!cs.mirror,blind:!!cs.blind,blindAll:!!(cs.blind&&cs.blindAll),swap:!!cs.swap,series:cs.serChk?(cs.serUse?cs.serN:99):0,finalBlind:!!(DRIP&&cs.serChk&&cs.serUse&&cs.serN===5),finTimer:cs.finT,randPool:cs.rp||0,rolePick:!!cs.role,hcls:cs.role?HCLS:undefined,budget:cs.bud?cs.budPts:0,cost:cs.bud?cs.cost:undefined};
   joinSpec=false;
-  var r=await apiCall({op:"create",uid:myUid,tok:myTok,name:myName,cfg:cfg,free:IS_FREE,hu:hostAuth&&hostAuth.u,hp:hostAuth&&hostAuth.p});
+  var r=await apiCall({op:"create",uid:myUid,tok:myTok,name:myName,cfg:cfg,free:IS_FREE});
   btn.disabled=false;
   if(r.status===200&&r.data.s){msg.textContent="";enterRoom(r.data.id,r.data);return}
-  if(!IS_FREE&&(r.status===401||r.status===403)){hostOK=false;hostAuth=null;lsDel("vgd_ha");refreshEntry();$("#gateMsg").textContent="ホストのログインが必要です。もう一度ログインしてください。";msg.textContent="";return}
   if(r.status===429&&r.data&&r.data.err==="freelimit"){msg.textContent="無料版で作れる部屋は、同じ回線から24時間に3回までです。";renderCreate();return}
   msg.textContent=failText(r);renderCreate();
 }
@@ -1288,9 +1273,6 @@ function wireCreate(){
   $("#nxSwap").addEventListener("click",function(){nxClose();act({a:"next"})});
   $("#nxCancel").addEventListener("click",nxClose);
   $("#nxMask").addEventListener("click",function(e){if(e.target===this)nxClose()});
-  $("#gateBtn").addEventListener("click",function(){$("#gateMsg").textContent="確認中…";hostLogin($("#gateUser").value.trim(),$("#gatePass").value,false).then(function(ok){if(ok){$("#gateMsg").textContent="";$("#gatePass").value=""}})});
-  $("#gatePass").addEventListener("keydown",function(e){if(e.key==="Enter")$("#gateBtn").click()});
-  $("#gateOut").addEventListener("click",function(){hostOK=false;hostAuth=null;lsDel("vgd_ha");refreshEntry()});
   $("#tmSec").addEventListener("input",function(){var v=+this.value;if(v>=5&&v<=120&&v===Math.round(v)){cs.timer=v;renderCreate()}});
   $("#tmSec").addEventListener("change",function(){cs.timer=normTm(this.value);this.value=cs.timer;renderCreate()});
   $("#banMinus").addEventListener("click",function(){if(cs.banN>0){cs.banN--;setRows();renderCreate()}});
@@ -1561,12 +1543,19 @@ function tick(){
   }
 }
 function pauseBtn(){return isHost?'<button class="btn sm pzb'+(S.pausedAt?' pri':'')+'" type="button" data-pause="1">'+(S.pausedAt?"▶ 再開":"⏸ 一時停止")+'</button>':""}
+function extBtn(mine,used){      /* 時間のリセット/追加ボタン(自分の手番のときだけ)。小さい表示と3列レイアウトでは、秒数を入れない短い文言 */
+  var e=extOf();
+  if(!mine||e==="pool"||e==="none")return "";
+  var half=Math.round(S.cfg.timer/2);
+  var lf=e==="half"?"+"+half+"秒を追加(1回)":"時間をリセット(1回)",ls=e==="half"?"追加":"リセット",done=e==="half"?"追加済み":"リセット済み";
+  return '<button class="btn sm extb" type="button" data-extend="1"'+(used?" disabled":"")+'>'+(used?done:'<span class="lf">'+lf+'</span><span class="ls">'+ls+'</span>')+'</button>';
+}
 function extUI(mine,used,c){
   var pz=(S.pausedAt?'<span class="note"><b>一時停止中</b></span>':'');
   var e=extOf(),fail=c.type==="B"?"時間切れはBANなしで次へ":"時間切れはランダムで確定";
   if(e==="pool"||e==="none")return pz+'<span class="note">'+fail+'</span>';
-  var half=Math.round(S.cfg.timer/2),lab=e==="half"?"+"+half+"秒を追加(1回)":"時間をリセット(1回)",done=e==="half"?"追加済み":"リセット済み";
-  return pz+(mine?'<button class="btn sm" type="button" data-extend="1"'+(used?" disabled":"")+'>'+(used?done:lab)+'</button>':(used?'<span>この手番は'+done+'</span>':''))+'<span class="note">'+fail+'</span>';
+  var done=e==="half"?"追加済み":"リセット済み";
+  return pz+(!mine&&used?'<span>この手番は'+done+'</span>':'')+'<span class="note">'+fail+'</span>';
 }
 function codeHTML(){
   if(!S.code||!D.myTeam)return "";
@@ -1633,9 +1622,9 @@ function renderTurn(){
   var sn=stepN(),head=bl?'手番 '+(S.turn+1)+'-'+(S.se||S.turn+2)+' / '+D.turns.length+' · 同時 '+verb+(sn>1?'(各'+sn+'体まとめて)':''):'手番 '+(S.turn+1)+' / '+D.turns.length+' · '+verb;
   var who=bl?(mine?'<em>あなたの番です</em>':(blindWaiting()?'確定しました。相手を待っています':'両チーム同時に'+verb+'を選んでいます')):(mine?'<em>あなたの番です</em>':esc(teamJa(c.team))+' '+esc(nameOf(D.actor))+' の'+verb);
   tb.innerHTML='<div class="tb-l"><div class="k num">'+head+'</div>'+
-    '<div class="v"><span class="vw">'+who+'</span>'+pauseBtn()+'</div>'+
+    '<div class="v"><span class="vw">'+who+'</span></div>'+
     '<div class="tb-act">'+extUI(mine,used,c)+'</div></div>'+
-    '<div class="tb-rw"><div class="tb-r num" id="tbNum">0</div></div><button type="button" class="tcbtn" data-tcmp="1" aria-label="秒数表示の大きさを切り替える">'+tcLabel()+'</button>'+(extOf()==="pool"?'<div class="poolrow" id="poolNote"></div>':'')+'<div class="tbar"><i id="tbBar"></i></div>';
+    '<div class="tb-rw"><div class="tb-btns">'+pauseBtn()+extBtn(mine,used)+'</div><div class="tb-r num" id="tbNum">0</div></div><button type="button" class="tcbtn" data-tcmp="1" aria-label="秒数表示の大きさを切り替える">'+tcLabel()+'</button>'+(extOf()==="pool"?'<div class="poolrow" id="poolNote"></div>':'')+'<div class="tbar"><i id="tbBar"></i></div>';
 }
 function cellHTML(t,r){
   var type=S.cfg.rows[r],ti=D.tix[r+t],turn=D.turns[ti],en=(S.log||{})[ti];
@@ -1871,9 +1860,8 @@ async function init(){
     else{$("#joinBtn").textContent=teamJa(qTeam)+"として入室";$("#joinMsg").textContent="名前(IGN)を入力して「"+teamJa(qTeam)+"として入室」を押すと、"+teamJa(qTeam)+"の席に入ります。";}
   }
   if(qRoom){$("#joinId").value=qRoom;entryRoom=qRoom}
-  if(IS_FREE){$("#gateOut").hidden=true;$("#freeNote").hidden=false}
+  if(IS_FREE){$("#freeNote").hidden=false}
   refreshEntry();
-  if(!IS_FREE&&!qRoom&&hostAuth)hostLogin(hostAuth.u,hostAuth.p,true);
   setBusy(false);setBanner();
   var sr=null;
   try{sr=JSON.parse(lsGet("vgd_room")||"null")}catch(e){sr=null}
