@@ -363,8 +363,12 @@ function handle(S, uid, m, body) {
       break;
     case "next":      /* 次の試合へ(フィアレス、またはシリーズ戦の部屋): フィアレスなら今の試合のピック(設定ならBANも)を使用済みにして、ロビーへ */
     case "reset":
+    case "rematch":      /* 再戦: 今のドラフトを破棄して、同じ試合番号のままロビーへ。履歴・使用済み・入れ替えには反映しない */
       if (!isHost || ph !== "done") break;
-      if (m.a === "next") {
+      if (m.a === "rematch") {
+        if (S.series && S.res) { S.series.wins[(S.res === "home") !== S.series.flip ? "A" : "B"]--; }      /* 記録済みの勝敗は取り消す */
+        S.res = "";
+      } else if (m.a === "next") {
         var sr = S.series, need = S.cfg.series === 99 ? 1e9 : Math.ceil((S.cfg.series || 0) / 2), swp = S.cfg.swap === true;
         if (sr && (sr.wins.A >= need || sr.wins.B >= need)) { msg = "シリーズは決着しています。「最初から」で新しいシリーズを始めてください"; break; }
         var nu = (S.used || []).slice(), nb = S.cfg.rows.split("").filter(function (x) { return x === "B"; }).length;
