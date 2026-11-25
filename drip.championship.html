@@ -712,7 +712,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261120-14";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261126-1";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="host";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -1611,7 +1611,7 @@ function renderTurn(){
   var tb=$("#turnbar");
   if(S.phase==="done"){
     var si=serInfo(),btns="";
-    if(isHost)btns='<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-next="1"'+(si&&si.over?' disabled':'')+'>次の試合へ</button><button class="btn ghost" type="button" data-reset="1">'+(S.cfg.fearless||S.cfg.series?"最初から":"ロビーに戻す")+'</button></div>';
+    if(isHost)btns='<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-next="1"'+(si&&si.over?' disabled':'')+'>次の試合へ</button>'+(S.cfg.fearless||S.cfg.series?'<button class="btn" type="button" data-rematch="1">再戦</button>':'')+'<button class="btn ghost" type="button" data-reset="1">'+(S.cfg.fearless||S.cfg.series?"最初から":"ロビーに戻す")+'</button></div>';
     var ser="";
     if(si)ser='<div class="serbox"><span>'+serLabel()+'</span>'+(isHost?'<span>この試合の勝者:</span><button class="btn sm'+(S.res==="home"?" pri":"")+'" type="button" data-res="home">'+esc(tnm("home"))+'勝ち</button><button class="btn sm'+(S.res==="away"?" pri":"")+'" type="button" data-res="away">'+esc(tnm("away"))+'勝ち</button>':(S.res?'<span>この試合: '+esc(tnm(S.res))+'勝ち</span>':''))+(si.over&&isHost?'<span class="note">シリーズが決着しました。「最初から」で新しいシリーズを始められます。</span>':'')+'</div>';
     tb.className="turnbar";
@@ -1771,6 +1771,10 @@ function wireRoom(){
     if(cc)copyText(cc.dataset.copycode,"コピーしました");
     else if(e.target.closest("[data-next]")){if(!e.target.closest("[data-next]").disabled)nextGame()}
     else if(e.target.closest("[data-res]")&&isHost)act({a:"result",w:e.target.closest("[data-res]").dataset.res});
+    else if(e.target.closest("[data-rematch]")){
+      if(!window.confirm("この試合のドラフトを破棄して、ロビーに戻ります。\n・この試合は履歴に残りません\n"+(S.cfg.fearless?"・この試合のヒーローは使用済みになりません\n":"")+(S.cfg.series?"・勝敗を記録していた場合は取り消されます\n":"")+"・試合の番号とホーム/アウェイは、そのままです\nよろしいですか?"))return;
+      act({a:"rematch"});
+    }
     else if(e.target.closest("[data-reset]")){
       if((S.cfg.fearless||S.cfg.series)&&!window.confirm((S.cfg.fearless?"使用済みヒーロー":"")+(S.cfg.fearless&&S.cfg.series?"と":"")+(S.cfg.series?"シリーズの勝敗の記録":"")+"をすべてリセットして、第1試合からやり直します。よろしいですか?"))return;
       act({a:"reset"});
