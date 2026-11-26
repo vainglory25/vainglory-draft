@@ -595,8 +595,8 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
             <div class="row" style="margin-top:8px"><label class="lab" for="budPts">チームの予算(点)</label><span><input class="field num" id="budPts" type="number" inputmode="numeric" min="3" max="25" step="1" value="6" style="width:90px"> 点 <small style="opacity:.7">(最低 <b id="budMin">6</b> 点)</small></span></div>
             <details class="fx" id="costDet">
               <summary>ヒーローごとのコストを変更する(タップで 1→2→3→4→5 と切り替え)</summary>
-              <div class="searchrow"><input class="field" id="bq" placeholder="ヒーロー名で絞り込み" autocomplete="off"><button class="btn sm ghost" id="costReset" type="button">初期値に戻す</button></div>
-              <div class="pool-scroll" style="max-height:320px"><div id="bPool"></div></div>
+              <div class="searchrow"><input class="field" id="bq" placeholder="ヒーロー名で絞り込み" autocomplete="off"><button class="btn sm ghost" id="costReset" type="button">初期値に戻す</button><button class="btn sm ghost" id="costBig" type="button" aria-pressed="false">全部表示</button></div>
+              <div class="pool-scroll" id="costScroll" style="max-height:72vh"><div id="bPool"></div></div>
             </details>
           </div>
           <p class="hint">コストの初期値は、用意した表のとおりです(1〜4点)。ヒーローごとに変更できます。予算を使い切って残りの枠が埋まらなくなる選び方は、選べないようになっています。</p>
@@ -712,7 +712,7 @@ body.img-missing .mono.hv{background:linear-gradient(145deg,hsl(var(--h) 52% 40%
 <script>
 (function(){
 "use strict";
-var BUILD="20261126-1";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
+var BUILD="20261126-2";      /* 更新のたびに値を変える。開いている画面は、サーバー上の最新と違うと自動で更新される */
 var VG_MODE="free";      /* "host"=ホストログイン / "free"=ログイン不要(部屋作成に回数制限) / "leader"=代表者だけが選ぶ(ホストログイン) / "leader-free"=代表者版の無料版 */
 var IS_FREE=VG_MODE==="free";      /* leader-free = 代表者版の無料版 */
 var ROLES3=["ローム","ジャングル","レーン"],ROLES5=["ローム","ジャングル","トップ","ミッド","ボット"];
@@ -1261,6 +1261,7 @@ function wireCreate(){
   $("#bq").addEventListener("input",renderCostPool);
   $("#bPool").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;var h=b.dataset.h;cs.cost[h]=cs.cost[h]>=5?1:cs.cost[h]+1;cs.costEdited=true;renderCostPool()});
   $("#costReset").addEventListener("click",function(){cs.cost=costBase(cs.size);cs.costEdited=false;renderCostPool()});
+  $("#costBig").addEventListener("click",function(){var on=this.getAttribute("aria-pressed")!=="true";this.setAttribute("aria-pressed",on?"true":"false");this.textContent=on?"縮める":"全部表示";var sc=$("#costScroll");sc.style.maxHeight=on?"none":"72vh";sc.style.overflowY=on?"visible":""});
   [["home","#tnHome"],["away","#tnAway"]].forEach(function(x){$(x[1]).addEventListener("change",function(){act({a:"tname",t:x[0],n:this.value})})});
   $("#finT").addEventListener("change",function(){var v=Math.round(+this.value)||60;v=Math.max(10,Math.min(180,v));cs.finT=v;this.value=v;renderCreate()});
   $("#serChk").addEventListener("change",function(){cs.serChk=this.checked;renderCreate()});
